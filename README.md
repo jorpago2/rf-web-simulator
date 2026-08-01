@@ -6,7 +6,7 @@ backend, account, upload, or runtime other than a modern browser is required.
 
 Online demo: <https://jorpago2.github.io/rf-web-simulator/>
 
-## Current iteration: 1.0 active and nonlinear analysis
+## Current iteration: 1.1 per-stage nonlinear analysis
 
 - Vite, React, strict TypeScript, React Flow, and Zustand.
 - Desktop/tablet RF editor with seven draggable block types.
@@ -42,8 +42,9 @@ Online demo: <https://jorpago2.github.io/rf-web-simulator/>
   grids, with the corresponding input sweep clipped rather than extrapolated.
 - Center-frequency image, LO leakage, and mixing-product plan through total
   order 3, with optional user-supplied rejection and isolation metadata.
-- Automatic per-tone input-power sweep with a P1dB-calibrated fundamental,
-  two-tone IM3 extrapolation, operating-point marker, and dedicated CSV export.
+- Automatic per-tone input-power sweep with P1dB-calibrated compression
+  propagated through every stage, limiting-stage identification, configurable
+  tone spacing, explicit tone/IM3 frequencies, and cascaded-OIP3 extrapolation.
 - Deterministic analytical and integration tests.
 - CI and GitHub Pages deployment workflows.
 
@@ -148,19 +149,29 @@ S-parameter cascade continues to include mismatch, while the budget does not.
 When finite P1dB or IP3 metadata are available, the simulator creates a
 101-point input-power sweep at the center frequency. Powers are interpreted per
 tone in dBm and the matched small-signal fundamental is
-`P_out,linear = P_in + G`. Compression uses the smooth phenomenological law
+`P_out,linear = P_in + G`. Each stage uses the smooth phenomenological law
 
 `C(P_in) = 10 log10[1 + (10^0.1 - 1) 10^((P_in - IIP1dB)/10)]`,
 
-so the compressed fundamental `P_out = P_out,linear - C` is exactly 1 dB below
-the linear extrapolation at IIP1dB and equals the supplied OP1dB. The two-tone
+so its compressed fundamental `P_out = P_out,linear - C` is exactly 1 dB below
+the local linear extrapolation at IIP1dB and equals the supplied OP1dB. The two-tone
 third-order line uses `P_IM3,out = 3 P_out,linear - 2 OIP3`; therefore it
 intersects the linear fundamental at the cascaded OIP3 by construction.
 
-This is a chain-level, matched, center-frequency estimate. It does not propagate
-compression stage by stage or model AM/PM, memory, bias, thermal effects,
-harmonics, load-pull, tone spacing, or device-specific polynomial coefficients.
-The Nonlinear view exports its independent power sweep as CSV.
+The compression law is applied sequentially to each stage using its local gain
+and OP1dB. A bisection search reports the chain input where accumulated
+compression reaches 1 dB and identifies the stage contributing the largest
+local compression there. The RF budget table retains its conservative
+first-stage-to-compress P1dB estimate; the nonlinear view reports the propagated
+result.
+
+For output center frequency `f_c` and configurable tone spacing `Delta f`, the
+displayed tones are `f_c +/- Delta f/2` and the third-order products are
+`f_c +/- 3 Delta f/2`. The spacing must keep both IM3 products above 0 Hz.
+IM3 amplitude is still extrapolated from cascaded OIP3: relative phases and
+cancellation between stages are unknown. AM/PM, memory, bias, thermal effects,
+harmonics, load-pull, and device-specific coefficients are not modeled. The
+Nonlinear view exports its independent power sweep as CSV.
 
 ## Mixer and frequency-plan model
 
@@ -203,9 +214,8 @@ sampling condition is not met.
 
 ## Roadmap
 
-1. Per-stage nonlinear propagation and selectable two-tone spacing.
-2. Harmonic-balance/device models only when measured coefficients are available.
-3. PWA/offline installation only if classroom use demonstrates a need.
+1. Harmonic-balance/device models only when measured coefficients are available.
+2. PWA/offline installation only if classroom use demonstrates a need.
 
 ## Project files and local storage
 

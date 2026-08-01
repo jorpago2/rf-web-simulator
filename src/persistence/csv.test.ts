@@ -47,6 +47,10 @@ it('exports interoperable scientific CSV with empty undefined values', () => {
       outputIp3Dbm: 20,
       operatingInputPowerDbm: -10,
       operatingOutputPowerDbm: -1,
+      toneSpacingHz: 10e6,
+      toneFrequenciesHz: [1.245e9, 1.255e9],
+      im3FrequenciesHz: [1.235e9, 1.265e9],
+      limitingStageLabel: 'Amplifier',
     },
     frequencyPlan: {
       input: { startHz: 1.25e9, centerHz: 1.25e9, stopHz: 1.25e9 },

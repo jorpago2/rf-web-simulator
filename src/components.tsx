@@ -156,6 +156,13 @@ export function PropertiesPanel() {
             value={numberValue(node.data.parameters.powerDbm, 0)}
             onChange={(value) => setNumber('powerDbm', value)}
           />
+          <NumberField
+            label="Two-tone spacing"
+            unit="Hz"
+            min={1}
+            value={numberValue(node.data.parameters.twoToneSpacingHz, 10e6)}
+            onChange={(value) => setNumber('twoToneSpacingHz', value)}
+          />
         </>
       )}
 
@@ -775,6 +782,22 @@ function NonlinearMetrics({ nonlinear }: { nonlinear: NonlinearSweepResult }) {
         </strong>
         <small>
           Input {formatBudgetValue(nonlinear.operatingInputPowerDbm, 'dBm')}
+        </small>
+      </div>
+      <div className="metric-card">
+        <span>Output tones</span>
+        <strong>
+          {nonlinear.toneFrequenciesHz.map(formatFrequency).join(' / ')}
+        </strong>
+        <small>Spacing {formatFrequency(nonlinear.toneSpacingHz)}</small>
+      </div>
+      <div className="metric-card">
+        <span>Output IM3 products</span>
+        <strong>
+          {nonlinear.im3FrequenciesHz.map(formatFrequency).join(' / ')}
+        </strong>
+        <small>
+          Limiting stage: {nonlinear.limitingStageLabel ?? 'unavailable'}
         </small>
       </div>
     </div>

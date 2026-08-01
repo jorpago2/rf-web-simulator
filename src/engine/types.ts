@@ -160,6 +160,10 @@ export interface NonlinearSweepResult {
   outputIp3Dbm: number | null
   operatingInputPowerDbm: number | null
   operatingOutputPowerDbm: number | null
+  toneSpacingHz: number
+  toneFrequenciesHz: [number, number]
+  im3FrequenciesHz: [number, number]
+  limitingStageLabel: string | null
 }
 
 export interface SimulationInput {

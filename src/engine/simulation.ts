@@ -9,7 +9,10 @@ import {
   createThroughNetwork,
 } from './idealNetworks'
 import { buildCommonFrequencyGrid, interpolateNetwork } from './interpolation'
-import { calculateNonlinearSweep } from './nonlinear'
+import {
+  calculateNonlinearSweep,
+  DEFAULT_TWO_TONE_SPACING_HZ,
+} from './nonlinear'
 import { parseTouchstoneS2P } from './touchstone'
 import type {
   RFProjectNode,
@@ -167,12 +170,18 @@ export function simulateLinearChain(input: SimulationInput): SimulationOutput {
     optionalFiniteParameter(source, 'powerDbm'),
     budgetStages,
   )
-  const nonlinear = calculateNonlinearSweep(budget)
+  const nonlinear = calculateNonlinearSweep(
+    budget,
+    budgetStages,
+    frequencyPlan.output.centerHz,
+    optionalFiniteParameter(source, 'twoToneSpacingHz', 1) ??
+      DEFAULT_TWO_TONE_SPACING_HZ,
+  )
   if (nonlinear.available) {
     warnings.push({
       code: 'NONLINEAR_MODEL',
       message:
-        'The nonlinear sweep is a matched chain-level estimate: smooth P1dB-calibrated compression and two-tone IM3 from cascaded OIP3. AM/PM, memory, bias, harmonics, load-pull, and device-specific behavior are not modeled.',
+        'The nonlinear sweep propagates a smooth P1dB-calibrated compression estimate through each matched stage. Two-tone IM3 remains an extrapolation from cascaded OIP3; phase cancellation, AM/PM, memory, bias, harmonics, load-pull, and device-specific behavior are not modeled.',
     })
   }
   return {

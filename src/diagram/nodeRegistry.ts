@@ -16,7 +16,11 @@ export const blockDescriptors: readonly BlockDescriptor[] = [
     description: 'Signal origin',
     symbol: 'SRC',
     accent: '#48b8a5',
-    defaultParameters: { centerFrequencyHz: 1e9, powerDbm: 0 },
+    defaultParameters: {
+      centerFrequencyHz: 1e9,
+      powerDbm: 0,
+      twoToneSpacingHz: 10e6,
+    },
   },
   {
     type: 'touchstone2Port',

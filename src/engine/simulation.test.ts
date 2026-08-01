@@ -114,6 +114,8 @@ describe('RF simulation integration', () => {
     expect(result.nonlinear.outputP1Dbm).toBeCloseTo(17)
     expect(result.nonlinear.outputIp3Dbm).toBeCloseTo(32)
     expect(result.nonlinear.operatingOutputPowerDbm).toBeCloseTo(-23)
+    expect(result.nonlinear.limitingStageLabel).toBe('amp')
+    expect(result.nonlinear.toneFrequenciesHz).toEqual([1.495e9, 1.505e9])
   })
 
   it('tracks an ideal downconversion envelope and frequency plan', () => {
