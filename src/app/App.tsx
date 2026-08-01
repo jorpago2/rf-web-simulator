@@ -28,6 +28,7 @@ import {
 import { simulateInWorker } from '../workers/client'
 import { useRFEditorStore } from './store'
 import { strings } from './strings'
+import { getRFTemplate } from '../templates'
 
 export default function App() {
   const activeProjectId = useRFEditorStore((state) => state.activeProjectId)
@@ -219,6 +220,12 @@ export default function App() {
             message={persistenceMessage}
             onExport={exportProject}
             onImport={importProject}
+            onLoadTemplate={(templateId) => {
+              loadProject(getRFTemplate(templateId))
+              setSelectedProjectId('')
+              setPersistenceStatus('saving')
+              setPersistenceMessage('Editable template loaded')
+            }}
             onNew={() => {
               newProject()
               setSelectedProjectId('')

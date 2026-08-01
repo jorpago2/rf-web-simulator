@@ -1,4 +1,4 @@
-import { useCallback, type DragEvent } from 'react'
+import { useCallback, useEffect, type DragEvent } from 'react'
 import {
   Background,
   BackgroundVariant,
@@ -41,6 +41,7 @@ function isRFNodeType(value: string): value is RFNodeType {
 }
 
 export function RFCanvas() {
+  const activeProjectId = useRFEditorStore((state) => state.activeProjectId)
   const nodes = useRFEditorStore((state) => state.nodes)
   const edges = useRFEditorStore((state) => state.edges)
   const onNodesChange = useRFEditorStore((state) => state.onNodesChange)
@@ -48,7 +49,14 @@ export function RFCanvas() {
   const onConnect = useRFEditorStore((state) => state.onConnect)
   const addNode = useRFEditorStore((state) => state.addNode)
   const selectNode = useRFEditorStore((state) => state.selectNode)
-  const { screenToFlowPosition } = useReactFlow()
+  const { fitView, screenToFlowPosition } = useReactFlow()
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      void fitView({ padding: 0.12 })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [activeProjectId, fitView])
 
   const onDragOver = useCallback((event: DragEvent) => {
     event.preventDefault()
@@ -82,7 +90,7 @@ export function RFCanvas() {
       onDrop={onDrop}
       deleteKeyCode={['Backspace', 'Delete']}
       fitView
-      fitViewOptions={{ padding: 0.22 }}
+      fitViewOptions={{ padding: 0.12 }}
       minZoom={0.35}
       maxZoom={1.8}
       aria-label="RF block diagram editor"

@@ -1,4 +1,5 @@
-import type { ChangeEvent } from 'react'
+import { useState, type ChangeEvent } from 'react'
+import { rfTemplates } from '../templates'
 import type { LocalProjectSummary } from './indexedDb'
 
 export type PersistenceStatus = 'loading' | 'saving' | 'saved' | 'error'
@@ -15,6 +16,7 @@ export function ProjectToolbar({
   onOpen,
   onExport,
   onImport,
+  onLoadTemplate,
 }: {
   projectName: string
   status: PersistenceStatus
@@ -27,7 +29,9 @@ export function ProjectToolbar({
   onOpen: () => void
   onExport: () => void
   onImport: (file: File) => void
+  onLoadTemplate: (id: string) => void
 }) {
+  const [templateId, setTemplateId] = useState('')
   const importProject = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) onImport(file)
@@ -71,6 +75,35 @@ export function ProjectToolbar({
       </button>
       <button type="button" onClick={onNew}>
         New
+      </button>
+      <label className="template-field">
+        <span className="sr-only">RF system template</span>
+        <select
+          value={templateId}
+          onChange={(event) => setTemplateId(event.target.value)}
+          aria-label="RF system template"
+          title={
+            rfTemplates.find((template) => template.id === templateId)
+              ?.description
+          }
+        >
+          <option value="">Templates</option>
+          {rfTemplates.map((template) => (
+            <option key={template.id} value={template.id}>
+              {template.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button
+        type="button"
+        disabled={!templateId}
+        onClick={() => {
+          onLoadTemplate(templateId)
+          setTemplateId('')
+        }}
+      >
+        Load template
       </button>
       <button type="button" onClick={onExport}>
         Export JSON

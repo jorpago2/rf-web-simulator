@@ -101,6 +101,7 @@ h2 {
 }
 
 .project-toolbar {
+  min-width: 0;
   display: flex;
   flex: 1;
   align-items: end;
@@ -118,8 +119,14 @@ h2 {
   text-transform: uppercase;
 }
 
+.recent-project-field,
+.template-field {
+  position: relative;
+}
+
 .project-name-field input,
 .recent-project-field select,
+.template-field select,
 .project-toolbar button,
 .project-file-button {
   min-height: 32px;
@@ -139,6 +146,17 @@ h2 {
 .recent-project-field select {
   width: 140px;
   padding: 5px 7px;
+}
+
+.template-field select {
+  width: 174px;
+  min-height: 32px;
+  padding: 5px 7px;
+  border: 1px solid #cfd8de;
+  border-radius: 7px;
+  color: var(--ink);
+  background: #fbfcfd;
+  font-size: 0.75rem;
 }
 
 .project-toolbar button,
@@ -1208,9 +1226,15 @@ h2 {
     flex: 0 0 140px;
   }
 
+  .template-field {
+    flex: 0 0 174px;
+  }
+
   .project-name-field input,
   .recent-project-field,
-  .recent-project-field select {
+  .recent-project-field select,
+  .template-field,
+  .template-field select {
     width: 100%;
   }
 

@@ -45,6 +45,8 @@ Online demo: <https://jorpago2.github.io/rf-web-simulator/>
   power, input P1dB, and correlated cascaded noise figure.
 - IndexedDB autosave, versioned self-contained JSON projects, CSV export, Web
   Worker execution, and transferable numerical buffers.
+- Editable built-in templates for a 2.4 GHz carrier transmitter, a 915 MHz to
+  70 MHz superheterodyne receiver, and a 2.45 GHz to 20 MHz low-IF receiver.
 
 ## Run and verify
 
