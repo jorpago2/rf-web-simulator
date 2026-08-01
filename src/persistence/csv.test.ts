@@ -35,11 +35,17 @@ it('exports interoperable scientific CSV with empty undefined values', () => {
       stages: [],
       warnings: [],
     },
+    frequencyPlan: {
+      input: { startHz: 1.25e9, centerHz: 1.25e9, stopHz: 1.25e9 },
+      output: { startHz: 0.25e9, centerHz: 0.25e9, stopHz: 0.25e9 },
+      outputFrequencyHz: new Float64Array([0.25e9]),
+      stages: [],
+    },
     warnings: [],
   }
 
   expect(simulationOutputToCsv(output)).toBe(
-    'frequency_hz,s11_db,s21_db,s12_db,s22_db,s21_phase_deg,s21_group_delay_s,"probe_s21_db:Input, plane [probe""1]"\n' +
-      '1250000000,-20.5,10.25,-40,-18,,2.5e-9,8.75\n',
+    'frequency_hz,output_frequency_hz,s11_db,s21_db,s12_db,s22_db,s21_phase_deg,s21_group_delay_s,"probe_s21_db:Input, plane [probe""1]"\n' +
+      '1250000000,250000000,-20.5,10.25,-40,-18,,2.5e-9,8.75\n',
   )
 })

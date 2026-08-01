@@ -3,6 +3,8 @@ import { blockDescriptors } from './diagram/nodeRegistry'
 import { parseTouchstoneS2P } from './engine/touchstone'
 import { magnitudeDb, phaseDegrees } from './engine/complex'
 import type {
+  FrequencyPlanResult,
+  FrequencyRange,
   RFAnalysisSettings,
   RFNodeType,
   RFBudgetResult,
@@ -181,6 +183,42 @@ export function PropertiesPanel() {
         </>
       )}
 
+      {node.data.type === 'idealMixer' && (
+        <>
+          <NumberField
+            label="LO frequency"
+            unit="Hz"
+            min={0}
+            value={numberValue(node.data.parameters.loFrequencyHz, 0.7e9)}
+            onChange={(value) => setNumber('loFrequencyHz', value)}
+          />
+          <NumberField
+            label="Conversion loss"
+            unit="dB"
+            min={0}
+            value={numberValue(node.data.parameters.conversionLossDb, 7)}
+            onChange={(value) => setNumber('conversionLossDb', value)}
+          />
+          <label className="field">
+            <span>Conversion mode</span>
+            <select
+              value={
+                node.data.parameters.mixerMode === 'upconvert'
+                  ? 'upconvert'
+                  : 'downconvert'
+              }
+              onChange={(event) =>
+                updateParameters(node.id, { mixerMode: event.target.value })
+              }
+            >
+              <option value="downconvert">Difference (input − LO)</option>
+              <option value="upconvert">Sum (input + LO)</option>
+            </select>
+          </label>
+          <BudgetMetadataFields nodeId={node.id} />
+        </>
+      )}
+
       {node.data.type === 'touchstone2Port' && (
         <>
           <label className="field file-field">
@@ -354,7 +392,7 @@ function numberValue(value: unknown, fallback: number): number {
 }
 
 export type SimulationStatus = 'idle' | 'running' | 'success' | 'error'
-type ResultView = PlotView | 'budget'
+type ResultView = PlotView | 'budget' | 'frequencyPlan'
 
 export function SimulationPanel({
   projectName,
@@ -376,9 +414,13 @@ export function SimulationPanel({
   const [resultView, setResultView] = useState<ResultView>('sParameters')
   const [frequencyUnit, setFrequencyUnit] = useState<FrequencyUnit>('auto')
   const probeViewAvailable = (result?.probeResults.length ?? 0) > 0
+  const frequencyPlanAvailable = (result?.frequencyPlan.stages.length ?? 0) > 0
   const visibleResultView =
     (resultView === 'probes' && !probeViewAvailable) ||
-    (resultView === 'budget' && !result)
+    (resultView === 'budget' && !result) ||
+    (resultView === 'frequencyPlan' && !frequencyPlanAvailable) ||
+    ((resultView === 'phase' || resultView === 'groupDelay') &&
+      frequencyPlanAvailable)
       ? 'sParameters'
       : resultView
   const update = (values: Partial<RFAnalysisSettings>) =>
@@ -404,6 +446,12 @@ export function SimulationPanel({
             type="button"
             role="tab"
             aria-selected={visibleResultView === 'phase'}
+            disabled={frequencyPlanAvailable}
+            title={
+              frequencyPlanAvailable
+                ? 'Conversion phase is not defined by the ideal mixer model'
+                : undefined
+            }
             onClick={() => setResultView('phase')}
           >
             Phase
@@ -412,6 +460,12 @@ export function SimulationPanel({
             type="button"
             role="tab"
             aria-selected={visibleResultView === 'groupDelay'}
+            disabled={frequencyPlanAvailable}
+            title={
+              frequencyPlanAvailable
+                ? 'Group delay is not defined across ideal frequency conversion'
+                : undefined
+            }
             onClick={() => setResultView('groupDelay')}
           >
             Group delay
@@ -434,6 +488,15 @@ export function SimulationPanel({
             onClick={() => setResultView('budget')}
           >
             RF budget
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={visibleResultView === 'frequencyPlan'}
+            disabled={!frequencyPlanAvailable}
+            onClick={() => setResultView('frequencyPlan')}
+          >
+            Frequency plan
           </button>
         </div>
         <div
@@ -554,18 +617,23 @@ function SimulationSummary({
 }) {
   const network = result.total
   const centerIndex = Math.floor(network.frequencyHz.length / 2)
-  const sParameters = [
-    ['S11', network.s11],
-    ['S21', network.s21],
-    ['S12', network.s12],
-    ['S22', network.s22],
-  ] as const
+  const frequencyConverting = result.frequencyPlan.stages.length > 0
+  const sParameters = frequencyConverting
+    ? ([['Conversion gain', network.s21]] as const)
+    : ([
+        ['S11', network.s11],
+        ['S21', network.s21],
+        ['S12', network.s12],
+        ['S22', network.s22],
+      ] as const)
   const centerFrequencyHz = network.frequencyHz[centerIndex]!
 
   return (
     <div className="simulation-summary">
       {resultView === 'budget' ? (
         <RFBudgetTable budget={result.budget} />
+      ) : resultView === 'frequencyPlan' ? (
+        <FrequencyPlanTable plan={result.frequencyPlan} />
       ) : (
         <div className="rf-plot-shell">
           <RFPlot
@@ -585,15 +653,23 @@ function SimulationSummary({
             <div className="metric-card" key={label}>
               <span>{label}</span>
               <strong>{formatDb(magnitudeDb(complex))}</strong>
-              <small>{formatDegrees(phaseDegrees(complex))}</small>
+              <small>
+                {frequencyConverting
+                  ? 'Ideal envelope model'
+                  : formatDegrees(phaseDegrees(complex))}
+              </small>
             </div>
           )
         })}
         <div className="metric-card metric-card--range">
-          <span>Center / points</span>
+          <span>
+            {frequencyConverting ? 'Input / output' : 'Center / points'}
+          </span>
           <strong>{formatFrequency(centerFrequencyHz)}</strong>
           <small>
-            {network.frequencyHz.length.toLocaleString('en-US')} points
+            {frequencyConverting
+              ? `→ ${formatFrequency(result.frequencyPlan.output.centerHz)}`
+              : `${network.frequencyHz.length.toLocaleString('en-US')} points`}
           </small>
         </div>
       </div>
@@ -680,6 +756,46 @@ function RFBudgetTable({ budget }: { budget: RFBudgetResult }) {
   )
 }
 
+function FrequencyPlanTable({ plan }: { plan: FrequencyPlanResult }) {
+  return (
+    <section
+      className="budget-panel frequency-plan-panel"
+      aria-label="Ideal mixer frequency plan"
+    >
+      <div className="budget-table-wrap">
+        <table>
+          <caption>Ideal sum/difference frequency plan</caption>
+          <thead>
+            <tr>
+              <th scope="col">Mixer</th>
+              <th scope="col">Mode</th>
+              <th scope="col">Input range</th>
+              <th scope="col">LO</th>
+              <th scope="col">Output range</th>
+            </tr>
+          </thead>
+          <tbody>
+            {plan.stages.map((stage) => (
+              <tr key={stage.nodeId}>
+                <th scope="row">{stage.label}</th>
+                <td>{stage.mode === 'upconvert' ? 'Sum' : 'Difference'}</td>
+                <td>{formatFrequencyRange(stage.input)}</td>
+                <td>{formatFrequency(stage.loFrequencyHz)}</td>
+                <td>{formatFrequencyRange(stage.output)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="budget-assumption">
+        Final center frequency: {formatFrequency(plan.input.centerHz)} →{' '}
+        {formatFrequency(plan.output.centerHz)}. Only the selected ideal product
+        is retained.
+      </p>
+    </section>
+  )
+}
+
 function CompactNumberField({
   label,
   unit,
@@ -739,4 +855,8 @@ function formatFrequency(frequencyHz: number): string {
   return frequencyHz >= 1e9
     ? `${(frequencyHz / 1e9).toFixed(3)} GHz`
     : `${(frequencyHz / 1e6).toFixed(3)} MHz`
+}
+
+function formatFrequencyRange(range: FrequencyRange): string {
+  return `${formatFrequency(range.startHz)} – ${formatFrequency(range.stopHz)}`
 }

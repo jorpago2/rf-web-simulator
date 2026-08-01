@@ -2,6 +2,7 @@ import { cascadeTwoPorts } from './cascade'
 import { calculateRFBudget, type BudgetStageInput } from './budget'
 import { magnitudeDb } from './complex'
 import { deriveSimulationCurves, magnitudeDbArray } from './derivedMetrics'
+import { calculateFrequencyPlan } from './frequencyPlan'
 import {
   createIdealAmplifier,
   createIdealAttenuator,
@@ -77,6 +78,25 @@ export function simulateLinearChain(input: SimulationInput): SimulationOutput {
     input.analysis,
   )
   const warnings = [...commonGrid.warnings]
+  const mixerNodes = orderedNodes.filter(
+    (node) => node.data.type === 'idealMixer',
+  )
+  const frequencyPlan = calculateFrequencyPlan(
+    commonGrid.frequencyHz,
+    mixerNodes.map((node) => ({
+      nodeId: node.id,
+      label: node.data.label,
+      mode: mixerMode(node),
+      loFrequencyHz: finiteParameter(node, 'loFrequencyHz'),
+    })),
+  )
+  if (mixerNodes.length > 0) {
+    warnings.push({
+      code: 'FREQUENCY_CONVERSION_MODEL',
+      message:
+        'Mixer results are an ideal conversion-gain envelope versus input frequency; conversion phase, images, LO leakage, spurs, and translated-frequency Touchstone stages are not modeled.',
+    })
+  }
   let cumulative = createThroughNetwork(
     commonGrid.frequencyHz,
     input.analysis.referenceImpedanceOhm,
@@ -112,6 +132,10 @@ export function simulateLinearChain(input: SimulationInput): SimulationOutput {
   }
 
   const derived = deriveSimulationCurves(cumulative)
+  if (mixerNodes.length > 0) {
+    derived.curves.s21PhaseDeg.fill(Number.NaN)
+    derived.curves.s21GroupDelayS.fill(Number.NaN)
+  }
   warnings.push(...derived.warnings)
   const centerIndex = Math.floor(commonGrid.frequencyHz.length / 2)
   const source = orderedNodes[0]!
@@ -125,6 +149,7 @@ export function simulateLinearChain(input: SimulationInput): SimulationOutput {
       optionalFiniteParameter(source, 'powerDbm'),
       budgetStages,
     ),
+    frequencyPlan,
     warnings,
   }
 }
@@ -193,6 +218,14 @@ function networkForNode(
         referenceImpedanceOhm,
         node.data.label,
       )
+    case 'idealMixer':
+      return createIdealAttenuator(
+        frequencyHz,
+        finiteParameter(node, 'conversionLossDb'),
+        0,
+        referenceImpedanceOhm,
+        node.data.label,
+      )
     case 'probe':
     case 'source':
     case 'load':
@@ -225,6 +258,7 @@ function validateBlockReferenceImpedances(
     if (
       node.data.type !== 'idealAmplifier' &&
       node.data.type !== 'idealAttenuator' &&
+      node.data.type !== 'idealMixer' &&
       node.data.type !== 'load'
     ) {
       continue
@@ -235,6 +269,14 @@ function validateBlockReferenceImpedances(
       node.data.label,
     )
   }
+}
+
+function mixerMode(node: RFProjectNode): 'downconvert' | 'upconvert' {
+  const value = node.data.parameters.mixerMode
+  if (value !== 'downconvert' && value !== 'upconvert') {
+    throw new SimulationError(`Mixer mode is invalid at "${node.data.label}".`)
+  }
+  return value
 }
 
 function assertReferenceImpedance(

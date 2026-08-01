@@ -2,6 +2,7 @@ import type { SimulationOutput } from '../engine/types'
 
 const CSV_HEADER = [
   'frequency_hz',
+  'output_frequency_hz',
   's11_db',
   's21_db',
   's12_db',
@@ -19,6 +20,7 @@ export function simulationOutputToCsv(output: SimulationOutput): string {
     lines.push(
       [
         output.total.frequencyHz[index],
+        output.frequencyPlan.outputFrequencyHz[index],
         output.curves.s11Db[index],
         output.curves.s21Db[index],
         output.curves.s12Db[index],

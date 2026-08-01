@@ -64,4 +64,28 @@ describe('linear RF graph validation', () => {
       expect.objectContaining({ code: 'INVALID_TOUCHSTONE', nodeId: 's2p' }),
     )
   })
+
+  it('rejects Touchstone stages after frequency conversion', () => {
+    const touchstone = '# GHz S RI R 50\n1 0 0 1 0 0 0 0 0\n2 0 0 1 0 0 0 0 0'
+    const result = validateLinearGraph(
+      [
+        node('src', 'source'),
+        node('mixer', 'idealMixer'),
+        node('if-filter', 'touchstone2Port', { content: touchstone }),
+        node('load', 'load'),
+      ],
+      [
+        edge('src', 'mixer'),
+        edge('mixer', 'if-filter'),
+        edge('if-filter', 'load'),
+      ],
+    )
+
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({
+        code: 'TOUCHSTONE_AFTER_MIXER',
+        nodeId: 'if-filter',
+      }),
+    )
+  })
 })

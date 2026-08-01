@@ -17,6 +17,7 @@ const nodeTypes: NodeTypes = {
   touchstone2Port: RFBlockNode,
   idealAmplifier: RFBlockNode,
   idealAttenuator: RFBlockNode,
+  idealMixer: RFBlockNode,
   load: RFBlockNode,
   probe: RFBlockNode,
 }

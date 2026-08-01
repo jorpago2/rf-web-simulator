@@ -54,6 +54,22 @@ export const blockDescriptors: readonly BlockDescriptor[] = [
     },
   },
   {
+    type: 'idealMixer',
+    label: 'Ideal mixer',
+    description: 'Sum/difference conversion',
+    symbol: 'MIX',
+    accent: '#4b8fd8',
+    defaultParameters: {
+      loFrequencyHz: 0.7e9,
+      mixerMode: 'downconvert',
+      conversionLossDb: 7,
+      noiseFigureDb: 7,
+      outputP1Dbm: 10,
+      outputIp3Dbm: 20,
+      referenceImpedanceOhm: 50,
+    },
+  },
+  {
     type: 'probe',
     label: 'Probe',
     description: 'Accumulated result point',

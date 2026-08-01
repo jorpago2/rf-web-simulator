@@ -6,10 +6,10 @@ backend, account, upload, or runtime other than a modern browser is required.
 
 Online demo: <https://jorpago2.github.io/rf-web-simulator/>
 
-## Current iteration: 0.6 RF budget
+## Current iteration: 0.7 frequency conversion
 
 - Vite, React, strict TypeScript, React Flow, and Zustand.
-- Desktop/tablet RF editor with six draggable block types.
+- Desktop/tablet RF editor with seven draggable block types.
 - Block selection, parameter editing, connection, and deletion.
 - Local `.s2p` selection and validation; file contents never leave the browser.
 - Touchstone 1.0 parser for `RI`, `MA`, and `DB`, with Hz/kHz/MHz/GHz units,
@@ -35,6 +35,8 @@ Online demo: <https://jorpago2.github.io/rf-web-simulator/>
   transferred from the worker and included in CSV exports.
 - Center-frequency matched RF budget with signal power, Friis noise figure,
   conservative cascaded P1dB, and reciprocal cascaded IP3 bookkeeping.
+- Ideal mixer with sum/difference conversion, explicit LO, conversion loss,
+  frequency-plan table, conversion-envelope plot, and output-frequency CSV data.
 - Deterministic analytical and integration tests.
 - CI and GitHub Pages deployment workflows.
 
@@ -133,6 +135,21 @@ IP3 metadata. Touchstone S2P data alone do not contain those quantities; missing
 metadata remain visibly unavailable rather than being inferred. The small-signal
 S-parameter cascade continues to include mismatch, while the budget does not.
 
+## Mixer and frequency-plan model
+
+An ideal Mixer retains one selected product. Difference conversion uses
+`f_out = f_in - f_LO` and requires the complete input sweep to remain above the
+LO; sum conversion uses `f_out = f_in + f_LO`. Conversion loss contributes to
+the magnitude envelope and the matched RF budget. The frequency-plan view tracks
+the input, LO, and output ranges through multiple mixers.
+
+The conversion curve is plotted against RF input frequency, while CSV adds the
+corresponding `output_frequency_hz` sample. This is not a conventional same-
+frequency two-port S matrix: conversion phase and group delay are left undefined,
+and image responses, other mixing products, LO leakage, isolation, and spurs are
+not modeled. Touchstone stages after a mixer are rejected because they require
+evaluation on the translated frequency grid; ideal gain/loss stages remain valid.
+
 ## Phase and group delay
 
 S21 phase is unwrapped in radians. Group delay is evaluated as
@@ -151,22 +168,23 @@ sampling condition is not met.
 
 ## Roadmap
 
-1. Mixer and frequency-conversion behavior after the linear small-signal path
-   is stable.
-2. PWA/offline installation only if classroom use demonstrates a need.
+1. Evaluate post-mixer Touchstone stages on translated frequency grids.
+2. Image-frequency, rejection, LO leakage, and spur planning.
+3. PWA/offline installation only if classroom use demonstrates a need.
 
 ## Project files and local storage
 
-Project JSON files use schema version 1 and include the diagram, analysis
-settings, block parameters, and selected Touchstone text. Imports reject unknown
-schema versions, invalid graph references, non-finite numbers, unsafe object
-keys, excessive nesting, files above 20 MiB, and projects above 20 nodes or 40
-edges. IndexedDB keeps recent projects in the current browser profile; JSON
-export is the portable backup.
+Project JSON files use schema version 2 and include the diagram, analysis
+settings, block parameters, and selected Touchstone text. Schema 1 files are
+migrated on import. Imports reject unknown schema versions, invalid graph
+references, non-finite numbers, unsafe object keys, excessive nesting, files
+above 20 MiB, and projects above 20 nodes or 40 edges. IndexedDB keeps recent
+projects in the current browser profile; JSON export is the portable backup.
 
-CSV uses comma-separated columns with frequencies and group delay in SI units
-(`Hz` and `s`). Each Probe adds an accumulated-S21 column identified by label
-and node ID. Undefined phase or delay samples are written as empty fields.
+CSV uses comma-separated columns with input/output frequencies and group delay
+in SI units (`Hz` and `s`). Each Probe adds an accumulated-S21 column identified
+by label and node ID. Undefined conversion phase or delay samples are written as
+empty fields.
 
 ## Privacy and security
 

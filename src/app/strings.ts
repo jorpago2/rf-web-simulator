@@ -1,6 +1,6 @@
 export const strings = {
   appName: 'RF Web Simulator',
-  version: 'MVP 0.6 · RF budget',
+  version: 'MVP 0.7 · frequency conversion',
   localPrivacy: 'Files and calculations stay on this device.',
   libraryTitle: 'Block library',
   libraryHint: 'Drag a block to the canvas or click to add it.',

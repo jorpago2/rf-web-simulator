@@ -46,10 +46,11 @@ export function RFPlot({
     () => createFigure(result, view, resolvedUnit, frequency),
     [frequency, resolvedUnit, result, view],
   )
+  const frequencyConverting = result.frequencyPlan.stages.length > 0
 
   return (
     <PlotlyFigure
-      ariaLabel={`${plotTitle(view)} versus frequency`}
+      ariaLabel={`${plotTitle(view, frequencyConverting)} versus frequency`}
       config={{
         displaylogo: false,
         responsive: true,
@@ -138,6 +139,26 @@ function createFigure(
   }
 
   if (view === 'sParameters') {
+    if (result.frequencyPlan.stages.length > 0) {
+      return {
+        data: [
+          {
+            type: 'scatter',
+            mode: 'lines',
+            name: 'Conversion gain',
+            x: frequency,
+            y: Array.from(result.curves.s21Db),
+            line: { color: TRACE_STYLES[1].color, width: 2 },
+            hovertemplate: 'Conversion gain: %{y:.3f} dB<extra></extra>',
+          },
+        ],
+        layout: {
+          ...commonLayout,
+          showlegend: false,
+          yaxis: axis('Conversion magnitude (dB)'),
+        },
+      }
+    }
     const traces = [
       ['S11', result.curves.s11Db],
       ['S21', result.curves.s21Db],
@@ -166,6 +187,7 @@ function createFigure(
   }
 
   if (view === 'probes') {
+    const conversion = result.frequencyPlan.stages.length > 0
     return {
       data: result.probeResults.map((probe, index) => ({
         type: 'scatter',
@@ -174,12 +196,15 @@ function createFigure(
         x: frequency,
         y: Array.from(probe.s21Db),
         line: { ...probeTraceStyle(index), width: 2 },
-        hovertemplate:
-          'Accumulated S21: %{y:.3f} dB<extra>%{fullData.name}</extra>',
+        hovertemplate: `${conversion ? 'Accumulated conversion gain' : 'Accumulated S21'}: %{y:.3f} dB<extra>%{fullData.name}</extra>`,
       })),
       layout: {
         ...commonLayout,
-        yaxis: axis('Cumulative S21 magnitude (dB)'),
+        yaxis: axis(
+          conversion
+            ? 'Cumulative conversion magnitude (dB)'
+            : 'Cumulative S21 magnitude (dB)',
+        ),
       },
     }
   }
@@ -261,9 +286,11 @@ function frequencyScale(unit: Exclude<FrequencyUnit, 'auto'>): number {
   return { Hz: 1, kHz: 1e3, MHz: 1e6, GHz: 1e9 }[unit]
 }
 
-function plotTitle(view: PlotView): string {
+function plotTitle(view: PlotView, frequencyConverting = false): string {
   return {
-    sParameters: 'S-parameter magnitude',
+    sParameters: frequencyConverting
+      ? 'Conversion-path magnitude'
+      : 'S-parameter magnitude',
     phase: 'Unwrapped S21 phase',
     groupDelay: 'S21 group delay',
     probes: 'Cumulative S21 at probe planes',

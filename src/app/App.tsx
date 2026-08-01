@@ -57,7 +57,7 @@ export default function App() {
 
   const project = useMemo<RFProject>(
     () => ({
-      schemaVersion: 1,
+      schemaVersion: 2,
       name: projectName.trim() || 'Untitled RF chain',
       analysis,
       nodes: nodes.map((node) => ({

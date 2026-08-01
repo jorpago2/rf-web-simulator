@@ -16,6 +16,7 @@ const RF_NODE_TYPES = new Set<RFNodeType>([
   'touchstone2Port',
   'idealAmplifier',
   'idealAttenuator',
+  'idealMixer',
   'load',
   'probe',
 ])
@@ -48,9 +49,9 @@ export function parseProjectJson(text: string): RFProject {
 
 export function validateProject(value: unknown): RFProject {
   const project = record(value, 'Project')
-  if (project.schemaVersion !== 1) {
+  if (project.schemaVersion !== 1 && project.schemaVersion !== 2) {
     throw new ProjectFileError(
-      `Unsupported schemaVersion "${String(project.schemaVersion)}"; expected 1.`,
+      `Unsupported schemaVersion "${String(project.schemaVersion)}"; expected 1 or 2.`,
     )
   }
 
@@ -77,7 +78,7 @@ export function validateProject(value: unknown): RFProject {
   }
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     name,
     nodes,
     edges,

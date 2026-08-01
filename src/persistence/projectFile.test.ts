@@ -7,7 +7,7 @@ import {
 } from './projectFile'
 
 const project: RFProject = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   name: 'LNA chain',
   analysis: {
     startHz: 0.8e9,
@@ -42,7 +42,7 @@ describe('versioned RF project files', () => {
 
   it('rejects unsupported versions and invalid references', () => {
     expect(() =>
-      parseProjectJson(JSON.stringify({ ...project, schemaVersion: 2 })),
+      parseProjectJson(JSON.stringify({ ...project, schemaVersion: 3 })),
     ).toThrow(ProjectFileError)
     expect(() =>
       parseProjectJson(
@@ -52,6 +52,13 @@ describe('versioned RF project files', () => {
         }),
       ),
     ).toThrow(/missing/u)
+  })
+
+  it('migrates schema 1 projects to schema 2', () => {
+    const restored = parseProjectJson(
+      JSON.stringify({ ...project, schemaVersion: 1 }),
+    )
+    expect(restored.schemaVersion).toBe(2)
   })
 
   it('rejects unsafe parameter keys', () => {

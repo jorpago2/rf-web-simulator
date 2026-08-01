@@ -21,6 +21,7 @@ export type RFNodeType =
   | 'touchstone2Port'
   | 'idealAmplifier'
   | 'idealAttenuator'
+  | 'idealMixer'
   | 'load'
   | 'probe'
 
@@ -56,7 +57,7 @@ export interface RFEmbeddedAsset {
 }
 
 export interface RFProject {
-  schemaVersion: 1
+  schemaVersion: 2
   name: string
   nodes: RFProjectNode[]
   edges: RFProjectEdge[]
@@ -64,8 +65,36 @@ export interface RFProject {
   assets: Record<string, RFEmbeddedAsset>
 }
 
+export type MixerMode = 'downconvert' | 'upconvert'
+
+export interface FrequencyRange {
+  startHz: number
+  centerHz: number
+  stopHz: number
+}
+
+export interface FrequencyConversionStage {
+  nodeId: NodeId
+  label: string
+  mode: MixerMode
+  loFrequencyHz: number
+  input: FrequencyRange
+  output: FrequencyRange
+}
+
+export interface FrequencyPlanResult {
+  input: FrequencyRange
+  output: FrequencyRange
+  outputFrequencyHz: Float64Array
+  stages: FrequencyConversionStage[]
+}
+
 export interface SimulationWarning {
-  code: 'RANGE_CLIPPED' | 'CASCADE_NEAR_SINGULAR' | 'S21_PHASE_UNDEFINED'
+  code:
+    | 'RANGE_CLIPPED'
+    | 'CASCADE_NEAR_SINGULAR'
+    | 'S21_PHASE_UNDEFINED'
+    | 'FREQUENCY_CONVERSION_MODEL'
   message: string
   frequencyHz?: number
 }
@@ -115,6 +144,7 @@ export interface SimulationOutput {
   stageSummaries: SimulationStageSummary[]
   probeResults: SimulationProbeResult[]
   budget: RFBudgetResult
+  frequencyPlan: FrequencyPlanResult
   warnings: SimulationWarning[]
 }
 

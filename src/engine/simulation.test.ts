@@ -111,6 +111,55 @@ describe('RF simulation integration', () => {
     expect(budgetTotal.cumulativeOutputIp3Dbm).toBeCloseTo(32)
   })
 
+  it('tracks an ideal downconversion envelope and frequency plan', () => {
+    const result = simulateLinearChain({
+      analysis: {
+        startHz: 1e9,
+        stopHz: 1.2e9,
+        points: 3,
+        referenceImpedanceOhm: 50,
+      },
+      nodes: [
+        node('src', 'source', { powerDbm: -30 }),
+        node('mixer', 'idealMixer', {
+          loFrequencyHz: 0.9e9,
+          mixerMode: 'downconvert',
+          conversionLossDb: 7,
+          noiseFigureDb: 7,
+          outputP1Dbm: 10,
+          outputIp3Dbm: 20,
+          referenceImpedanceOhm: 50,
+        }),
+        node('if-amp', 'idealAmplifier', {
+          gainDb: 10,
+          phaseDeg: 0,
+          noiseFigureDb: 2,
+          outputP1Dbm: 20,
+          outputIp3Dbm: 35,
+          referenceImpedanceOhm: 50,
+        }),
+        node('load', 'load', { referenceImpedanceOhm: 50 }),
+      ],
+      edges: [
+        { id: 'a', source: 'src', target: 'mixer' },
+        { id: 'b', source: 'mixer', target: 'if-amp' },
+        { id: 'c', source: 'if-amp', target: 'load' },
+      ],
+    })
+
+    expect(result.curves.s21Db[1]).toBeCloseTo(3)
+    expect(Number.isNaN(result.curves.s21PhaseDeg[1])).toBe(true)
+    expect(Number.isNaN(result.curves.s21GroupDelayS[1])).toBe(true)
+    expect(result.frequencyPlan.outputFrequencyHz).toEqual(
+      new Float64Array([0.1e9, 0.2e9, 0.3e9]),
+    )
+    expect(result.frequencyPlan.stages[0]?.output.centerHz).toBe(0.2e9)
+    expect(result.budget.stages.at(-1)?.cumulativeGainDb).toBeCloseTo(3)
+    expect(result.warnings).toContainEqual(
+      expect.objectContaining({ code: 'FREQUENCY_CONVERSION_MODEL' }),
+    )
+  })
+
   it('rejects mismatched reference impedances explicitly', () => {
     expect(() =>
       simulateLinearChain({

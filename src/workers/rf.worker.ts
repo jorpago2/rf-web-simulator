@@ -48,6 +48,7 @@ function transferables(output: SimulationOutput): Transferable[] {
     output.curves.s21PhaseDeg.buffer,
     output.curves.s21GroupDelayS.buffer,
     ...output.probeResults.map((probe) => probe.s21Db.buffer),
+    output.frequencyPlan.outputFrequencyHz.buffer,
   ]
 }
 
