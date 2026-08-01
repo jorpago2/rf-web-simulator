@@ -177,6 +177,14 @@ export const blockDescriptors: readonly BlockDescriptor[] = [
       controlVoltageV: 1,
       powerDbm: 10,
       sourceImpedanceOhm: 50,
+      phaseNoiseAt1MHzDbcHz: -120,
+      phaseNoiseSlopeDbPerDecade: -20,
+      phaseNoiseFloorDbcHz: -160,
+      phaseNoiseIntegrationStartHz: 100,
+      phaseNoiseIntegrationStopHz: 10e6,
+      pllEnabled: false,
+      pllLoopBandwidthHz: 100e3,
+      pllInBandPhaseNoiseDbcHz: -140,
     },
   },
   {
@@ -188,6 +196,9 @@ export const blockDescriptors: readonly BlockDescriptor[] = [
       centerFrequencyHz: 1e9,
       powerDbm: -80,
       sourceImpedanceOhm: 50,
+      efficiencyPercent: 70,
+      patternExponent: 2,
+      frontToBackDb: 20,
     },
   },
   {
@@ -198,6 +209,9 @@ export const blockDescriptors: readonly BlockDescriptor[] = [
     defaultParameters: {
       referenceImpedanceOhm: 50,
       loadImpedanceOhm: 50,
+      efficiencyPercent: 70,
+      patternExponent: 2,
+      frontToBackDb: 20,
     },
   },
   {

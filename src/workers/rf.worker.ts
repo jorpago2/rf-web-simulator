@@ -59,6 +59,11 @@ function transferables(output: SimulationOutput): Transferable[] {
     output.nonlinear.compressedOutputPowerDbm.buffer,
     output.nonlinear.outputPhaseDeg.buffer,
     output.nonlinear.im3OutputPowerDbm.buffer,
+    output.oscillatorNoise.offsetFrequencyHz.buffer,
+    output.oscillatorNoise.freeRunningDbcHz.buffer,
+    output.oscillatorNoise.outputDbcHz.buffer,
+    output.antenna.angleDeg.buffer,
+    output.antenna.normalizedPatternDb.buffer,
     output.parametricSweep.parameterValues.buffer,
     output.parametricSweep.metricValues.buffer,
   ]

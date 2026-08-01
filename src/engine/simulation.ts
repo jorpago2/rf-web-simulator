@@ -44,6 +44,7 @@ import {
   DEFAULT_TWO_TONE_SPACING_HZ,
 } from './nonlinear'
 import { calculateNetworkChecks } from './networkChecks'
+import { calculateAntenna, calculateOscillatorNoise } from './rfSources'
 import { parseMixerProductCsv } from './mixerProducts'
 import { noiseFigureFromParameters } from './noiseParameters'
 import {
@@ -466,6 +467,8 @@ function simulateDeterministic(input: SimulationInput): SimulationOutput {
     probeResults,
     budget,
     nonlinear,
+    oscillatorNoise: calculateOscillatorNoise(source),
+    antenna: calculateAntenna(source, load, budget),
     frequencyPlan,
     monteCarlo: emptyMonteCarlo(input.analysis),
     parametricSweep: emptyParametricSweep(input.analysis),
@@ -629,16 +632,16 @@ function simulateBranchedNetwork(
                   referenceImpedanceOhm,
                   node.data.label,
                 )
-            : createIdealDivider(
-                frequencyHz,
-                node.data.type === 'idealSplitter' ? 0 : 2,
-                finiteParameter(node, 'excessLossDb'),
-                finiteParameter(node, 'amplitudeImbalanceDb'),
-                finiteParameter(node, 'phaseImbalanceDeg'),
-                finiteParameter(node, 'isolationDb'),
-                referenceImpedanceOhm,
-                node.data.label,
-              )
+              : createIdealDivider(
+                  frequencyHz,
+                  node.data.type === 'idealSplitter' ? 0 : 2,
+                  finiteParameter(node, 'excessLossDb'),
+                  finiteParameter(node, 'amplitudeImbalanceDb'),
+                  finiteParameter(node, 'phaseImbalanceDeg'),
+                  finiteParameter(node, 'isolationDb'),
+                  referenceImpedanceOhm,
+                  node.data.label,
+                )
       const evaluatedDivider = { ...divider, frequencyHz }
       blocks.push({
         nodeId: node.id,
@@ -830,6 +833,8 @@ function simulateBranchedNetwork(
       optionalFiniteParameter(source, 'twoToneSpacingHz', 1) ??
         DEFAULT_TWO_TONE_SPACING_HZ,
     ),
+    oscillatorNoise: calculateOscillatorNoise(source),
+    antenna: calculateAntenna(source, load, budget),
     frequencyPlan,
     monteCarlo: emptyMonteCarlo(input.analysis),
     parametricSweep: emptyParametricSweep(input.analysis),

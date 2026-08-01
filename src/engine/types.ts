@@ -243,6 +243,31 @@ export interface NonlinearSpectralLine {
   kind: 'fundamental' | 'im3' | 'higher-order'
 }
 
+export interface OscillatorNoiseResult {
+  available: boolean
+  pllEnabled: boolean
+  carrierFrequencyHz: number | null
+  offsetFrequencyHz: Float64Array
+  freeRunningDbcHz: Float64Array
+  outputDbcHz: Float64Array
+  integratedPhaseErrorDeg: number | null
+  rmsJitterS: number | null
+}
+
+export interface AntennaResult {
+  available: boolean
+  mode: 'tx' | 'rx' | null
+  frequencyHz: number | null
+  efficiencyPercent: number | null
+  directivityDbi: number | null
+  realizedGainDbi: number | null
+  radiatedPowerDbm: number | null
+  eirpDbm: number | null
+  effectiveApertureM2: number | null
+  angleDeg: Float64Array
+  normalizedPatternDb: Float64Array
+}
+
 export interface SimulationInput {
   nodes: RFProjectNode[]
   edges: RFProjectEdge[]
@@ -257,6 +282,8 @@ export interface SimulationOutput {
   probeResults: SimulationProbeResult[]
   budget: RFBudgetResult
   nonlinear: NonlinearSweepResult
+  oscillatorNoise: OscillatorNoiseResult
+  antenna: AntennaResult
   frequencyPlan: FrequencyPlanResult
   monteCarlo: MonteCarloResult
   parametricSweep: ParametricSweepResult

@@ -395,6 +395,37 @@ export function PropertiesPanel() {
         </>
       )}
 
+      {(node.data.type === 'rxAntenna' || node.data.type === 'txAntenna') && (
+        <>
+          <NumberField
+            label="Radiation efficiency"
+            unit="%"
+            min={Number.MIN_VALUE}
+            max={100}
+            value={numberValue(node.data.parameters.efficiencyPercent, 70)}
+            onChange={(value) => setNumber('efficiencyPercent', value)}
+          />
+          <NumberField
+            label="Cosine pattern exponent"
+            unit=""
+            min={0}
+            value={numberValue(node.data.parameters.patternExponent, 2)}
+            onChange={(value) => setNumber('patternExponent', value)}
+          />
+          <NumberField
+            label="Front-to-back ratio"
+            unit="dB"
+            min={0}
+            value={numberValue(node.data.parameters.frontToBackDb, 20)}
+            onChange={(value) => setNumber('frontToBackDb', value)}
+          />
+          <p className="empty-state">
+            Axisymmetric cosine-power far-field model; no polarization,
+            coupling, mismatch or 3D geometry.
+          </p>
+        </>
+      )}
+
       {node.data.type === 'vcoSource' && (
         <>
           <NumberField
@@ -425,14 +456,12 @@ export function PropertiesPanel() {
           <p className="empty-state">
             Tuned frequency:{' '}
             {formatFrequency(
-              numberValue(
-                node.data.parameters.freeRunningFrequencyHz,
-                0.9e9,
-              ) +
+              numberValue(node.data.parameters.freeRunningFrequencyHz, 0.9e9) +
                 numberValue(
                   node.data.parameters.tuningSensitivityHzPerV,
                   100e6,
-                ) * numberValue(node.data.parameters.controlVoltageV, 1),
+                ) *
+                  numberValue(node.data.parameters.controlVoltageV, 1),
             )}
           </p>
           <NumberField
@@ -448,6 +477,85 @@ export function PropertiesPanel() {
             value={numberValue(node.data.parameters.sourceImpedanceOhm, 50)}
             onChange={(value) => setNumber('sourceImpedanceOhm', value)}
           />
+          <NumberField
+            label="Phase noise at 1 MHz"
+            unit="dBc/Hz"
+            value={numberValue(
+              node.data.parameters.phaseNoiseAt1MHzDbcHz,
+              -120,
+            )}
+            onChange={(value) => setNumber('phaseNoiseAt1MHzDbcHz', value)}
+          />
+          <NumberField
+            label="Phase-noise slope"
+            unit="dB/dec"
+            max={0}
+            value={numberValue(
+              node.data.parameters.phaseNoiseSlopeDbPerDecade,
+              -20,
+            )}
+            onChange={(value) => setNumber('phaseNoiseSlopeDbPerDecade', value)}
+          />
+          <NumberField
+            label="Phase-noise floor"
+            unit="dBc/Hz"
+            value={numberValue(node.data.parameters.phaseNoiseFloorDbcHz, -160)}
+            onChange={(value) => setNumber('phaseNoiseFloorDbcHz', value)}
+          />
+          <NumberField
+            label="Integration start"
+            unit="Hz"
+            min={Number.MIN_VALUE}
+            value={numberValue(
+              node.data.parameters.phaseNoiseIntegrationStartHz,
+              100,
+            )}
+            onChange={(value) =>
+              setNumber('phaseNoiseIntegrationStartHz', value)
+            }
+          />
+          <NumberField
+            label="Integration stop"
+            unit="Hz"
+            min={Number.MIN_VALUE}
+            value={numberValue(
+              node.data.parameters.phaseNoiseIntegrationStopHz,
+              10e6,
+            )}
+            onChange={(value) =>
+              setNumber('phaseNoiseIntegrationStopHz', value)
+            }
+          />
+          <label className="field checkbox-field">
+            <input
+              type="checkbox"
+              checked={node.data.parameters.pllEnabled === true}
+              onChange={(event) =>
+                updateParameters(node.id, { pllEnabled: event.target.checked })
+              }
+            />
+            <span>Close first-order PLL loop</span>
+          </label>
+          <NumberField
+            label="PLL loop bandwidth"
+            unit="Hz"
+            min={Number.MIN_VALUE}
+            value={numberValue(node.data.parameters.pllLoopBandwidthHz, 100e3)}
+            onChange={(value) => setNumber('pllLoopBandwidthHz', value)}
+          />
+          <NumberField
+            label="In-band output phase noise"
+            unit="dBc/Hz"
+            value={numberValue(
+              node.data.parameters.pllInBandPhaseNoiseDbcHz,
+              -140,
+            )}
+            onChange={(value) => setNumber('pllInBandPhaseNoiseDbcHz', value)}
+          />
+          <p className="empty-state">
+            Behavioral SSB model; excludes reference spurs, divider noise, lock
+            acquisition and nonlinear loop dynamics.
+          </p>
         </>
       )}
 
@@ -846,10 +954,7 @@ export function PropertiesPanel() {
             label="LP / HP crossover"
             unit="Hz"
             min={Number.MIN_VALUE}
-            value={numberValue(
-              node.data.parameters.crossoverFrequencyHz,
-              1e9,
-            )}
+            value={numberValue(node.data.parameters.crossoverFrequencyHz, 1e9)}
             onChange={(value) => setNumber('crossoverFrequencyHz', value)}
           />
           <NumberField
@@ -1624,6 +1729,8 @@ export function SimulationPanel({
         result.frequencyPlan.input.centerHz
     : false
   const nonlinearAvailable = result?.nonlinear.available ?? false
+  const oscillatorAvailable = result?.oscillatorNoise.available ?? false
+  const antennaAvailable = result?.antenna.available ?? false
   const monteCarloAvailable = result?.monteCarlo.available ?? false
   const parametricSweepAvailable = result?.parametricSweep.available ?? false
   const visibleResultView =
@@ -1631,6 +1738,8 @@ export function SimulationPanel({
     (resultView === 'budget' && !result) ||
     (resultView === 'frequencyPlan' && !frequencyPlanAvailable) ||
     (resultView === 'nonlinear' && !nonlinearAvailable) ||
+    (resultView === 'oscillator' && !oscillatorAvailable) ||
+    (resultView === 'antenna' && !antennaAvailable) ||
     (resultView === 'monteCarlo' && !monteCarloAvailable) ||
     (resultView === 'parametricSweep' && !parametricSweepAvailable) ||
     ((resultView === 'phase' || resultView === 'groupDelay') &&
@@ -1761,6 +1870,22 @@ export function SimulationPanel({
             onClick={() => setResultView('nonlinear')}
           >
             Nonlinear
+          </button>
+          <button
+            type="button"
+            {...resultTabProps('oscillator')}
+            disabled={!oscillatorAvailable}
+            onClick={() => setResultView('oscillator')}
+          >
+            Oscillator
+          </button>
+          <button
+            type="button"
+            {...resultTabProps('antenna')}
+            disabled={!antennaAvailable}
+            onClick={() => setResultView('antenna')}
+          >
+            Antenna
           </button>
           <button
             type="button"
@@ -2144,7 +2269,9 @@ export function SimulationPanel({
               value={frequencyUnit}
               disabled={
                 visibleResultView === 'nonlinear' ||
-                visibleResultView === 'smith'
+                visibleResultView === 'smith' ||
+                visibleResultView === 'oscillator' ||
+                visibleResultView === 'antenna'
               }
               onChange={(event) =>
                 setFrequencyUnit(event.target.value as FrequencyUnit)
@@ -2275,6 +2402,10 @@ function SimulationSummary({
       )}
       {resultView === 'nonlinear' ? (
         <NonlinearMetrics nonlinear={result.nonlinear} />
+      ) : resultView === 'oscillator' ? (
+        <OscillatorMetrics result={result} />
+      ) : resultView === 'antenna' ? (
+        <AntennaMetrics result={result} />
       ) : (
         <div className="metric-grid">
           {sParameters.map(([label, values]) => {
@@ -2343,6 +2474,65 @@ function SimulationSummary({
             </li>
           ))}
         </ul>
+      )}
+    </div>
+  )
+}
+
+function OscillatorMetrics({ result }: { result: SimulationOutput }) {
+  const noise = result.oscillatorNoise
+  return (
+    <div className="metric-grid" aria-label="Oscillator noise metrics">
+      <div className="metric-card">
+        <span>Carrier</span>
+        <strong>{formatFrequency(noise.carrierFrequencyHz!)}</strong>
+        <small>{noise.pllEnabled ? 'PLL closed' : 'Free-running VCO'}</small>
+      </div>
+      <div className="metric-card">
+        <span>Integrated phase error</span>
+        <strong>{noise.integratedPhaseErrorDeg!.toPrecision(4)}° RMS</strong>
+        <small>SSB integration limits from VCO settings</small>
+      </div>
+      <div className="metric-card">
+        <span>RMS time jitter</span>
+        <strong>{(noise.rmsJitterS! * 1e12).toPrecision(4)} ps</strong>
+        <small>Derived from carrier frequency</small>
+      </div>
+    </div>
+  )
+}
+
+function AntennaMetrics({ result }: { result: SimulationOutput }) {
+  const antenna = result.antenna
+  return (
+    <div className="metric-grid" aria-label="Antenna radiation metrics">
+      <div className="metric-card">
+        <span>Directivity / realized gain</span>
+        <strong>{antenna.directivityDbi!.toFixed(2)} dBi</strong>
+        <small>{antenna.realizedGainDbi!.toFixed(2)} dBi realized</small>
+      </div>
+      <div className="metric-card">
+        <span>Efficiency / aperture</span>
+        <strong>{antenna.efficiencyPercent!.toFixed(1)}%</strong>
+        <small>
+          {antenna.effectiveApertureM2!.toPrecision(4)} m² effective
+        </small>
+      </div>
+      {antenna.mode === 'tx' && (
+        <>
+          <div className="metric-card">
+            <span>Radiated power</span>
+            <strong>
+              {formatBudgetValue(antenna.radiatedPowerDbm, 'dBm')}
+            </strong>
+            <small>Accepted power × radiation efficiency</small>
+          </div>
+          <div className="metric-card">
+            <span>EIRP</span>
+            <strong>{formatBudgetValue(antenna.eirpDbm, 'dBm')}</strong>
+            <small>Accepted power + realized gain</small>
+          </div>
+        </>
       )}
     </div>
   )

@@ -393,6 +393,11 @@ describe('RF simulation integration', () => {
     expect(result.budget.deliveredLoadPowerDbm).toBeCloseTo(10, 10)
     expect(result.frequencyPlan.output.centerHz).toBe(1.1e9)
     expect(result.frequencyPlan.spectralLines[0]?.frequencyHz).toBe(1.1e9)
+    expect(result.oscillatorNoise.available).toBe(true)
+    expect(result.oscillatorNoise.carrierFrequencyHz).toBe(1.1e9)
+    expect(result.antenna.available).toBe(true)
+    expect(result.antenna.mode).toBe('tx')
+    expect(result.antenna.eirpDbm).toBeGreaterThan(10)
   })
 
   it('solves coherent splitter and combiner branches as an N-port network', () => {

@@ -102,14 +102,23 @@ series loss. The 1:1 balun is a reduced three-port with configurable excess
 loss, amplitude imbalance, phase error from 180°, and output isolation.
 
 The VCO frequency is `f = f0 + Kv Vcontrol`; it drives the frequency plan, and
-the nearest point in the global analysis sweep is used for budgets, with a
-warning when the tuned frequency is outside that sweep. It is a deterministic
-single-frequency source model: phase noise, pushing, pulling, harmonics,
-startup, and PLL dynamics are not modeled.
+the nearest point in the global analysis sweep is used for budgets. Free-running
+SSB phase noise uses a configurable value at 1 MHz, logarithmic slope, and noise
+floor. The optional PLL combines the VCO and a declared in-band output-noise
+level with complementary first-order power responses. RMS phase error integrates
+`2 integral 10^(L(f)/10) df` over the displayed offset limits, and time jitter is
+derived from the carrier frequency. This behavioral model excludes reference
+spurs, divider/charge-pump noise, pushing, pulling, harmonics, startup, lock
+acquisition, and nonlinear loop dynamics.
+
 The RX antenna supplies available received power and source impedance; the TX
-antenna terminates the chain with a load impedance. Radiation pattern, gain,
-efficiency, polarization, and propagation loss remain external to the current
-circuit-level budget.
+antenna terminates the chain with a load impedance. An axisymmetric
+cosine-power far-field model derives directivity from its exponent and
+front-to-back ratio. Efficiency then gives realized gain, effective aperture,
+radiated power, and EIRP. The plotted angular cut is normalized and clipped at
+-60 dB. Polarization, impedance mismatch beyond the circuit load, mutual
+coupling, propagation loss, near fields, and geometry-dependent 3D EM behavior
+are not modeled.
 
 ### Power and noise budget
 

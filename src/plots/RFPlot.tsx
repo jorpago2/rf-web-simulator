@@ -10,6 +10,8 @@ export type PlotView =
   | 'groupDelay'
   | 'probes'
   | 'nonlinear'
+  | 'oscillator'
+  | 'antenna'
 export type FrequencyUnit = 'auto' | 'Hz' | 'kHz' | 'MHz' | 'GHz'
 
 const TRACE_STYLES = [
@@ -62,7 +64,11 @@ export function RFPlot({
       ariaLabel={
         view === 'nonlinear'
           ? 'Nonlinear transfer and IM3 versus per-tone input power'
-          : `${plotTitle(view, frequencyConverting)} versus frequency`
+          : view === 'oscillator'
+            ? 'Single-sideband oscillator phase noise versus offset frequency'
+            : view === 'antenna'
+              ? 'Normalized antenna radiation pattern versus angle'
+              : `${plotTitle(view, frequencyConverting)} versus frequency`
       }
       config={{
         displaylogo: false,
@@ -126,6 +132,8 @@ function createFigure(
 ): { data: Data[]; layout: Partial<Layout> } {
   if (view === 'nonlinear') return createNonlinearFigure(result)
   if (view === 'smith') return createSmithFigure(result)
+  if (view === 'oscillator') return createOscillatorFigure(result)
+  if (view === 'antenna') return createAntennaFigure(result)
 
   const commonLayout: Partial<Layout> = {
     autosize: true,
@@ -312,6 +320,89 @@ function createFigure(
       ...commonLayout,
       showlegend: false,
       yaxis: axis('Group delay of S21 (ns)'),
+    },
+  }
+}
+
+function createOscillatorFigure(result: SimulationOutput): {
+  data: Data[]
+  layout: Partial<Layout>
+} {
+  const noise = result.oscillatorNoise
+  const data: Data[] = [
+    {
+      type: 'scatter',
+      mode: 'lines',
+      name: 'Free-running VCO',
+      x: Array.from(noise.offsetFrequencyHz),
+      y: Array.from(noise.freeRunningDbcHz),
+      line: { color: TRACE_STYLES[1].color, dash: 'dash', width: 2 },
+      hovertemplate: '%{x:.4g} Hz: %{y:.2f} dBc/Hz<extra>VCO</extra>',
+    },
+  ]
+  if (noise.pllEnabled) {
+    data.push({
+      type: 'scatter',
+      mode: 'lines',
+      name: 'PLL output',
+      x: Array.from(noise.offsetFrequencyHz),
+      y: Array.from(noise.outputDbcHz),
+      line: { color: TRACE_STYLES[0].color, width: 2.5 },
+      hovertemplate: '%{x:.4g} Hz: %{y:.2f} dBc/Hz<extra>PLL output</extra>',
+    })
+  }
+  return {
+    data,
+    layout: {
+      autosize: true,
+      height: 330,
+      margin: { l: 78, r: 22, t: 32, b: 56 },
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: '#ffffff',
+      font: { family: 'Inter, Arial, sans-serif', size: 12, color: '#334155' },
+      hovermode: 'x unified',
+      xaxis: {
+        type: 'log',
+        title: { text: 'Offset frequency (Hz)' },
+        gridcolor: '#e8edf0',
+      },
+      yaxis: axis('SSB phase noise L(f) (dBc/Hz)'),
+      legend: { orientation: 'h', x: 0, y: 1.14 },
+    },
+  }
+}
+
+function createAntennaFigure(result: SimulationOutput): {
+  data: Data[]
+  layout: Partial<Layout>
+} {
+  return {
+    data: [
+      {
+        type: 'scatter',
+        mode: 'lines',
+        name: 'Normalized power cut',
+        x: Array.from(result.antenna.angleDeg),
+        y: Array.from(result.antenna.normalizedPatternDb),
+        line: { color: TRACE_STYLES[2].color, width: 2.5 },
+        hovertemplate: '%{x:.0f}°: %{y:.2f} dB<extra></extra>',
+      },
+    ],
+    layout: {
+      autosize: true,
+      height: 330,
+      margin: { l: 68, r: 22, t: 32, b: 56 },
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: '#ffffff',
+      font: { family: 'Inter, Arial, sans-serif', size: 12, color: '#334155' },
+      showlegend: false,
+      xaxis: {
+        title: { text: 'Angle from boresight (deg)' },
+        range: [-180, 180],
+        dtick: 45,
+        gridcolor: '#e8edf0',
+      },
+      yaxis: { ...axis('Normalized power (dB)'), range: [-60, 0] },
     },
   }
 }
@@ -530,5 +621,7 @@ function plotTitle(view: PlotView, frequencyConverting = false): string {
     groupDelay: 'S21 group delay',
     probes: 'Cumulative S21 at probe planes',
     nonlinear: 'Nonlinear transfer and IM3',
+    oscillator: 'Oscillator phase noise',
+    antenna: 'Antenna radiation cut',
   }[view]
 }

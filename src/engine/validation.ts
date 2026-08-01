@@ -300,6 +300,20 @@ function validateIdealNodeParameters(
       if (value <= 0) throw new Error(`${key} must be positive`)
       return value
     }
+    const optionalNumber = (key: string, fallback: number) =>
+      node.data.parameters[key] === undefined ? fallback : number(key)
+    const antennaParameters = () => {
+      const efficiency = optionalNumber('efficiencyPercent', 70)
+      if (efficiency <= 0 || efficiency > 100) {
+        throw new Error('efficiencyPercent must be above 0 and at most 100')
+      }
+      if (optionalNumber('patternExponent', 2) < 0) {
+        throw new Error('patternExponent must be non-negative')
+      }
+      if (optionalNumber('frontToBackDb', 20) < 0) {
+        throw new Error('frontToBackDb must be non-negative')
+      }
+    }
     if (!isSourceTerminal(node)) positive('referenceImpedanceOhm')
     if (node.data.type === 'idealFilter') {
       const type = node.data.parameters.filterType
@@ -376,12 +390,42 @@ function validateIdealNodeParameters(
       if (frequency <= 0) throw new Error('tuned frequency must be positive')
       number('powerDbm')
       positive('sourceImpedanceOhm')
+      optionalNumber('phaseNoiseAt1MHzDbcHz', -120)
+      const slope = optionalNumber('phaseNoiseSlopeDbPerDecade', -20)
+      if (slope > 0)
+        throw new Error('phaseNoiseSlopeDbPerDecade must be at most 0')
+      optionalNumber('phaseNoiseFloorDbcHz', -160)
+      const integrationStart = optionalNumber(
+        'phaseNoiseIntegrationStartHz',
+        100,
+      )
+      const integrationStop = optionalNumber(
+        'phaseNoiseIntegrationStopHz',
+        10e6,
+      )
+      if (integrationStart <= 0 || integrationStop <= integrationStart) {
+        throw new Error(
+          'phase-noise integration range must be positive and increasing',
+        )
+      }
+      if (
+        node.data.parameters.pllEnabled !== undefined &&
+        typeof node.data.parameters.pllEnabled !== 'boolean'
+      ) {
+        throw new Error('pllEnabled must be boolean')
+      }
+      if (optionalNumber('pllLoopBandwidthHz', 100e3) <= 0) {
+        throw new Error('pllLoopBandwidthHz must be positive')
+      }
+      optionalNumber('pllInBandPhaseNoiseDbcHz', -140)
     } else if (node.data.type === 'rxAntenna') {
       positive('centerFrequencyHz')
       number('powerDbm')
       positive('sourceImpedanceOhm')
+      antennaParameters()
     } else {
       positive('loadImpedanceOhm')
+      antennaParameters()
     }
   } catch (error) {
     issues.push({
