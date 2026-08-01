@@ -11,7 +11,10 @@ const CSV_HEADER = [
 ]
 
 export function simulationOutputToCsv(output: SimulationOutput): string {
-  const lines = [CSV_HEADER.join(',')]
+  const probeHeaders = output.probeResults.map(
+    (probe) => `probe_s21_db:${probe.label} [${probe.nodeId}]`,
+  )
+  const lines = [[...CSV_HEADER, ...probeHeaders].map(csvCell).join(',')]
   for (let index = 0; index < output.total.frequencyHz.length; index += 1) {
     lines.push(
       [
@@ -22,12 +25,17 @@ export function simulationOutputToCsv(output: SimulationOutput): string {
         output.curves.s22Db[index],
         output.curves.s21PhaseDeg[index],
         output.curves.s21GroupDelayS[index],
+        ...output.probeResults.map((probe) => probe.s21Db[index]),
       ]
         .map(csvNumber)
         .join(','),
     )
   }
   return `${lines.join('\n')}\n`
+}
+
+function csvCell(value: string): string {
+  return /[",\n\r]/u.test(value) ? `"${value.replaceAll('"', '""')}"` : value
 }
 
 function csvNumber(value: number | undefined): string {

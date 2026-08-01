@@ -6,7 +6,7 @@ backend, account, upload, or runtime other than a modern browser is required.
 
 Online demo: <https://jorpago2.github.io/rf-web-simulator/>
 
-## Current iteration: 0.4 local projects
+## Current iteration: 0.5 probe sweeps
 
 - Vite, React, strict TypeScript, React Flow, and Zustand.
 - Desktop/tablet RF editor with six draggable block types.
@@ -31,6 +31,8 @@ Online demo: <https://jorpago2.github.io/rf-web-simulator/>
 - Versioned JSON import/export with bounded schema validation at the file boundary.
 - CSV export of the full simulated frequency sweep, including S-parameter
   magnitudes, S21 phase, and S21 group delay.
+- Full-frequency accumulated S21 traces at every non-invasive Probe block,
+  transferred from the worker and included in CSV exports.
 - Deterministic analytical and integration tests.
 - CI and GitHub Pages deployment workflows.
 
@@ -102,6 +104,14 @@ If `|D| < 1e-12`, the denominator magnitude is regularized to that tolerance and
 a frequency-specific warning is returned. Different reference impedances are
 rejected; silent renormalization is intentionally not implemented.
 
+## Probe model
+
+A Probe is an ideal, non-invasive marker in the linear chain. Its trace is the
+S21 magnitude of the cascaded prefix from the source to that reference plane,
+with the probe plane terminated in the analysis reference impedance `Z0`.
+Therefore it is a cumulative two-port transfer function, not an internal
+voltage or available-power measurement with downstream mismatch included.
+
 ## Phase and group delay
 
 S21 phase is unwrapped in radians. Group delay is evaluated as
@@ -120,8 +130,9 @@ sampling condition is not met.
 
 ## Roadmap
 
-1. Accumulated full-frequency curves at probes.
-2. RF budget and mixer behavior after the linear-chain workflow is stable.
+1. RF budget with gain, loss, noise figure, P1dB, and IP3 bookkeeping.
+2. Mixer and frequency-conversion behavior after the linear small-signal path
+   is stable.
 3. PWA/offline installation only if classroom use demonstrates a need.
 
 ## Project files and local storage
@@ -134,7 +145,8 @@ edges. IndexedDB keeps recent projects in the current browser profile; JSON
 export is the portable backup.
 
 CSV uses comma-separated columns with frequencies and group delay in SI units
-(`Hz` and `s`). Undefined phase or delay samples are written as empty fields.
+(`Hz` and `s`). Each Probe adds an accumulated-S21 column identified by label
+and node ID. Undefined phase or delay samples are written as empty fields.
 
 ## Privacy and security
 

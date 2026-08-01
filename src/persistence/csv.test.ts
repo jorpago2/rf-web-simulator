@@ -22,11 +22,18 @@ it('exports interoperable scientific CSV with empty undefined values', () => {
       s21GroupDelayS: new Float64Array([2.5e-9]),
     },
     stageSummaries: [],
+    probeResults: [
+      {
+        nodeId: 'probe"1',
+        label: 'Input, plane',
+        s21Db: new Float64Array([8.75]),
+      },
+    ],
     warnings: [],
   }
 
   expect(simulationOutputToCsv(output)).toBe(
-    'frequency_hz,s11_db,s21_db,s12_db,s22_db,s21_phase_deg,s21_group_delay_s\n' +
-      '1250000000,-20.5,10.25,-40,-18,,2.5e-9\n',
+    'frequency_hz,s11_db,s21_db,s12_db,s22_db,s21_phase_deg,s21_group_delay_s,"probe_s21_db:Input, plane [probe""1]"\n' +
+      '1250000000,-20.5,10.25,-40,-18,,2.5e-9,8.75\n',
   )
 })

@@ -298,6 +298,9 @@ export function SimulationPanel({
 }) {
   const [plotView, setPlotView] = useState<PlotView>('sParameters')
   const [frequencyUnit, setFrequencyUnit] = useState<FrequencyUnit>('auto')
+  const probeViewAvailable = (result?.probeResults.length ?? 0) > 0
+  const visiblePlotView =
+    plotView === 'probes' && !probeViewAvailable ? 'sParameters' : plotView
   const update = (values: Partial<RFAnalysisSettings>) =>
     onAnalysisChange({ ...analysis, ...values })
 
@@ -312,7 +315,7 @@ export function SimulationPanel({
           <button
             type="button"
             role="tab"
-            aria-selected={plotView === 'sParameters'}
+            aria-selected={visiblePlotView === 'sParameters'}
             onClick={() => setPlotView('sParameters')}
           >
             S-parameters
@@ -320,7 +323,7 @@ export function SimulationPanel({
           <button
             type="button"
             role="tab"
-            aria-selected={plotView === 'phase'}
+            aria-selected={visiblePlotView === 'phase'}
             onClick={() => setPlotView('phase')}
           >
             Phase
@@ -328,10 +331,20 @@ export function SimulationPanel({
           <button
             type="button"
             role="tab"
-            aria-selected={plotView === 'groupDelay'}
+            aria-selected={visiblePlotView === 'groupDelay'}
             onClick={() => setPlotView('groupDelay')}
           >
             Group delay
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={visiblePlotView === 'probes'}
+            disabled={!probeViewAvailable}
+            title="Cumulative S21 to each probe reference plane, terminated in Z0"
+            onClick={() => setPlotView('probes')}
+          >
+            Probes ({result?.probeResults.length ?? 0})
           </button>
         </div>
         <div
@@ -422,7 +435,7 @@ export function SimulationPanel({
         {status !== 'error' && result ? (
           <SimulationSummary
             frequencyUnit={frequencyUnit}
-            plotView={plotView}
+            plotView={visiblePlotView}
             result={result}
           />
         ) : (

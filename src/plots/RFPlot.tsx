@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import type { Config, Data, Layout } from 'plotly.js'
 import type { SimulationOutput } from '../engine/types'
 
-export type PlotView = 'sParameters' | 'phase' | 'groupDelay'
+export type PlotView = 'sParameters' | 'phase' | 'groupDelay' | 'probes'
 export type FrequencyUnit = 'auto' | 'Hz' | 'kHz' | 'MHz' | 'GHz'
 
 const TRACE_STYLES = [
@@ -11,6 +11,18 @@ const TRACE_STYLES = [
   { color: '#009e73', dash: 'dot' },
   { color: '#cc79a7', dash: 'dashdot' },
 ] as const
+
+const PROBE_COLORS = [
+  '#0072b2',
+  '#d55e00',
+  '#009e73',
+  '#cc79a7',
+  '#e69f00',
+  '#56b4e9',
+  '#000000',
+  '#7b61a8',
+] as const
+const PROBE_DASHES = ['solid', 'dash', 'dot', 'dashdot'] as const
 
 export function RFPlot({
   result,
@@ -153,6 +165,25 @@ function createFigure(
     }
   }
 
+  if (view === 'probes') {
+    return {
+      data: result.probeResults.map((probe, index) => ({
+        type: 'scatter',
+        mode: 'lines',
+        name: `${probe.label} (probe ${index + 1})`,
+        x: frequency,
+        y: Array.from(probe.s21Db),
+        line: { ...probeTraceStyle(index), width: 2 },
+        hovertemplate:
+          'Accumulated S21: %{y:.3f} dB<extra>%{fullData.name}</extra>',
+      })),
+      layout: {
+        ...commonLayout,
+        yaxis: axis('Cumulative S21 magnitude (dB)'),
+      },
+    }
+  }
+
   if (view === 'phase') {
     return {
       data: [
@@ -206,6 +237,15 @@ function axis(title: string): Partial<Layout['yaxis']> {
   }
 }
 
+function probeTraceStyle(index: number) {
+  return {
+    color: PROBE_COLORS[index % PROBE_COLORS.length],
+    dash: PROBE_DASHES[
+      (index + Math.floor(index / PROBE_COLORS.length)) % PROBE_DASHES.length
+    ],
+  }
+}
+
 function resolveFrequencyUnit(
   requested: FrequencyUnit,
   maximumFrequencyHz: number,
@@ -226,5 +266,6 @@ function plotTitle(view: PlotView): string {
     sParameters: 'S-parameter magnitude',
     phase: 'Unwrapped S21 phase',
     groupDelay: 'S21 group delay',
+    probes: 'Cumulative S21 at probe planes',
   }[view]
 }

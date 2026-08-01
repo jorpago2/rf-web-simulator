@@ -57,7 +57,7 @@ export function deriveSimulationCurves(network: TwoPortNetwork): {
   }
 }
 
-function magnitudeDbArray(values: ComplexArray): Float64Array {
+export function magnitudeDbArray(values: ComplexArray): Float64Array {
   if (values.re.length !== values.im.length) {
     throw new RangeError('Complex arrays must have matching lengths.')
   }

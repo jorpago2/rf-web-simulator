@@ -76,6 +76,12 @@ export interface SimulationStageSummary {
   s21DbAtCenter: number
 }
 
+export interface SimulationProbeResult {
+  nodeId: NodeId
+  label: string
+  s21Db: Float64Array
+}
+
 export interface SimulationInput {
   nodes: RFProjectNode[]
   edges: RFProjectEdge[]
@@ -86,6 +92,7 @@ export interface SimulationOutput {
   total: TwoPortNetwork
   curves: SimulationCurves
   stageSummaries: SimulationStageSummary[]
+  probeResults: SimulationProbeResult[]
   warnings: SimulationWarning[]
 }
 

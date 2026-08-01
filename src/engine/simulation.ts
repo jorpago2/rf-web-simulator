@@ -1,6 +1,6 @@
 import { cascadeTwoPorts } from './cascade'
 import { magnitudeDb } from './complex'
-import { deriveSimulationCurves } from './derivedMetrics'
+import { deriveSimulationCurves, magnitudeDbArray } from './derivedMetrics'
 import {
   createIdealAmplifier,
   createIdealAttenuator,
@@ -12,6 +12,7 @@ import type {
   RFProjectNode,
   SimulationInput,
   SimulationOutput,
+  SimulationProbeResult,
   SimulationStageSummary,
   TwoPortNetwork,
 } from './types'
@@ -81,11 +82,18 @@ export function simulateLinearChain(input: SimulationInput): SimulationOutput {
     'Chain input',
   )
   const stageSummaries: SimulationStageSummary[] = []
+  const probeResults: SimulationProbeResult[] = []
 
   for (const node of orderedNodes) {
     if (node.data.type === 'source' || node.data.type === 'load') continue
 
-    if (node.data.type !== 'probe') {
+    if (node.data.type === 'probe') {
+      probeResults.push({
+        nodeId: node.id,
+        label: node.data.label,
+        s21Db: magnitudeDbArray(cumulative.s21),
+      })
+    } else {
       const stageNetwork = networkForNode(
         node,
         commonGrid.frequencyHz,
@@ -106,6 +114,7 @@ export function simulateLinearChain(input: SimulationInput): SimulationOutput {
     total: cumulative,
     curves: derived.curves,
     stageSummaries,
+    probeResults,
     warnings,
   }
 }
