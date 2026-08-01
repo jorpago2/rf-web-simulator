@@ -1,5 +1,6 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { getBlockDescriptor } from '../nodeRegistry'
+import { RFBlockSymbol } from '../RFBlockSymbol'
 import type { RFCanvasNode } from '../../app/store'
 import { portsForData } from '../../engine/ports'
 
@@ -26,7 +27,9 @@ export function RFBlockNode({ data, selected }: NodeProps<RFCanvasNode>) {
           style={{ top: `${((index + 1) * 100) / (inputs.length + 1)}%` }}
         />
       ))}
-      <span className="rf-node__symbol">{descriptor.symbol}</span>
+      <span className="rf-node__symbol">
+        <RFBlockSymbol type={data.type} />
+      </span>
       <span className="rf-node__label">{data.label}</span>
       <span className="rf-node__description">{descriptor.description}</span>
       {outputs.map((port, index) => (

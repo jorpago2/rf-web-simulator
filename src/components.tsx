@@ -7,6 +7,7 @@ import {
   type KeyboardEvent,
 } from 'react'
 import { blockDescriptors } from './diagram/nodeRegistry'
+import { RFBlockSymbol } from './diagram/RFBlockSymbol'
 import { parseTouchstone } from './engine/touchstone'
 import {
   deviceTableOverridesParameter,
@@ -61,10 +62,10 @@ export function BlockLibrary() {
           >
             <span
               className="block-card__symbol"
-              style={{ backgroundColor: block.accent }}
+              style={{ '--block-accent': block.accent } as React.CSSProperties}
               aria-hidden="true"
             >
-              {block.symbol}
+              <RFBlockSymbol type={block.type} />
             </span>
             <span>
               <strong>{block.label}</strong>

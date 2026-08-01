@@ -4,7 +4,6 @@ export interface BlockDescriptor {
   type: RFNodeType
   label: string
   description: string
-  symbol: string
   accent: string
   defaultParameters: Record<string, unknown>
 }
@@ -14,7 +13,6 @@ export const blockDescriptors: readonly BlockDescriptor[] = [
     type: 'source',
     label: 'RF source',
     description: 'Signal origin',
-    symbol: 'SRC',
     accent: '#48b8a5',
     defaultParameters: {
       centerFrequencyHz: 1e9,
@@ -27,7 +25,6 @@ export const blockDescriptors: readonly BlockDescriptor[] = [
     type: 'touchstone2Port',
     label: 'Touchstone N-port',
     description: 'Local .sNp network',
-    symbol: 'SNP',
     accent: '#6ea8fe',
     defaultParameters: {},
   },
@@ -35,7 +32,6 @@ export const blockDescriptors: readonly BlockDescriptor[] = [
     type: 'idealAmplifier',
     label: 'Active amplifier',
     description: 'Active gain and limits',
-    symbol: 'AMP',
     accent: '#f1b75b',
     defaultParameters: {
       gainDb: 10,
@@ -51,7 +47,6 @@ export const blockDescriptors: readonly BlockDescriptor[] = [
     type: 'idealAttenuator',
     label: 'Ideal attenuator',
     description: 'Matched insertion loss',
-    symbol: 'ATT',
     accent: '#ee7b65',
     defaultParameters: {
       attenuationDb: 3,
@@ -63,7 +58,6 @@ export const blockDescriptors: readonly BlockDescriptor[] = [
     type: 'idealMixer',
     label: 'Ideal mixer',
     description: 'Conversion and spur planning',
-    symbol: 'MIX',
     accent: '#4b8fd8',
     defaultParameters: {
       loFrequencyHz: 0.7e9,
@@ -80,7 +74,6 @@ export const blockDescriptors: readonly BlockDescriptor[] = [
     type: 'idealSplitter',
     label: '2-way splitter',
     description: 'Reciprocal three-port divider',
-    symbol: '÷2',
     accent: '#2da8c7',
     defaultParameters: {
       excessLossDb: 0,
@@ -94,7 +87,6 @@ export const blockDescriptors: readonly BlockDescriptor[] = [
     type: 'idealCombiner',
     label: '2-way combiner',
     description: 'Reciprocal three-port combiner',
-    symbol: '×2',
     accent: '#2da8c7',
     defaultParameters: {
       excessLossDb: 0,
@@ -108,7 +100,6 @@ export const blockDescriptors: readonly BlockDescriptor[] = [
     type: 'probe',
     label: 'Probe',
     description: 'Accumulated result point',
-    symbol: 'PRB',
     accent: '#a98bea',
     defaultParameters: {},
   },
@@ -116,7 +107,6 @@ export const blockDescriptors: readonly BlockDescriptor[] = [
     type: 'load',
     label: 'Load',
     description: 'Chain termination',
-    symbol: '50Ω',
     accent: '#8d9aa8',
     defaultParameters: {
       referenceImpedanceOhm: 50,
