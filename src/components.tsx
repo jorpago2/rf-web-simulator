@@ -5,6 +5,7 @@ import { magnitudeDb, phaseDegrees } from './engine/complex'
 import type {
   FrequencyPlanResult,
   FrequencyRange,
+  MixerProduct,
   RFAnalysisSettings,
   RFNodeType,
   RFBudgetResult,
@@ -215,6 +216,32 @@ export function PropertiesPanel() {
               <option value="upconvert">Sum (input + LO)</option>
             </select>
           </label>
+          <OptionalNumberField
+            label="LO drive power"
+            unit="dBm"
+            value={node.data.parameters.loPowerDbm}
+            onChange={(value) =>
+              updateParameters(node.id, { loPowerDbm: value })
+            }
+          />
+          <OptionalNumberField
+            label="Image rejection"
+            unit="dB"
+            min={0}
+            value={node.data.parameters.imageRejectionDb}
+            onChange={(value) =>
+              updateParameters(node.id, { imageRejectionDb: value })
+            }
+          />
+          <OptionalNumberField
+            label="LO-to-output isolation"
+            unit="dB"
+            min={0}
+            value={node.data.parameters.loToOutputIsolationDb}
+            onChange={(value) =>
+              updateParameters(node.id, { loToOutputIsolationDb: value })
+            }
+          />
           <BudgetMetadataFields nodeId={node.id} />
         </>
       )}
@@ -792,6 +819,79 @@ function FrequencyPlanTable({ plan }: { plan: FrequencyPlanResult }) {
         {formatFrequency(plan.output.centerHz)}. Only the selected ideal product
         is retained.
       </p>
+      <div className="budget-table-wrap">
+        <table>
+          <caption>Image and LO leakage at sweep center</caption>
+          <thead>
+            <tr>
+              <th scope="col">Mixer</th>
+              <th scope="col">Image location</th>
+              <th scope="col">Image frequency</th>
+              <th scope="col">Image rejection</th>
+              <th scope="col">LO frequency</th>
+              <th scope="col">LO power</th>
+              <th scope="col">LO isolation</th>
+              <th scope="col">Estimated leakage</th>
+            </tr>
+          </thead>
+          <tbody>
+            {plan.stages.map((stage) => (
+              <tr key={stage.nodeId}>
+                <th scope="row">{stage.label}</th>
+                <td>{stage.imageLocation === 'input' ? 'Input' : 'Output'}</td>
+                <td>
+                  {stage.imageFrequencyHz === null
+                    ? 'No positive image'
+                    : formatFrequency(stage.imageFrequencyHz)}
+                </td>
+                <td>{formatBudgetValue(stage.imageRejectionDb, 'dB')}</td>
+                <td>{formatFrequency(stage.loFrequencyHz)}</td>
+                <td>{formatBudgetValue(stage.loPowerDbm, 'dBm')}</td>
+                <td>{formatBudgetValue(stage.loToOutputIsolationDb, 'dB')}</td>
+                <td>
+                  {formatBudgetValue(stage.estimatedLoLeakagePowerDbm, 'dBm')}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <details className="spur-details">
+        <summary>Low-order mixing products at sweep center</summary>
+        <div className="budget-table-wrap">
+          <table>
+            <caption>Products through total order 3</caption>
+            <thead>
+              <tr>
+                <th scope="col">Mixer</th>
+                <th scope="col">Product</th>
+                <th scope="col">Formula</th>
+                <th scope="col">Order</th>
+                <th scope="col">Frequency</th>
+                <th scope="col">Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              {plan.stages.flatMap((stage) =>
+                stage.products.map((product) => (
+                  <tr key={`${stage.nodeId}-${product.formula}`}>
+                    <th scope="row">{stage.label}</th>
+                    <td>{product.label}</td>
+                    <td>{product.formula}</td>
+                    <td>{product.order}</td>
+                    <td>{formatFrequency(product.frequencyHz)}</td>
+                    <td>{productKindLabel(product.kind)}</td>
+                  </tr>
+                )),
+              )}
+            </tbody>
+          </table>
+        </div>
+      </details>
+      <p className="budget-assumption">
+        Product frequencies use |m·fIN + n·fLO|. Rejection and isolation are
+        user metadata; nonlinear spur amplitudes are not inferred.
+      </p>
     </section>
   )
 }
@@ -859,4 +959,14 @@ function formatFrequency(frequencyHz: number): string {
 
 function formatFrequencyRange(range: FrequencyRange): string {
   return `${formatFrequency(range.startHz)} – ${formatFrequency(range.stopHz)}`
+}
+
+function productKindLabel(kind: MixerProduct['kind']): string {
+  return {
+    desired: 'Selected',
+    alternate: 'Alternate',
+    feedthrough: 'RF feedthrough',
+    leakage: 'LO leakage',
+    spur: 'Spur candidate',
+  }[kind]
 }

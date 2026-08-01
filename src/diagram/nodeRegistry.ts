@@ -56,7 +56,7 @@ export const blockDescriptors: readonly BlockDescriptor[] = [
   {
     type: 'idealMixer',
     label: 'Ideal mixer',
-    description: 'Sum/difference conversion',
+    description: 'Conversion and spur planning',
     symbol: 'MIX',
     accent: '#4b8fd8',
     defaultParameters: {

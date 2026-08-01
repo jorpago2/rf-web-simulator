@@ -125,6 +125,9 @@ describe('RF simulation integration', () => {
           loFrequencyHz: 0.9e9,
           mixerMode: 'downconvert',
           conversionLossDb: 7,
+          loPowerDbm: 10,
+          imageRejectionDb: 45,
+          loToOutputIsolationDb: 35,
           noiseFigureDb: 7,
           outputP1Dbm: 10,
           outputIp3Dbm: 20,
@@ -154,6 +157,8 @@ describe('RF simulation integration', () => {
       new Float64Array([0.1e9, 0.2e9, 0.3e9]),
     )
     expect(result.frequencyPlan.stages[0]?.output.centerHz).toBe(0.2e9)
+    expect(result.frequencyPlan.stages[0]?.imageFrequencyHz).toBe(0.7e9)
+    expect(result.frequencyPlan.stages[0]?.estimatedLoLeakagePowerDbm).toBe(-25)
     expect(result.budget.stages.at(-1)?.cumulativeGainDb).toBeCloseTo(3)
     expect(result.warnings).toContainEqual(
       expect.objectContaining({ code: 'FREQUENCY_CONVERSION_MODEL' }),

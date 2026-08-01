@@ -102,13 +102,20 @@ export function simulateLinearChain(input: SimulationInput): SimulationOutput {
       label: node.data.label,
       mode: mixerMode(node),
       loFrequencyHz: finiteParameter(node, 'loFrequencyHz'),
+      loPowerDbm: optionalFiniteParameter(node, 'loPowerDbm'),
+      imageRejectionDb: optionalFiniteParameter(node, 'imageRejectionDb', 0),
+      loToOutputIsolationDb: optionalFiniteParameter(
+        node,
+        'loToOutputIsolationDb',
+        0,
+      ),
     })),
   )
   if (mixerNodes.length > 0) {
     warnings.push({
       code: 'FREQUENCY_CONVERSION_MODEL',
       message:
-        'Mixer results are an ideal conversion-gain envelope versus input frequency. Post-mixer Touchstone stages are evaluated at their translated local frequency; conversion phase, images, LO leakage, and spurs are not modeled.',
+        'Mixer results are an ideal selected-product envelope versus input frequency. Image, LO leakage, and low-order product frequencies are center-frequency planning values; only LO leakage power is estimated when LO power and isolation are specified. Conversion phase and other spur amplitudes are not modeled.',
     })
   }
   let cumulative = createThroughNetwork(

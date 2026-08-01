@@ -6,7 +6,7 @@ backend, account, upload, or runtime other than a modern browser is required.
 
 Online demo: <https://jorpago2.github.io/rf-web-simulator/>
 
-## Current iteration: 0.8 translated Touchstone evaluation
+## Current iteration: 0.9 mixer spur planning
 
 - Vite, React, strict TypeScript, React Flow, and Zustand.
 - Desktop/tablet RF editor with seven draggable block types.
@@ -39,6 +39,8 @@ Online demo: <https://jorpago2.github.io/rf-web-simulator/>
   frequency-plan table, conversion-envelope plot, and output-frequency CSV data.
 - Touchstone stages after mixers evaluated on their translated local-frequency
   grids, with the corresponding input sweep clipped rather than extrapolated.
+- Center-frequency image, LO leakage, and mixing-product plan through total
+  order 3, with optional user-supplied rejection and isolation metadata.
 - Deterministic analytical and integration tests.
 - CI and GitHub Pages deployment workflows.
 
@@ -147,11 +149,18 @@ the input, LO, and output ranges through multiple mixers.
 
 The conversion curve is plotted against RF input frequency, while CSV adds the
 corresponding `output_frequency_hz` sample. This is not a conventional same-
-frequency two-port S matrix: conversion phase and group delay are left undefined,
-and image responses, other mixing products, LO leakage, isolation, and spurs are
-not modeled. A Touchstone stage after a mixer is interpolated at its translated
-local frequency while results remain indexed by the RF input sweep. This is a
+frequency two-port S matrix: conversion phase and group delay are left undefined.
+A Touchstone stage after a mixer is interpolated at its translated local
+frequency while results remain indexed by the RF input sweep. This is a
 selected-product envelope, not a frequency-converting multiport S matrix.
+
+At the sweep center, the planner reports products `|m f_in + n f_LO|` through
+total order `|m| + |n| = 3`. For difference conversion, the alternate image
+input is `2 f_LO - f_in` when positive; for sum conversion, the image output
+sideband is `|f_LO - f_in|`. Image rejection and LO-to-output isolation are
+optional user metadata. Estimated LO leakage power is `P_LO - isolation` only
+when both values are supplied. Other spur amplitudes are intentionally left
+unavailable because they require measured or vendor-specific conversion data.
 
 ## Phase and group delay
 
@@ -171,8 +180,7 @@ sampling condition is not met.
 
 ## Roadmap
 
-1. Image-frequency, rejection, LO leakage, and spur planning.
-2. PWA/offline installation only if classroom use demonstrates a need.
+1. PWA/offline installation only if classroom use demonstrates a need.
 
 ## Project files and local storage
 

@@ -809,6 +809,23 @@ h2 {
   min-width: 700px;
 }
 
+.frequency-plan-panel > .budget-table-wrap:not(:first-child),
+.spur-details {
+  border-top: 1px solid var(--line);
+}
+
+.spur-details summary {
+  padding: 11px 14px;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.spur-details[open] summary {
+  border-bottom: 1px solid var(--line);
+}
+
 .budget-panel caption {
   padding: 13px 14px;
   color: var(--ink);

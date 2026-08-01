@@ -11,6 +11,9 @@ describe('ideal mixer frequency plan', () => {
           label: 'RF to IF',
           mode: 'downconvert',
           loFrequencyHz: 0.9e9,
+          loPowerDbm: 10,
+          imageRejectionDb: 40,
+          loToOutputIsolationDb: 30,
         },
         {
           nodeId: 'up',
@@ -26,6 +29,23 @@ describe('ideal mixer frequency plan', () => {
       centerHz: 0.2e9,
       stopHz: 0.3e9,
     })
+    expect(result.stages[0]?.imageFrequencyHz).toBe(0.7e9)
+    expect(result.stages[0]?.imageLocation).toBe('input')
+    expect(result.stages[0]?.imageRejectionDb).toBe(40)
+    expect(result.stages[0]?.estimatedLoLeakagePowerDbm).toBe(-20)
+    expect(
+      result.stages[0]?.products.find(
+        (product) => product.formula === '|fIN - fLO|',
+      ),
+    ).toEqual(
+      expect.objectContaining({
+        frequencyHz: 0.2e9,
+        order: 2,
+        kind: 'desired',
+      }),
+    )
+    expect(result.stages[1]?.imageFrequencyHz).toBe(1.8e9)
+    expect(result.stages[1]?.imageLocation).toBe('output')
     expect(result.outputFrequencyHz).toEqual(
       new Float64Array([2.1e9, 2.2e9, 2.3e9]),
     )

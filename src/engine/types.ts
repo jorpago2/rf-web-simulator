@@ -73,6 +73,14 @@ export interface FrequencyRange {
   stopHz: number
 }
 
+export interface MixerProduct {
+  label: string
+  formula: string
+  frequencyHz: number
+  order: number
+  kind: 'desired' | 'alternate' | 'feedthrough' | 'leakage' | 'spur'
+}
+
 export interface FrequencyConversionStage {
   nodeId: NodeId
   label: string
@@ -80,6 +88,13 @@ export interface FrequencyConversionStage {
   loFrequencyHz: number
   input: FrequencyRange
   output: FrequencyRange
+  imageLocation: 'input' | 'output'
+  imageFrequencyHz: number | null
+  imageRejectionDb: number | null
+  loPowerDbm: number | null
+  loToOutputIsolationDb: number | null
+  estimatedLoLeakagePowerDbm: number | null
+  products: MixerProduct[]
 }
 
 export interface FrequencyPlanResult {
