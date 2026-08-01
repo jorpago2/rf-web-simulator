@@ -1,6 +1,6 @@
 export const strings = {
   appName: 'RF Web Simulator',
-  version: 'MVP 0.3 · scientific plots',
+  version: 'MVP 0.4 · local projects',
   localPrivacy: 'Files and calculations stay on this device.',
   libraryTitle: 'Block library',
   libraryHint: 'Drag a block to the canvas or click to add it.',

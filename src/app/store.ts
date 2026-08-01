@@ -11,46 +11,70 @@ import {
 } from '@xyflow/react'
 import { create } from 'zustand'
 import { createNodeData } from '../diagram/nodeRegistry'
-import type { RFNodeData, RFNodeType } from '../engine/types'
+import type {
+  RFAnalysisSettings,
+  RFNodeData,
+  RFNodeType,
+  RFProject,
+} from '../engine/types'
 
 export type RFCanvasNode = Node<RFNodeData, RFNodeType>
 export type RFCanvasEdge = Edge
 
-const initialNodes: RFCanvasNode[] = [
-  {
-    id: 'source-1',
-    type: 'source',
-    position: { x: 80, y: 130 },
-    data: createNodeData('source'),
-  },
-  {
-    id: 'amplifier-1',
-    type: 'idealAmplifier',
-    position: { x: 340, y: 130 },
-    data: createNodeData('idealAmplifier'),
-  },
-  {
-    id: 'load-1',
-    type: 'load',
-    position: { x: 610, y: 130 },
-    data: createNodeData('load'),
-  },
-]
+export const INITIAL_ANALYSIS: RFAnalysisSettings = {
+  startHz: 0.8e9,
+  stopHz: 1.2e9,
+  points: 1001,
+  referenceImpedanceOhm: 50,
+}
 
-const initialEdges: RFCanvasEdge[] = [
-  { id: 'edge-source-amplifier', source: 'source-1', target: 'amplifier-1' },
-  { id: 'edge-amplifier-load', source: 'amplifier-1', target: 'load-1' },
-]
+function initialNodes(): RFCanvasNode[] {
+  return [
+    {
+      id: 'source-1',
+      type: 'source',
+      position: { x: 80, y: 130 },
+      data: createNodeData('source'),
+    },
+    {
+      id: 'amplifier-1',
+      type: 'idealAmplifier',
+      position: { x: 340, y: 130 },
+      data: createNodeData('idealAmplifier'),
+    },
+    {
+      id: 'load-1',
+      type: 'load',
+      position: { x: 610, y: 130 },
+      data: createNodeData('load'),
+    },
+  ]
+}
+
+function initialEdges(): RFCanvasEdge[] {
+  return [
+    { id: 'edge-source-amplifier', source: 'source-1', target: 'amplifier-1' },
+    { id: 'edge-amplifier-load', source: 'amplifier-1', target: 'load-1' },
+  ]
+}
 
 interface RFEditorState {
+  activeProjectId: string
+  projectName: string
+  analysis: RFAnalysisSettings
   nodes: RFCanvasNode[]
   edges: RFCanvasEdge[]
   selectedNodeId: string | null
+  modelRevision: number
   onNodesChange: (changes: NodeChange<RFCanvasNode>[]) => void
   onEdgesChange: (changes: EdgeChange<RFCanvasEdge>[]) => void
   onConnect: (connection: Connection) => void
   addNode: (type: RFNodeType, position?: XYPosition) => void
   selectNode: (id: string | null) => void
+  setProjectName: (name: string) => void
+  updateAnalysis: (analysis: RFAnalysisSettings) => void
+  loadProject: (project: RFProject, localId?: string) => void
+  newProject: () => void
   updateNodeLabel: (id: string, label: string) => void
   updateNodeParameters: (
     id: string,
@@ -60,19 +84,38 @@ interface RFEditorState {
 }
 
 export const useRFEditorStore = create<RFEditorState>((set, get) => ({
-  nodes: initialNodes,
-  edges: initialEdges,
+  activeProjectId: crypto.randomUUID(),
+  projectName: 'Untitled RF chain',
+  analysis: INITIAL_ANALYSIS,
+  nodes: initialNodes(),
+  edges: initialEdges(),
   selectedNodeId: null,
+  modelRevision: 0,
   onNodesChange: (changes) =>
-    set((state) => ({ nodes: applyNodeChanges(changes, state.nodes) })),
+    set((state) => ({
+      nodes: applyNodeChanges(changes, state.nodes),
+      modelRevision:
+        state.modelRevision +
+        (changes.some((change) =>
+          ['add', 'remove', 'replace'].includes(change.type),
+        )
+          ? 1
+          : 0),
+    })),
   onEdgesChange: (changes) =>
-    set((state) => ({ edges: applyEdgeChanges(changes, state.edges) })),
+    set((state) => ({
+      edges: applyEdgeChanges(changes, state.edges),
+      modelRevision:
+        state.modelRevision +
+        (changes.some((change) => change.type !== 'select') ? 1 : 0),
+    })),
   onConnect: (connection) =>
     set((state) => ({
       edges: addEdge(
         { ...connection, id: crypto.randomUUID(), animated: true },
         state.edges,
       ),
+      modelRevision: state.modelRevision + 1,
     })),
   addNode: (type, position) =>
     set((state) => ({
@@ -88,13 +131,47 @@ export const useRFEditorStore = create<RFEditorState>((set, get) => ({
           data: createNodeData(type),
         },
       ],
+      modelRevision: state.modelRevision + 1,
     })),
   selectNode: (id) => set({ selectedNodeId: id }),
+  setProjectName: (projectName) => set({ projectName }),
+  updateAnalysis: (analysis) =>
+    set((state) => ({ analysis, modelRevision: state.modelRevision + 1 })),
+  loadProject: (project, localId) =>
+    set((state) => ({
+      activeProjectId: localId ?? crypto.randomUUID(),
+      projectName: project.name,
+      analysis: project.analysis,
+      nodes: project.nodes.map((node) => ({
+        id: node.id,
+        type: node.data.type,
+        position: node.position,
+        data: node.data,
+      })),
+      edges: project.edges.map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+      })),
+      selectedNodeId: null,
+      modelRevision: state.modelRevision + 1,
+    })),
+  newProject: () =>
+    set((state) => ({
+      activeProjectId: crypto.randomUUID(),
+      projectName: 'Untitled RF chain',
+      analysis: INITIAL_ANALYSIS,
+      nodes: initialNodes(),
+      edges: initialEdges(),
+      selectedNodeId: null,
+      modelRevision: state.modelRevision + 1,
+    })),
   updateNodeLabel: (id, label) =>
     set((state) => ({
       nodes: state.nodes.map((node) =>
         node.id === id ? { ...node, data: { ...node.data, label } } : node,
       ),
+      modelRevision: state.modelRevision + 1,
     })),
   updateNodeParameters: (id, parameters) =>
     set((state) => ({
@@ -109,6 +186,7 @@ export const useRFEditorStore = create<RFEditorState>((set, get) => ({
             }
           : node,
       ),
+      modelRevision: state.modelRevision + 1,
     })),
   removeSelectedNode: () => {
     const selectedNodeId = get().selectedNodeId
@@ -120,6 +198,7 @@ export const useRFEditorStore = create<RFEditorState>((set, get) => ({
           edge.source !== selectedNodeId && edge.target !== selectedNodeId,
       ),
       selectedNodeId: null,
+      modelRevision: state.modelRevision + 1,
     }))
   },
 }))

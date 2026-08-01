@@ -8,6 +8,8 @@ import type {
   SimulationOutput,
 } from './engine/types'
 import { RFPlot, type FrequencyUnit, type PlotView } from './plots/RFPlot'
+import { simulationOutputToCsv } from './persistence/csv'
+import { downloadTextFile, safeFileName } from './persistence/download'
 import { useRFEditorStore } from './app/store'
 import { strings } from './app/strings'
 
@@ -278,6 +280,7 @@ function numberValue(value: unknown, fallback: number): number {
 export type SimulationStatus = 'idle' | 'running' | 'success' | 'error'
 
 export function SimulationPanel({
+  projectName,
   analysis,
   status,
   result,
@@ -285,6 +288,7 @@ export function SimulationPanel({
   onAnalysisChange,
   onRun,
 }: {
+  projectName: string
   analysis: RFAnalysisSettings
   status: SimulationStatus
   result: SimulationOutput | null
@@ -389,6 +393,21 @@ export function SimulationPanel({
             onClick={onRun}
           >
             {status === 'running' ? 'Simulating…' : 'Run simulation'}
+          </button>
+          <button
+            className="export-button"
+            type="button"
+            disabled={!result}
+            onClick={() =>
+              result &&
+              downloadTextFile(
+                safeFileName(`${projectName}-results`, 'csv'),
+                simulationOutputToCsv(result),
+                'text/csv;charset=utf-8',
+              )
+            }
+          >
+            Export CSV
           </button>
         </div>
       </div>

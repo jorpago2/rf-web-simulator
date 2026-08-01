@@ -6,7 +6,7 @@ backend, account, upload, or runtime other than a modern browser is required.
 
 Online demo: <https://jorpago2.github.io/rf-web-simulator/>
 
-## Current iteration: 0.3 scientific plots
+## Current iteration: 0.4 local projects
 
 - Vite, React, strict TypeScript, React Flow, and Zustand.
 - Desktop/tablet RF editor with six draggable block types.
@@ -27,11 +27,12 @@ Online demo: <https://jorpago2.github.io/rf-web-simulator/>
   and S21 group delay, with zoom, pan, unified cursor, selectable frequency
   units, and SVG export.
 - Colorblind-safe colors plus redundant line styles for S-parameter traces.
+- Debounced IndexedDB autosave and reopening of recent local projects.
+- Versioned JSON import/export with bounded schema validation at the file boundary.
+- CSV export of the full simulated frequency sweep, including S-parameter
+  magnitudes, S21 phase, and S21 group delay.
 - Deterministic analytical and integration tests.
 - CI and GitHub Pages deployment workflows.
-
-IndexedDB project storage, JSON project files, and CSV export remain outside
-this iteration.
 
 ## Run locally
 
@@ -63,14 +64,15 @@ src/
 |-- app/       application shell, strings, and Zustand editor state
 |-- diagram/   React Flow canvas, registry, and RF node rendering
 |-- engine/    DOM-free validation, interpolation, cascade, and RF models
+|-- persistence/ local IndexedDB, versioned project JSON, and CSV export
 |-- plots/     lazily loaded Plotly scientific views
 |-- test/      small deterministic scientific fixtures
 `-- workers/   typed browser-worker boundary
 ```
 
 Vector network data uses `Float64Array`. The Web Worker transfers output buffers
-back to the UI instead of copying them. A future project JSON serializer must
-convert typed arrays to an explicitly serializable representation.
+back to the UI instead of copying them. Project files store imported Touchstone
+text as data so a saved project remains self-contained.
 
 Plotly is delivered as a separate basic-distribution chunk and is loaded only
 after simulation results are displayed. Switching view or display units does
@@ -118,9 +120,21 @@ sampling condition is not met.
 
 ## Roadmap
 
-1. IndexedDB autosave, versioned JSON projects, and CSV export.
-2. Accumulated full-frequency curves at probes.
-3. RF budget, mixer behavior, and PWA support only after MVP stability.
+1. Accumulated full-frequency curves at probes.
+2. RF budget and mixer behavior after the linear-chain workflow is stable.
+3. PWA/offline installation only if classroom use demonstrates a need.
+
+## Project files and local storage
+
+Project JSON files use schema version 1 and include the diagram, analysis
+settings, block parameters, and selected Touchstone text. Imports reject unknown
+schema versions, invalid graph references, non-finite numbers, unsafe object
+keys, excessive nesting, files above 20 MiB, and projects above 20 nodes or 40
+edges. IndexedDB keeps recent projects in the current browser profile; JSON
+export is the portable backup.
+
+CSV uses comma-separated columns with frequencies and group delay in SI units
+(`Hz` and `s`). Undefined phase or delay samples are written as empty fields.
 
 ## Privacy and security
 
