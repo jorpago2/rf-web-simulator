@@ -31,6 +31,9 @@ export type RFNodeType =
   | 'touchstone2Port'
   | 'idealAmplifier'
   | 'idealAttenuator'
+  | 'idealFilter'
+  | 'idealPhaseShifter'
+  | 'idealIsolator'
   | 'idealMixer'
   | 'idealSplitter'
   | 'idealCombiner'
@@ -97,6 +100,7 @@ export interface RFProject {
 }
 
 export type MixerMode = 'downconvert' | 'upconvert'
+export type IdealFilterType = 'lowpass' | 'highpass' | 'bandpass' | 'bandstop'
 
 export interface FrequencyRange {
   startHz: number

@@ -69,6 +69,36 @@ function symbolForType(type: RFNodeType) {
           <path d="m20 22 5-8 7 16 7-16 5 8" />
         </>
       )
+    case 'idealFilter':
+      return (
+        <>
+          <path d="M2 22h12M50 22h12" />
+          <rect
+            className="rf-block-symbol__fill"
+            x="14"
+            y="7"
+            width="36"
+            height="30"
+            rx="4"
+          />
+          <path d="M20 30h5c3 0 3-16 7-16s4 16 7 16h5" />
+        </>
+      )
+    case 'idealPhaseShifter':
+      return (
+        <>
+          <path d="M2 22h14M48 22h14" />
+          <circle className="rf-block-symbol__fill" cx="32" cy="22" r="16" />
+          <path d="M23 29c2-11 5-15 9-15s7 4 9 15M25 25h14" />
+        </>
+      )
+    case 'idealIsolator':
+      return (
+        <>
+          <path d="M2 22h12M50 22h12M50 10v24" />
+          <path className="rf-block-symbol__fill" d="M14 7v30l36-15z" />
+        </>
+      )
     case 'idealMixer':
       return (
         <>

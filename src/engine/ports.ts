@@ -21,6 +21,18 @@ const PORTS: Record<RFNodeType, readonly RFPortDescriptor[]> = {
     { id: 'input', label: 'IN', role: 'input' },
     { id: 'output', label: 'OUT', role: 'output' },
   ],
+  idealFilter: [
+    { id: 'input', label: 'IN', role: 'input' },
+    { id: 'output', label: 'OUT', role: 'output' },
+  ],
+  idealPhaseShifter: [
+    { id: 'input', label: 'IN', role: 'input' },
+    { id: 'output', label: 'OUT', role: 'output' },
+  ],
+  idealIsolator: [
+    { id: 'input', label: 'IN', role: 'input' },
+    { id: 'output', label: 'OUT', role: 'output' },
+  ],
   idealMixer: [
     { id: 'input', label: 'RF', role: 'input' },
     { id: 'output', label: 'IF', role: 'output' },

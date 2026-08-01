@@ -548,6 +548,150 @@ export function PropertiesPanel() {
         </>
       )}
 
+      {node.data.type === 'idealFilter' && (
+        <>
+          <label className="field">
+            <span>Filter response</span>
+            <select
+              value={
+                typeof node.data.parameters.filterType === 'string'
+                  ? node.data.parameters.filterType
+                  : 'bandpass'
+              }
+              onChange={(event) =>
+                updateParameters(node.id, { filterType: event.target.value })
+              }
+            >
+              <option value="lowpass">Low-pass</option>
+              <option value="highpass">High-pass</option>
+              <option value="bandpass">Band-pass</option>
+              <option value="bandstop">Band-stop</option>
+            </select>
+          </label>
+          {node.data.parameters.filterType === 'lowpass' ||
+          node.data.parameters.filterType === 'highpass' ? (
+            <NumberField
+              label="Cutoff frequency"
+              unit="Hz"
+              min={Number.MIN_VALUE}
+              value={numberValue(node.data.parameters.cutoffFrequencyHz, 1e9)}
+              onChange={(value) => setNumber('cutoffFrequencyHz', value)}
+            />
+          ) : (
+            <>
+              <NumberField
+                label="Center frequency"
+                unit="Hz"
+                min={Number.MIN_VALUE}
+                value={numberValue(node.data.parameters.centerFrequencyHz, 1e9)}
+                onChange={(value) => setNumber('centerFrequencyHz', value)}
+              />
+              <NumberField
+                label="3 dB bandwidth"
+                unit="Hz"
+                min={Number.MIN_VALUE}
+                value={numberValue(node.data.parameters.bandwidthHz, 200e6)}
+                onChange={(value) => setNumber('bandwidthHz', value)}
+              />
+            </>
+          )}
+          <NumberField
+            label="Butterworth order"
+            unit=""
+            min={1}
+            max={10}
+            step={1}
+            value={numberValue(node.data.parameters.order, 3)}
+            onChange={(value) => setNumber('order', value)}
+          />
+          <NumberField
+            label="Insertion loss"
+            unit="dB"
+            min={0}
+            value={numberValue(node.data.parameters.insertionLossDb, 1)}
+            onChange={(value) => setNumber('insertionLossDb', value)}
+          />
+          <OptionalNumberField
+            label="Insertion-loss σ"
+            unit="dB"
+            min={0}
+            value={node.data.parameters.insertionLossToleranceDb}
+            onChange={(value) =>
+              updateParameters(node.id, { insertionLossToleranceDb: value })
+            }
+          />
+        </>
+      )}
+
+      {node.data.type === 'idealPhaseShifter' && (
+        <>
+          <PhaseField nodeId={node.id} label="Narrowband phase shift" />
+          <NumberField
+            label="Insertion loss"
+            unit="dB"
+            min={0}
+            value={numberValue(node.data.parameters.insertionLossDb, 1)}
+            onChange={(value) => setNumber('insertionLossDb', value)}
+          />
+          <OptionalNumberField
+            label="Insertion-loss σ"
+            unit="dB"
+            min={0}
+            value={node.data.parameters.insertionLossToleranceDb}
+            onChange={(value) =>
+              updateParameters(node.id, { insertionLossToleranceDb: value })
+            }
+          />
+          <OptionalNumberField
+            label="Phase σ"
+            unit="deg"
+            min={0}
+            value={node.data.parameters.phaseToleranceDeg}
+            onChange={(value) =>
+              updateParameters(node.id, { phaseToleranceDeg: value })
+            }
+          />
+        </>
+      )}
+
+      {node.data.type === 'idealIsolator' && (
+        <>
+          <NumberField
+            label="Forward loss"
+            unit="dB"
+            min={0}
+            value={numberValue(node.data.parameters.forwardLossDb, 1)}
+            onChange={(value) => setNumber('forwardLossDb', value)}
+          />
+          <NumberField
+            label="Reverse isolation"
+            unit="dB"
+            min={0}
+            value={numberValue(node.data.parameters.reverseIsolationDb, 30)}
+            onChange={(value) => setNumber('reverseIsolationDb', value)}
+          />
+          <PhaseField nodeId={node.id} />
+          <OptionalNumberField
+            label="Forward-loss σ"
+            unit="dB"
+            min={0}
+            value={node.data.parameters.forwardLossToleranceDb}
+            onChange={(value) =>
+              updateParameters(node.id, { forwardLossToleranceDb: value })
+            }
+          />
+          <OptionalNumberField
+            label="Phase σ"
+            unit="deg"
+            min={0}
+            value={node.data.parameters.phaseToleranceDeg}
+            onChange={(value) =>
+              updateParameters(node.id, { phaseToleranceDeg: value })
+            }
+          />
+        </>
+      )}
+
       {(node.data.type === 'idealSplitter' ||
         node.data.type === 'idealCombiner') && (
         <>
@@ -1006,6 +1150,8 @@ function NumberField({
   unit,
   value,
   min,
+  max,
+  step,
   disabled = false,
   onChange,
 }: {
@@ -1013,6 +1159,8 @@ function NumberField({
   unit: string
   value: number
   min?: number
+  max?: number
+  step?: number
   disabled?: boolean
   onChange: (value: number) => void
 }) {
@@ -1024,6 +1172,8 @@ function NumberField({
           type="number"
           value={value}
           min={min}
+          max={max}
+          step={step}
           disabled={disabled}
           onChange={(event) => onChange(event.target.valueAsNumber)}
         />
@@ -1102,7 +1252,14 @@ function sweepableParameters(node: RFProjectNode): [string, number][] {
           typeof node.data.parameters.sParameterContent === 'string' &&
           ['gainDb', 'phaseDeg'].includes(key)
         ) &&
-        !(deviceTable && deviceTableOverridesParameter(deviceTable, key))
+        !(deviceTable && deviceTableOverridesParameter(deviceTable, key)) &&
+        !(
+          node.data.type === 'idealFilter' &&
+          (node.data.parameters.filterType === 'lowpass' ||
+          node.data.parameters.filterType === 'highpass'
+            ? ['centerFrequencyHz', 'bandwidthHz'].includes(key)
+            : key === 'cutoffFrequencyHz')
+        )
       )
     },
   )
@@ -1112,6 +1269,12 @@ function defaultSweepRange(key: string, nominal: number): [number, number] {
   const span = Math.max(Math.abs(nominal) * 0.2, 1)
   const nonNegative = new Set([
     'attenuationDb',
+    'insertionLossDb',
+    'forwardLossDb',
+    'reverseIsolationDb',
+    'cutoffFrequencyHz',
+    'centerFrequencyHz',
+    'bandwidthHz',
     'noiseFigureDb',
     'conversionLossDb',
     'excessLossDb',

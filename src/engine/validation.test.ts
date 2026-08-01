@@ -83,4 +83,29 @@ describe('linear RF graph validation', () => {
 
     expect(result.valid).toBe(true)
   })
+
+  it('rejects invalid ideal-filter parameters', () => {
+    const result = validateLinearGraph(
+      [
+        node('src', 'source'),
+        node('filter', 'idealFilter', {
+          filterType: 'bandpass',
+          centerFrequencyHz: 1e9,
+          bandwidthHz: 0,
+          order: 2.5,
+          insertionLossDb: 0,
+          referenceImpedanceOhm: 50,
+        }),
+        node('load', 'load'),
+      ],
+      [edge('src', 'filter'), edge('filter', 'load')],
+    )
+
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({
+        code: 'INVALID_BLOCK_PARAMETER',
+        nodeId: 'filter',
+      }),
+    )
+  })
 })

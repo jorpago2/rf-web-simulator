@@ -13,6 +13,7 @@ export type GraphIssueCode =
   | 'INVALID_PORT_DEGREE'
   | 'CYCLE'
   | 'DISCONNECTED_NODE'
+  | 'INVALID_BLOCK_PARAMETER'
   | 'INVALID_TOUCHSTONE'
   | 'INVALID_DEVICE_TABLE'
 
@@ -148,6 +149,7 @@ export function validateLinearGraph(
 }
 
 function validateNodeAssets(node: RFProjectNode, issues: GraphIssue[]): void {
+  validateIdealNodeParameters(node, issues)
   if (
     node.data.type === 'idealMixer' &&
     node.data.parameters.productTableContent !== undefined &&
@@ -252,6 +254,74 @@ function validateNodeAssets(node: RFProjectNode, issues: GraphIssue[]): void {
         message: `Amplifier "${node.data.label}" device table: ${errorMessage(error)}`,
       })
     }
+  }
+}
+
+function validateIdealNodeParameters(
+  node: RFProjectNode,
+  issues: GraphIssue[],
+): void {
+  if (
+    node.data.type !== 'idealFilter' &&
+    node.data.type !== 'idealPhaseShifter' &&
+    node.data.type !== 'idealIsolator'
+  ) {
+    return
+  }
+  try {
+    const number = (key: string) => {
+      const value = node.data.parameters[key]
+      if (typeof value !== 'number' || !Number.isFinite(value)) {
+        throw new Error(`${key} must be finite`)
+      }
+      return value
+    }
+    const nonnegative = (key: string) => {
+      const value = number(key)
+      if (value < 0) throw new Error(`${key} must be non-negative`)
+      return value
+    }
+    const positive = (key: string) => {
+      const value = number(key)
+      if (value <= 0) throw new Error(`${key} must be positive`)
+      return value
+    }
+    positive('referenceImpedanceOhm')
+    if (node.data.type === 'idealFilter') {
+      const type = node.data.parameters.filterType
+      if (
+        !['lowpass', 'highpass', 'bandpass', 'bandstop'].includes(String(type))
+      ) {
+        throw new Error('filterType is invalid')
+      }
+      positive(
+        type === 'lowpass' || type === 'highpass'
+          ? 'cutoffFrequencyHz'
+          : 'centerFrequencyHz',
+      )
+      if (type === 'bandpass' || type === 'bandstop') positive('bandwidthHz')
+      const order = number('order')
+      if (!Number.isInteger(order) || order < 1 || order > 10) {
+        throw new Error('order must be an integer from 1 to 10')
+      }
+      nonnegative('insertionLossDb')
+    } else if (node.data.type === 'idealPhaseShifter') {
+      number('phaseDeg')
+      nonnegative('insertionLossDb')
+    } else {
+      const forwardLossDb = nonnegative('forwardLossDb')
+      const reverseIsolationDb = nonnegative('reverseIsolationDb')
+      number('phaseDeg')
+      if (reverseIsolationDb < forwardLossDb) {
+        throw new Error('reverseIsolationDb must not be below forwardLossDb')
+      }
+    }
+  } catch (error) {
+    issues.push({
+      code: 'INVALID_BLOCK_PARAMETER',
+      nodeId: node.id,
+      message: `Block "${node.data.label}": ${errorMessage(error)}.`,
+    })
   }
 }
 

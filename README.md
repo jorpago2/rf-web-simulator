@@ -9,7 +9,8 @@ Online demo: <https://jorpago2.github.io/rf-web-simulator/>
 ## Implemented analyses
 
 - Directed acyclic RF graphs with coherent split/recombine paths, ideal
-  splitters/combiners, probes, and arbitrary imported N-port blocks.
+  splitters/combiners, Butterworth LP/HP/BP/BS filters, phase shifters,
+  isolators, probes, and arbitrary imported N-port blocks.
 - General N-port connection solver including mismatch, multiple reflections,
   isolation, and coherent branch phase.
 - Touchstone 1.0 and 2.0 `.sNp` import (`S`, `Z`, `Y`, `H`, and `G`; `RI`, `MA`,

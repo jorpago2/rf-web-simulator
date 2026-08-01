@@ -17,6 +17,58 @@ function node(
 }
 
 describe('RF simulation integration', () => {
+  it('cascades filter, phase-shifter, and isolator blocks', () => {
+    const result = simulateLinearChain({
+      analysis: {
+        startHz: 0.8e9,
+        stopHz: 1.2e9,
+        points: 3,
+        referenceImpedanceOhm: 50,
+      },
+      nodes: [
+        node('src', 'source', {
+          powerDbm: -10,
+          sourceImpedanceOhm: 50,
+        }),
+        node('filter', 'idealFilter', {
+          filterType: 'bandpass',
+          cutoffFrequencyHz: 1e9,
+          centerFrequencyHz: 1e9,
+          bandwidthHz: 0.2e9,
+          order: 3,
+          insertionLossDb: 1,
+          referenceImpedanceOhm: 50,
+        }),
+        node('phase', 'idealPhaseShifter', {
+          phaseDeg: 90,
+          insertionLossDb: 1,
+          referenceImpedanceOhm: 50,
+        }),
+        node('isolator', 'idealIsolator', {
+          forwardLossDb: 1,
+          reverseIsolationDb: 30,
+          phaseDeg: 0,
+          referenceImpedanceOhm: 50,
+        }),
+        node('load', 'load', {
+          referenceImpedanceOhm: 50,
+          loadImpedanceOhm: 50,
+        }),
+      ],
+      edges: [
+        { id: 'a', source: 'src', target: 'filter' },
+        { id: 'b', source: 'filter', target: 'phase' },
+        { id: 'c', source: 'phase', target: 'isolator' },
+        { id: 'd', source: 'isolator', target: 'load' },
+      ],
+    })
+
+    expect(result.curves.s21Db[1]).toBeCloseTo(-3, 10)
+    expect(result.curves.s12Db[1]).toBeCloseTo(-32, 10)
+    expect(result.curves.s21PhaseDeg[1]).toBeCloseTo(90, 10)
+    expect(result.budget.cascadedNoiseFigureDb).toBeCloseTo(3, 8)
+  })
+
   it('uses tabulated datasheet performance for an active amplifier', () => {
     const deviceTableContent = `frequency_ghz,gain_db,nf_db,oip3_dbm,pin_dbm,pout_dbm
 1,20,2,35,,

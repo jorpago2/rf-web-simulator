@@ -1,6 +1,11 @@
-import { fromPolar } from './complex'
+import { divide, fromPolar, multiply, type Complex } from './complex'
 import { createNPortS } from './nport'
-import type { ComplexArray, NPortNetwork, TwoPortNetwork } from './types'
+import type {
+  ComplexArray,
+  IdealFilterType,
+  NPortNetwork,
+  TwoPortNetwork,
+} from './types'
 
 export function createThroughNetwork(
   frequencyHz: Float64Array,
@@ -90,6 +95,157 @@ export function createIdealAttenuator(
     referenceImpedanceOhm,
     sourceName,
   )
+}
+
+export function createIdealFilter(
+  frequencyHz: Float64Array,
+  filterType: IdealFilterType,
+  characteristicFrequencyHz: number,
+  bandwidthHz: number,
+  order: number,
+  insertionLossDb: number,
+  referenceImpedanceOhm: number,
+  sourceName = 'Ideal Butterworth filter',
+): TwoPortNetwork {
+  validateInputs(frequencyHz, referenceImpedanceOhm)
+  if (
+    !['lowpass', 'highpass', 'bandpass', 'bandstop'].includes(filterType) ||
+    !Number.isFinite(characteristicFrequencyHz) ||
+    characteristicFrequencyHz <= 0 ||
+    !Number.isInteger(order) ||
+    order < 1 ||
+    order > 10 ||
+    !Number.isFinite(insertionLossDb) ||
+    insertionLossDb < 0 ||
+    ((filterType === 'bandpass' || filterType === 'bandstop') &&
+      (!Number.isFinite(bandwidthHz) || bandwidthHz <= 0))
+  ) {
+    throw new RangeError('Butterworth filter parameters are invalid.')
+  }
+  const scale = 10 ** (-insertionLossDb / 20)
+  const transmission: ComplexArray = {
+    re: new Float64Array(frequencyHz.length),
+    im: new Float64Array(frequencyHz.length),
+  }
+  for (let index = 0; index < frequencyHz.length; index += 1) {
+    const frequency = frequencyHz[index]!
+    if (!Number.isFinite(frequency) || frequency < 0) {
+      throw new RangeError('Filter frequencies must be non-negative.')
+    }
+    const normalized = filterNormalizedFrequency(
+      filterType,
+      frequency,
+      characteristicFrequencyHz,
+      bandwidthHz,
+    )
+    const response = Number.isFinite(normalized)
+      ? butterworthPrototype(order, normalized)
+      : { re: 0, im: 0 }
+    transmission.re[index] = response.re * scale
+    transmission.im[index] = response.im * scale
+  }
+  return {
+    frequencyHz,
+    referenceImpedanceOhm,
+    s11: constantComplexArray(frequencyHz.length, 0, 0),
+    s21: transmission,
+    s12: {
+      re: transmission.re.slice(),
+      im: transmission.im.slice(),
+    },
+    s22: constantComplexArray(frequencyHz.length, 0, 0),
+    sourceName,
+  }
+}
+
+export function createIdealPhaseShifter(
+  frequencyHz: Float64Array,
+  phaseDeg: number,
+  insertionLossDb: number,
+  referenceImpedanceOhm: number,
+  sourceName = 'Ideal phase shifter',
+): TwoPortNetwork {
+  return createIdealAttenuator(
+    frequencyHz,
+    insertionLossDb,
+    phaseDeg,
+    referenceImpedanceOhm,
+    sourceName,
+  )
+}
+
+export function createIdealIsolator(
+  frequencyHz: Float64Array,
+  forwardLossDb: number,
+  reverseIsolationDb: number,
+  phaseDeg: number,
+  referenceImpedanceOhm: number,
+  sourceName = 'Ideal isolator',
+): TwoPortNetwork {
+  validateInputs(frequencyHz, referenceImpedanceOhm)
+  if (
+    !Number.isFinite(forwardLossDb) ||
+    forwardLossDb < 0 ||
+    !Number.isFinite(reverseIsolationDb) ||
+    reverseIsolationDb < forwardLossDb ||
+    !Number.isFinite(phaseDeg)
+  ) {
+    throw new RangeError(
+      'Isolator loss must be non-negative and reverse isolation must not be below forward loss.',
+    )
+  }
+  const forward = fromPolar(10 ** (-forwardLossDb / 20), phaseDeg)
+  const reverse = fromPolar(10 ** (-reverseIsolationDb / 20), phaseDeg)
+  return {
+    frequencyHz,
+    referenceImpedanceOhm,
+    s11: constantComplexArray(frequencyHz.length, 0, 0),
+    s21: constantComplexArray(frequencyHz.length, forward.re, forward.im),
+    s12: constantComplexArray(frequencyHz.length, reverse.re, reverse.im),
+    s22: constantComplexArray(frequencyHz.length, 0, 0),
+    sourceName,
+  }
+}
+
+function filterNormalizedFrequency(
+  filterType: IdealFilterType,
+  frequencyHz: number,
+  characteristicFrequencyHz: number,
+  bandwidthHz: number,
+): number {
+  if (filterType === 'lowpass') return frequencyHz / characteristicFrequencyHz
+  if (filterType === 'highpass') {
+    return frequencyHz === 0
+      ? Number.NEGATIVE_INFINITY
+      : -characteristicFrequencyHz / frequencyHz
+  }
+  if (frequencyHz === 0) {
+    return filterType === 'bandpass' ? Number.NEGATIVE_INFINITY : 0
+  }
+  const detuning =
+    frequencyHz / characteristicFrequencyHz -
+    characteristicFrequencyHz / frequencyHz
+  const fractionalBandwidth = bandwidthHz / characteristicFrequencyHz
+  if (filterType === 'bandpass') return detuning / fractionalBandwidth
+  return Math.abs(detuning) < 1e-15
+    ? Number.POSITIVE_INFINITY
+    : -fractionalBandwidth / detuning
+}
+
+function butterworthPrototype(order: number, normalizedFrequency: number) {
+  let response: Complex = { re: 1, im: 0 }
+  for (let index = 0; index < order; index += 1) {
+    const angle = (Math.PI * (2 * index + order + 1)) / (2 * order)
+    const pole = { re: Math.cos(angle), im: Math.sin(angle) }
+    response = multiply(
+      response,
+      divide(
+        { re: -pole.re, im: -pole.im },
+        { re: -pole.re, im: normalizedFrequency - pole.im },
+      ),
+    )
+  }
+  return response
 }
 
 function createMatchedReciprocalNetwork(

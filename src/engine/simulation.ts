@@ -14,6 +14,9 @@ import {
   createIdealAmplifier,
   createIdealAttenuator,
   createIdealDivider,
+  createIdealFilter,
+  createIdealIsolator,
+  createIdealPhaseShifter,
   createTabulatedAmplifier,
   createThroughNetwork,
 } from './idealNetworks'
@@ -56,6 +59,7 @@ import { parseTouchstone, type TouchstoneNoiseData } from './touchstone'
 import { calculateTransducerGain } from './transducer'
 import { deembedTwoPortNetwork } from './twoPortParameters'
 import type {
+  IdealFilterType,
   MonteCarloMetricSummary,
   MonteCarloSensitivity,
   ParametricMetric,
@@ -885,13 +889,13 @@ function budgetStage(
   const localCenterFrequencyHz =
     network.frequencyHz[centerIndex]! + localFrequencyOffsetHz
 
-  if (node.data.type === 'idealAttenuator') {
+  if (isPassiveIdealTwoPort(node)) {
     return {
       nodeId: node.id,
       label: node.data.label,
       type: node.data.type,
       gainDb: stageGainDb,
-      noiseFigureDb: finiteParameter(node, 'attenuationDb'),
+      noiseFigureDb: stageGainDb === null ? null : Math.max(0, -stageGainDb),
       outputP1Dbm: Number.POSITIVE_INFINITY,
       outputIp3Dbm: Number.POSITIVE_INFINITY,
     }
@@ -964,7 +968,7 @@ function noiseCorrelationForTwoPortNode(
       noiseParameters.referenceImpedanceOhm,
     )
   }
-  if (node.data.type === 'idealAttenuator') {
+  if (isPassiveIdealTwoPort(node)) {
     return passiveNoiseCorrelationAt(twoPortToNPort(network), pointIndex)
   }
   const noiseFigureDb =
@@ -1037,6 +1041,46 @@ function networkForNode(
       return createIdealAttenuator(
         frequencyHz,
         finiteParameter(node, 'attenuationDb'),
+        finiteParameter(node, 'phaseDeg'),
+        referenceImpedanceOhm,
+        node.data.label,
+      )
+    case 'idealFilter': {
+      const type = filterType(node)
+      const localFrequencyHz = Float64Array.from(
+        frequencyHz,
+        (value) => value + localFrequencyOffsetHz,
+      )
+      const network = createIdealFilter(
+        localFrequencyHz,
+        type,
+        finiteParameter(
+          node,
+          type === 'lowpass' || type === 'highpass'
+            ? 'cutoffFrequencyHz'
+            : 'centerFrequencyHz',
+        ),
+        finiteParameter(node, 'bandwidthHz'),
+        finiteParameter(node, 'order'),
+        finiteParameter(node, 'insertionLossDb'),
+        referenceImpedanceOhm,
+        node.data.label,
+      )
+      return { ...network, frequencyHz }
+    }
+    case 'idealPhaseShifter':
+      return createIdealPhaseShifter(
+        frequencyHz,
+        finiteParameter(node, 'phaseDeg'),
+        finiteParameter(node, 'insertionLossDb'),
+        referenceImpedanceOhm,
+        node.data.label,
+      )
+    case 'idealIsolator':
+      return createIdealIsolator(
+        frequencyHz,
+        finiteParameter(node, 'forwardLossDb'),
+        finiteParameter(node, 'reverseIsolationDb'),
         finiteParameter(node, 'phaseDeg'),
         referenceImpedanceOhm,
         node.data.label,
@@ -1152,6 +1196,9 @@ function validateBlockReferenceImpedances(
     if (
       node.data.type !== 'idealAmplifier' &&
       node.data.type !== 'idealAttenuator' &&
+      node.data.type !== 'idealFilter' &&
+      node.data.type !== 'idealPhaseShifter' &&
+      node.data.type !== 'idealIsolator' &&
       node.data.type !== 'idealMixer' &&
       node.data.type !== 'idealSplitter' &&
       node.data.type !== 'idealCombiner' &&
@@ -1173,6 +1220,28 @@ function mixerMode(node: RFProjectNode): 'downconvert' | 'upconvert' {
     throw new SimulationError(`Mixer mode is invalid at "${node.data.label}".`)
   }
   return value
+}
+
+function filterType(node: RFProjectNode): IdealFilterType {
+  const value = node.data.parameters.filterType
+  if (
+    value !== 'lowpass' &&
+    value !== 'highpass' &&
+    value !== 'bandpass' &&
+    value !== 'bandstop'
+  ) {
+    throw new SimulationError(`Filter type is invalid at "${node.data.label}".`)
+  }
+  return value
+}
+
+function isPassiveIdealTwoPort(node: RFProjectNode): boolean {
+  return (
+    node.data.type === 'idealAttenuator' ||
+    node.data.type === 'idealFilter' ||
+    node.data.type === 'idealPhaseShifter' ||
+    node.data.type === 'idealIsolator'
+  )
 }
 
 function assertReferenceImpedance(
@@ -1254,6 +1323,8 @@ const TOLERANCE_PARAMETERS = [
   ['outputP1Dbm', 'outputP1ToleranceDb', false],
   ['outputIp3Dbm', 'outputIp3ToleranceDb', false],
   ['attenuationDb', 'attenuationToleranceDb', true],
+  ['insertionLossDb', 'insertionLossToleranceDb', true],
+  ['forwardLossDb', 'forwardLossToleranceDb', true],
   ['conversionLossDb', 'conversionLossToleranceDb', true],
   ['excessLossDb', 'excessLossToleranceDb', true],
   ['amplitudeImbalanceDb', 'amplitudeImbalanceToleranceDb', false],
