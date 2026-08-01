@@ -365,6 +365,36 @@ describe('RF simulation integration', () => {
     ).toThrow(/mismatch/u)
   })
 
+  it('uses a VCO and TX antenna as source and load terminals', () => {
+    const result = simulateLinearChain({
+      analysis: {
+        startHz: 0.8e9,
+        stopHz: 1.2e9,
+        points: 5,
+        referenceImpedanceOhm: 50,
+      },
+      nodes: [
+        node('vco', 'vcoSource', {
+          freeRunningFrequencyHz: 0.9e9,
+          tuningSensitivityHzPerV: 100e6,
+          controlVoltageV: 2,
+          powerDbm: 10,
+          sourceImpedanceOhm: 50,
+        }),
+        node('antenna', 'txAntenna', {
+          referenceImpedanceOhm: 50,
+          loadImpedanceOhm: 50,
+        }),
+      ],
+      edges: [{ id: 'rf-out', source: 'vco', target: 'antenna' }],
+    })
+
+    expect(result.budget.centerFrequencyHz).toBe(1.1e9)
+    expect(result.budget.deliveredLoadPowerDbm).toBeCloseTo(10, 10)
+    expect(result.frequencyPlan.output.centerHz).toBe(1.1e9)
+    expect(result.frequencyPlan.spectralLines[0]?.frequencyHz).toBe(1.1e9)
+  })
+
   it('solves coherent splitter and combiner branches as an N-port network', () => {
     const dividerParameters = {
       excessLossDb: 0,
@@ -422,6 +452,55 @@ describe('RF simulation integration', () => {
     expect(result.warnings).toContainEqual(
       expect.objectContaining({ code: 'BRANCHED_NETWORK_MODEL' }),
     )
+  })
+
+  it('recombines the two 180-degree outputs of a balun', () => {
+    const result = simulateLinearChain({
+      analysis: {
+        startHz: 1e9,
+        stopHz: 2e9,
+        points: 3,
+        referenceImpedanceOhm: 50,
+      },
+      nodes: [
+        node('src', 'source', {}),
+        node('balun', 'idealBalun', {
+          excessLossDb: 0,
+          amplitudeImbalanceDb: 0,
+          phaseErrorDeg: 0,
+          isolationDb: 300,
+          referenceImpedanceOhm: 50,
+        }),
+        node('combine', 'idealCombiner', {
+          excessLossDb: 0,
+          amplitudeImbalanceDb: 0,
+          phaseImbalanceDeg: 180,
+          isolationDb: 300,
+          referenceImpedanceOhm: 50,
+        }),
+        node('load', 'load', { referenceImpedanceOhm: 50 }),
+      ],
+      edges: [
+        { id: 'a', source: 'src', target: 'balun', targetHandle: 'input' },
+        {
+          id: 'b',
+          source: 'balun',
+          sourceHandle: 'positive',
+          target: 'combine',
+          targetHandle: 'input-1',
+        },
+        {
+          id: 'c',
+          source: 'balun',
+          sourceHandle: 'negative',
+          target: 'combine',
+          targetHandle: 'input-2',
+        },
+        { id: 'd', source: 'combine', sourceHandle: 'output', target: 'load' },
+      ],
+    })
+
+    expect(result.curves.s21Db[1]).toBeCloseTo(0, 10)
   })
 
   it('recombines branched mixer envelopes only at a common output band', () => {

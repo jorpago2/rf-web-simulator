@@ -122,6 +122,48 @@ function symbolForType(type: RFNodeType) {
           <circle className="rf-block-symbol__junction" cx="22" cy="22" r="3" />
         </>
       )
+    case 'transmissionLine':
+      return (
+        <>
+          <path d="M2 15h60M2 29h60M13 10v24M51 10v24" />
+          <path d="m25 8 14 0M35 4l4 4-4 4" />
+        </>
+      )
+    case 'matchingNetwork':
+      return (
+        <>
+          <path d="M2 22h12c2-8 6-8 8 0s6 8 8 0 6-8 8 0h12M50 22h12" />
+          <path d="M45 22v7M40 29h10M40 34h10M45 34v8" />
+        </>
+      )
+    case 'idealBalun':
+      return (
+        <>
+          <path d="M2 22h15M47 13h15M47 31h15" />
+          <path d="M17 10c8 0 8 24 0 24M26 10c8 0 8 24 0 24M38 8v28M42 8v28" />
+        </>
+      )
+    case 'vcoSource':
+      return (
+        <>
+          <circle className="rf-block-symbol__fill" cx="29" cy="22" r="17" />
+          <path d="M12 22c4-9 8-9 12 0s8 9 12 0M46 22h16M5 39 17 27M5 32v7h7" />
+        </>
+      )
+    case 'rxAntenna':
+      return (
+        <>
+          <path d="M31 10v32M31 15 18 3M31 15 44 3M31 28h31" />
+          <path d="m5 20 13 6M12 15l-7 5 2-9" />
+        </>
+      )
+    case 'txAntenna':
+      return (
+        <>
+          <path d="M2 28h31M33 10v32M33 15 20 3M33 15 46 3" />
+          <path d="m46 26 13-6M57 13l2 7-7 5" />
+        </>
+      )
     case 'idealMixer':
       return (
         <>

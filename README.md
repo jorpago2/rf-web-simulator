@@ -11,7 +11,9 @@ Online demo: <https://jorpago2.github.io/rf-web-simulator/>
 - Directed acyclic RF graphs with coherent split/recombine paths, ideal
   splitters/combiners, Butterworth LP/HP/BP/BS filters, phase shifters,
   isolators, RF switches, directional couplers, LP/HP diplexers, probes, and
-  arbitrary imported N-port blocks.
+  arbitrary imported N-port blocks. Analog-system blocks also include matched
+  transmission lines, finite-Q L/π/T networks, 1:1 baluns, separate TX/RX
+  antenna terminals, and a voltage-tuned oscillator/VCO source.
 - General N-port connection solver including mismatch, multiple reflections,
   isolation, and coherent branch phase.
 - Touchstone 1.0 and 2.0 `.sNp` import (`S`, `Z`, `Y`, `H`, and `G`; `RI`, `MA`,
@@ -92,6 +94,22 @@ its through and sampled powers include the configured excess loss and a 90Â°
 coupled-path phase. The diplexer is a matched reciprocal three-port built from
 complementary equal-order Butterworth low- and high-pass responses. These are
 system-level models, not distributed-geometry or electromagnetic simulations.
+
+Transmission lines use the `exp(-j2πfτ)` convention with a constant matched
+insertion loss. Lumped matching blocks cascade series and shunt L/C ABCD
+matrices; π and T forms are symmetric, and a shared component Q introduces
+series loss. The 1:1 balun is a reduced three-port with configurable excess
+loss, amplitude imbalance, phase error from 180°, and output isolation.
+
+The VCO frequency is `f = f0 + Kv Vcontrol`; it drives the frequency plan, and
+the nearest point in the global analysis sweep is used for budgets, with a
+warning when the tuned frequency is outside that sweep. It is a deterministic
+single-frequency source model: phase noise, pushing, pulling, harmonics,
+startup, and PLL dynamics are not modeled.
+The RX antenna supplies available received power and source impedance; the TX
+antenna terminates the chain with a load impedance. Radiation pattern, gain,
+efficiency, polarization, and propagation loss remain external to the current
+circuit-level budget.
 
 ### Power and noise budget
 

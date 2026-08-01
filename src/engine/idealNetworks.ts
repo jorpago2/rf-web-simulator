@@ -1,8 +1,15 @@
 import { divide, fromPolar, multiply, type Complex } from './complex'
-import { createNPortS } from './nport'
+import {
+  createNPortS,
+  multiplyComplexMatrices,
+  type ComplexValue,
+} from './nport'
+import { abcdToScattering } from './twoPortParameters'
 import type {
   ComplexArray,
   IdealFilterType,
+  MatchingResponse,
+  MatchingTopology,
   NPortNetwork,
   TwoPortNetwork,
 } from './types'
@@ -305,6 +312,127 @@ export function createIdealDiplexer(
   }
 }
 
+export function createTransmissionLine(
+  frequencyHz: Float64Array,
+  delayS: number,
+  insertionLossDb: number,
+  referenceImpedanceOhm: number,
+  sourceName = 'Matched transmission line',
+): TwoPortNetwork {
+  validateInputs(frequencyHz, referenceImpedanceOhm)
+  if (
+    !Number.isFinite(delayS) ||
+    delayS < 0 ||
+    !Number.isFinite(insertionLossDb) ||
+    insertionLossDb < 0
+  ) {
+    throw new RangeError(
+      'Transmission-line delay and loss must be non-negative.',
+    )
+  }
+  const transmission = emptyComplexArray(frequencyHz.length)
+  const magnitude = 10 ** (-insertionLossDb / 20)
+  for (let index = 0; index < frequencyHz.length; index += 1) {
+    const frequency = frequencyHz[index]!
+    if (!Number.isFinite(frequency) || frequency < 0) {
+      throw new RangeError('Transmission-line frequencies must be non-negative.')
+    }
+    const value = fromPolar(magnitude, -360 * frequency * delayS)
+    transmission.re[index] = value.re
+    transmission.im[index] = value.im
+  }
+  return {
+    frequencyHz,
+    referenceImpedanceOhm,
+    s11: constantComplexArray(frequencyHz.length, 0, 0),
+    s21: transmission,
+    s12: { re: transmission.re.slice(), im: transmission.im.slice() },
+    s22: constantComplexArray(frequencyHz.length, 0, 0),
+    sourceName,
+  }
+}
+
+export function createMatchingNetwork(
+  frequencyHz: Float64Array,
+  topology: MatchingTopology,
+  response: MatchingResponse,
+  inductanceH: number,
+  capacitanceF: number,
+  componentQ: number,
+  referenceImpedanceOhm: number,
+  sourceName = 'Lumped matching network',
+): TwoPortNetwork {
+  validateInputs(frequencyHz, referenceImpedanceOhm)
+  if (
+    !['l', 'pi', 't'].includes(topology) ||
+    !['lowpass', 'highpass'].includes(response) ||
+    !Number.isFinite(inductanceH) ||
+    inductanceH <= 0 ||
+    !Number.isFinite(capacitanceF) ||
+    capacitanceF <= 0 ||
+    !Number.isFinite(componentQ) ||
+    componentQ <= 0
+  ) {
+    throw new RangeError(
+      'Matching-network topology, components, or Q are invalid.',
+    )
+  }
+  const s11 = emptyComplexArray(frequencyHz.length)
+  const s12 = emptyComplexArray(frequencyHz.length)
+  const s21 = emptyComplexArray(frequencyHz.length)
+  const s22 = emptyComplexArray(frequencyHz.length)
+  for (let index = 0; index < frequencyHz.length; index += 1) {
+    const frequency = frequencyHz[index]!
+    if (!Number.isFinite(frequency) || frequency < 0) {
+      throw new RangeError('Matching-network frequencies must be non-negative.')
+    }
+    const inductor = componentImpedance(
+      'inductor',
+      frequency,
+      inductanceH,
+      componentQ,
+    )
+    const capacitor = componentImpedance(
+      'capacitor',
+      frequency,
+      capacitanceF,
+      componentQ,
+    )
+    const series =
+      response === 'lowpass'
+        ? seriesAbcd(inductor)
+        : seriesAbcd(capacitor)
+    const shunt =
+      response === 'lowpass'
+        ? shuntAbcd(capacitor)
+        : shuntAbcd(inductor)
+    const elements =
+      topology === 'l'
+        ? [series, shunt]
+        : topology === 'pi'
+          ? [shunt, series, shunt]
+          : [series, shunt, series]
+    const abcd = elements.reduce(
+      (total, element) => multiplyComplexMatrices(total, element),
+      identityAbcd(),
+    )
+    const scattering = abcdToScattering(abcd, referenceImpedanceOhm)
+    writeComplex(s11, index, scattering[0]!)
+    writeComplex(s12, index, scattering[1]!)
+    writeComplex(s21, index, scattering[2]!)
+    writeComplex(s22, index, scattering[3]!)
+  }
+  return {
+    frequencyHz,
+    referenceImpedanceOhm,
+    s11,
+    s12,
+    s21,
+    s22,
+    sourceName,
+  }
+}
+
 function filterNormalizedFrequency(
   filterType: IdealFilterType,
   frequencyHz: number,
@@ -463,6 +591,70 @@ function constantComplexArray(
   values.re.fill(re)
   values.im.fill(im)
   return values
+}
+
+function emptyComplexArray(length: number): ComplexArray {
+  return { re: new Float64Array(length), im: new Float64Array(length) }
+}
+
+function componentImpedance(
+  kind: 'inductor' | 'capacitor',
+  frequencyHz: number,
+  value: number,
+  qualityFactor: number,
+): ComplexValue {
+  if (frequencyHz === 0) {
+    return kind === 'inductor'
+      ? { re: 0, im: 0 }
+      : { re: 1e30 / qualityFactor, im: -1e30 }
+  }
+  const angularFrequency = 2 * Math.PI * frequencyHz
+  const reactance =
+    kind === 'inductor'
+      ? angularFrequency * value
+      : -1 / (angularFrequency * value)
+  return { re: Math.abs(reactance) / qualityFactor, im: reactance }
+}
+
+function seriesAbcd(impedance: ComplexValue): ComplexValue[] {
+  return [
+    { re: 1, im: 0 },
+    impedance,
+    { re: 0, im: 0 },
+    { re: 1, im: 0 },
+  ]
+}
+
+function shuntAbcd(impedance: ComplexValue): ComplexValue[] {
+  const magnitudeSquared = impedance.re ** 2 + impedance.im ** 2
+  const admittance =
+    magnitudeSquared < 1e-28
+      ? { re: 1e30, im: 0 }
+      : divide({ re: 1, im: 0 }, impedance)
+  return [
+    { re: 1, im: 0 },
+    { re: 0, im: 0 },
+    admittance,
+    { re: 1, im: 0 },
+  ]
+}
+
+function identityAbcd(): ComplexValue[] {
+  return [
+    { re: 1, im: 0 },
+    { re: 0, im: 0 },
+    { re: 0, im: 0 },
+    { re: 1, im: 0 },
+  ]
+}
+
+function writeComplex(
+  destination: ComplexArray,
+  index: number,
+  value: ComplexValue,
+): void {
+  destination.re[index] = value.re
+  destination.im[index] = value.im
 }
 
 function setConstantS(

@@ -20,7 +20,9 @@ import {
   createIdealIsolator,
   createIdealPhaseShifter,
   createIdealRFSwitch,
+  createMatchingNetwork,
   createTabulatedAmplifier,
+  createTransmissionLine,
   createThroughNetwork,
 } from './idealNetworks'
 import {
@@ -56,13 +58,20 @@ import {
   twoPortToNPort,
   type ComplexValue,
 } from './nport'
-import { portsForNode, resolveEdgePort } from './ports'
+import {
+  isLoadTerminal,
+  isSourceTerminal,
+  portsForNode,
+  resolveEdgePort,
+} from './ports'
 import { enforceNPortPassivity } from './passivity'
 import { parseTouchstone, type TouchstoneNoiseData } from './touchstone'
 import { calculateTransducerGain } from './transducer'
 import { deembedTwoPortNetwork } from './twoPortParameters'
 import type {
   IdealFilterType,
+  MatchingResponse,
+  MatchingTopology,
   MonteCarloMetricSummary,
   MonteCarloSensitivity,
   ParametricMetric,
@@ -220,6 +229,19 @@ function simulateDeterministic(input: SimulationInput): SimulationOutput {
       message: `${message} Pointwise scaling is conservative and can alter causality; compare against the original measurement.`,
     })),
   )
+  const source = orderedNodes.find(isSourceTerminal)!
+  const requestedOperatingFrequencyHz = sourceOperatingFrequency(source)
+  if (
+    requestedOperatingFrequencyHz !== null &&
+    (requestedOperatingFrequencyHz < commonGrid.frequencyHz[0]! ||
+      requestedOperatingFrequencyHz > commonGrid.frequencyHz.at(-1)!)
+  ) {
+    warnings.push({
+      code: 'RANGE_CLIPPED',
+      message: `${source.data.label}: requested operating frequency ${requestedOperatingFrequencyHz} Hz lies outside the analysis sweep; the nearest sweep endpoint is used for the RF budget.`,
+      frequencyHz: requestedOperatingFrequencyHz,
+    })
+  }
   if (validation.branched) {
     return simulateBranchedNetwork(
       input,
@@ -234,6 +256,8 @@ function simulateDeterministic(input: SimulationInput): SimulationOutput {
       warnings,
     )
   }
+  const load = orderedNodes.find(isLoadTerminal)!
+  const operatingIndex = operatingPointIndex(commonGrid.frequencyHz, source)
   const mixerNodes = orderedNodes.filter(
     (node) => node.data.type === 'idealMixer',
   )
@@ -257,7 +281,8 @@ function simulateDeterministic(input: SimulationInput): SimulationOutput {
         0,
       ),
     })),
-    optionalFiniteParameter(orderedNodes[0]!, 'powerDbm'),
+    optionalFiniteParameter(source, 'powerDbm'),
+    requestedOperatingFrequencyHz,
   )
   if (mixerNodes.length > 0) {
     warnings.push({
@@ -275,8 +300,6 @@ function simulateDeterministic(input: SimulationInput): SimulationOutput {
   const probeResults: SimulationProbeResult[] = []
   const budgetStages: BudgetStageInput[] = []
   const noiseBlocks: NetworkBlock[] = []
-  const source = orderedNodes[0]!
-  const load = orderedNodes.find((node) => node.data.type === 'load')!
   const sourceImpedanceOhm = impedanceParameter(
     source,
     'sourceImpedanceOhm',
@@ -285,7 +308,7 @@ function simulateDeterministic(input: SimulationInput): SimulationOutput {
   let prefixTransducerGainDb = 0
 
   for (const node of orderedNodes) {
-    if (node.data.type === 'source' || node.data.type === 'load') continue
+    if (isSourceTerminal(node) || isLoadTerminal(node)) continue
 
     if (node.data.type === 'probe') {
       probeResults.push({
@@ -330,10 +353,9 @@ function simulateDeterministic(input: SimulationInput): SimulationOutput {
             input.analysis.referenceImpedanceOhm,
           ),
       })
-      const centerIndex = Math.floor(commonGrid.frequencyHz.length / 2)
       const prefixGainDb = calculateTransducerGain(
         cumulative,
-        centerIndex,
+        operatingIndex,
         sourceImpedanceOhm,
         input.analysis.referenceImpedanceOhm,
       ).transducerGainDb
@@ -347,10 +369,9 @@ function simulateDeterministic(input: SimulationInput): SimulationOutput {
       budgetStages.push(stage)
     }
 
-    stageSummaries.push(summarizeStage(node, cumulative))
+    stageSummaries.push(summarizeStage(node, cumulative, operatingIndex))
   }
 
-  const centerIndex = Math.floor(commonGrid.frequencyHz.length / 2)
   const loadImpedanceOhm = impedanceParameter(
     load,
     'loadImpedanceOhm',
@@ -358,7 +379,7 @@ function simulateDeterministic(input: SimulationInput): SimulationOutput {
   )
   const finalTransducerGainDb = calculateTransducerGain(
     cumulative,
-    centerIndex,
+    operatingIndex,
     sourceImpedanceOhm,
     loadImpedanceOhm,
   ).transducerGainDb
@@ -388,12 +409,12 @@ function simulateDeterministic(input: SimulationInput): SimulationOutput {
           { nodeId: noiseBlocks[0]!.nodeId, portId: 'input' },
           { nodeId: noiseBlocks.at(-1)!.nodeId, portId: 'output' },
           input.analysis.referenceImpedanceOhm,
-          centerIndex,
+          operatingIndex,
         )
   const cascadedNoiseFigureDb = noiseCorrelation
     ? noiseFigureFromCorrelation(
         cumulative,
-        centerIndex,
+        operatingIndex,
         noiseCorrelation,
         sourceImpedanceOhm,
         loadImpedanceOhm,
@@ -406,12 +427,12 @@ function simulateDeterministic(input: SimulationInput): SimulationOutput {
   }
   warnings.push(...derived.warnings)
   const budget = calculateRFBudget(
-    commonGrid.frequencyHz[centerIndex]!,
+    commonGrid.frequencyHz[operatingIndex]!,
     optionalFiniteParameter(source, 'powerDbm'),
     budgetStages,
     {
       network: cumulative,
-      pointIndex: centerIndex,
+      pointIndex: operatingIndex,
       sourceImpedanceOhm,
       loadImpedanceOhm,
       noiseFigureDb: cascadedNoiseFigureDb,
@@ -530,7 +551,7 @@ function simulateBranchedNetwork(
   const referenceImpedanceOhm = input.analysis.referenceImpedanceOhm
   const blocks: NetworkBlock[] = []
   for (const node of orderedNodes) {
-    if (node.data.type === 'source' || node.data.type === 'load') continue
+    if (isSourceTerminal(node) || isLoadTerminal(node)) continue
     const portIds = portsForNode(node).map((port) => port.id)
     if (node.data.type === 'touchstone2Port') {
       const imported = parsedNPortNetworks.get(node.id)
@@ -572,7 +593,8 @@ function simulateBranchedNetwork(
       node.data.type === 'idealSplitter' ||
       node.data.type === 'idealCombiner' ||
       node.data.type === 'idealDirectionalCoupler' ||
-      node.data.type === 'idealDiplexer'
+      node.data.type === 'idealDiplexer' ||
+      node.data.type === 'idealBalun'
     ) {
       const localFrequencyHz = Float64Array.from(
         frequencyHz,
@@ -596,6 +618,17 @@ function simulateBranchedNetwork(
                 referenceImpedanceOhm,
                 node.data.label,
               )
+            : node.data.type === 'idealBalun'
+              ? createIdealDivider(
+                  frequencyHz,
+                  0,
+                  finiteParameter(node, 'excessLossDb'),
+                  finiteParameter(node, 'amplitudeImbalanceDb'),
+                  180 + finiteParameter(node, 'phaseErrorDeg'),
+                  finiteParameter(node, 'isolationDb'),
+                  referenceImpedanceOhm,
+                  node.data.label,
+                )
             : createIdealDivider(
                 frequencyHz,
                 node.data.type === 'idealSplitter' ? 0 : 2,
@@ -656,9 +689,9 @@ function simulateBranchedNetwork(
     const target = nodesById.get(edge.target)!
     const sourcePort = resolveEdgePort(source, 'output', edge.sourceHandle)!
     const targetPort = resolveEdgePort(target, 'input', edge.targetHandle)!
-    if (source.data.type === 'source') {
+    if (isSourceTerminal(source)) {
       externalInput = { nodeId: target.id, portId: targetPort.id }
-    } else if (target.data.type === 'load') {
+    } else if (isLoadTerminal(target)) {
       externalOutput = { nodeId: source.id, portId: sourcePort.id }
     } else {
       connections.push({
@@ -699,9 +732,9 @@ function simulateBranchedNetwork(
     message:
       'The N-port solver includes coherent branch recombination, mismatch, internal reflections, passive/declared noise waves, internal probe waves, and frequency-converting envelope paths when all signals meeting at a combiner have the same translated frequency. Branch-aware compression remains a behavioral approximation.',
   })
-  const source = orderedNodes.find((node) => node.data.type === 'source')!
-  const load = orderedNodes.find((node) => node.data.type === 'load')!
-  const centerIndex = Math.floor(frequencyHz.length / 2)
+  const source = orderedNodes.find(isSourceTerminal)!
+  const load = orderedNodes.find(isLoadTerminal)!
+  const centerIndex = operatingPointIndex(frequencyHz, source)
   const sourceImpedanceOhm = impedanceParameter(
     source,
     'sourceImpedanceOhm',
@@ -757,7 +790,12 @@ function simulateBranchedNetwork(
       noiseFigureDb: cascadedNoiseFigureDb,
     },
   )
-  const frequencyPlan = calculateFrequencyPlan(frequencyHz, [])
+  const frequencyPlan = calculateFrequencyPlan(
+    frequencyHz,
+    [],
+    optionalFiniteParameter(source, 'powerDbm'),
+    sourceOperatingFrequency(source),
+  )
   const outputOffsetHz = localFrequencyOffsetsHz.get(load.id) ?? 0
   if (outputOffsetHz !== 0) {
     frequencyPlan.outputFrequencyHz = Float64Array.from(
@@ -766,10 +804,7 @@ function simulateBranchedNetwork(
     )
     frequencyPlan.output = {
       startHz: frequencyPlan.outputFrequencyHz[0]!,
-      centerHz:
-        frequencyPlan.outputFrequencyHz[
-          Math.floor(frequencyPlan.outputFrequencyHz.length / 2)
-        ]!,
+      centerHz: frequencyPlan.input.centerHz + outputOffsetHz,
       stopHz: frequencyPlan.outputFrequencyHz.at(-1)!,
     }
     frequencyPlan.spectralLines = [
@@ -1123,6 +1158,25 @@ function networkForNode(
         referenceImpedanceOhm,
         node.data.label,
       )
+    case 'transmissionLine':
+      return createTransmissionLine(
+        frequencyHz,
+        finiteParameter(node, 'delayS'),
+        finiteParameter(node, 'insertionLossDb'),
+        referenceImpedanceOhm,
+        node.data.label,
+      )
+    case 'matchingNetwork':
+      return createMatchingNetwork(
+        frequencyHz,
+        matchingTopology(node),
+        matchingResponse(node),
+        finiteParameter(node, 'inductanceH'),
+        finiteParameter(node, 'capacitanceF'),
+        finiteParameter(node, 'componentQ'),
+        referenceImpedanceOhm,
+        node.data.label,
+      )
     case 'idealMixer':
       return createIdealAttenuator(
         frequencyHz,
@@ -1135,12 +1189,16 @@ function networkForNode(
     case 'idealCombiner':
     case 'idealDirectionalCoupler':
     case 'idealDiplexer':
+    case 'idealBalun':
       throw new SimulationError(
         `Block "${node.data.label}" must be evaluated by the N-port graph solver.`,
       )
     case 'probe':
     case 'source':
     case 'load':
+    case 'vcoSource':
+    case 'rxAntenna':
+    case 'txAntenna':
       throw new SimulationError(
         `Block "${node.data.label}" is not a two-port stage.`,
       )
@@ -1216,8 +1274,8 @@ function interpolateLocalNetwork(
 function summarizeStage(
   node: RFProjectNode,
   cumulative: TwoPortNetwork,
+  centerIndex: number,
 ): SimulationStageSummary {
-  const centerIndex = Math.floor(cumulative.frequencyHz.length / 2)
   return {
     nodeId: node.id,
     label: node.data.label,
@@ -1242,10 +1300,13 @@ function validateBlockReferenceImpedances(
       node.data.type !== 'idealRFSwitch' &&
       node.data.type !== 'idealDirectionalCoupler' &&
       node.data.type !== 'idealDiplexer' &&
+      node.data.type !== 'transmissionLine' &&
+      node.data.type !== 'matchingNetwork' &&
+      node.data.type !== 'idealBalun' &&
       node.data.type !== 'idealMixer' &&
       node.data.type !== 'idealSplitter' &&
       node.data.type !== 'idealCombiner' &&
-      node.data.type !== 'load'
+      !isLoadTerminal(node)
     ) {
       continue
     }
@@ -1278,14 +1339,68 @@ function filterType(node: RFProjectNode): IdealFilterType {
   return value
 }
 
+function matchingTopology(node: RFProjectNode): MatchingTopology {
+  const value = node.data.parameters.topology
+  if (value !== 'l' && value !== 'pi' && value !== 't') {
+    throw new SimulationError(
+      `Matching topology is invalid at "${node.data.label}".`,
+    )
+  }
+  return value
+}
+
+function matchingResponse(node: RFProjectNode): MatchingResponse {
+  const value = node.data.parameters.response
+  if (value !== 'lowpass' && value !== 'highpass') {
+    throw new SimulationError(
+      `Matching response is invalid at "${node.data.label}".`,
+    )
+  }
+  return value
+}
+
 function isPassiveIdealTwoPort(node: RFProjectNode): boolean {
   return (
     node.data.type === 'idealAttenuator' ||
     node.data.type === 'idealFilter' ||
     node.data.type === 'idealPhaseShifter' ||
     node.data.type === 'idealIsolator' ||
-    node.data.type === 'idealRFSwitch'
+    node.data.type === 'idealRFSwitch' ||
+    node.data.type === 'transmissionLine' ||
+    node.data.type === 'matchingNetwork'
   )
+}
+
+function operatingPointIndex(
+  frequencyHz: Float64Array,
+  source: RFProjectNode,
+): number {
+  const requested = sourceOperatingFrequency(source)
+  if (requested === null) {
+    return Math.floor(frequencyHz.length / 2)
+  }
+  let nearest = 0
+  for (let index = 1; index < frequencyHz.length; index += 1) {
+    if (
+      Math.abs(frequencyHz[index]! - requested) <
+      Math.abs(frequencyHz[nearest]! - requested)
+    ) {
+      nearest = index
+    }
+  }
+  return nearest
+}
+
+function sourceOperatingFrequency(source: RFProjectNode): number | null {
+  const requested =
+    source.data.type === 'vcoSource'
+      ? Number(source.data.parameters.freeRunningFrequencyHz) +
+        Number(source.data.parameters.tuningSensitivityHzPerV) *
+          Number(source.data.parameters.controlVoltageV)
+      : source.data.parameters.centerFrequencyHz
+  return typeof requested === 'number' && Number.isFinite(requested)
+    ? requested
+    : null
 }
 
 function assertReferenceImpedance(

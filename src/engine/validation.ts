@@ -1,5 +1,10 @@
 import { parseDeviceTableCsv } from './deviceTable'
-import { portsForNode, resolveEdgePort } from './ports'
+import {
+  isLoadTerminal,
+  isSourceTerminal,
+  portsForNode,
+  resolveEdgePort,
+} from './ports'
 import { parseMixerProductCsv } from './mixerProducts'
 import { parseTouchstone } from './touchstone'
 import type { RFProjectEdge, RFProjectNode } from './types'
@@ -49,8 +54,8 @@ export function validateLinearGraph(
     }
   }
 
-  const sources = nodes.filter((node) => node.data.type === 'source')
-  const loads = nodes.filter((node) => node.data.type === 'load')
+  const sources = nodes.filter(isSourceTerminal)
+  const loads = nodes.filter(isLoadTerminal)
   if (sources.length !== 1) {
     issues.push({
       code: 'SOURCE_COUNT',
@@ -267,7 +272,13 @@ function validateIdealNodeParameters(
     node.data.type !== 'idealIsolator' &&
     node.data.type !== 'idealRFSwitch' &&
     node.data.type !== 'idealDirectionalCoupler' &&
-    node.data.type !== 'idealDiplexer'
+    node.data.type !== 'idealDiplexer' &&
+    node.data.type !== 'transmissionLine' &&
+    node.data.type !== 'matchingNetwork' &&
+    node.data.type !== 'idealBalun' &&
+    node.data.type !== 'vcoSource' &&
+    node.data.type !== 'rxAntenna' &&
+    node.data.type !== 'txAntenna'
   ) {
     return
   }
@@ -289,7 +300,7 @@ function validateIdealNodeParameters(
       if (value <= 0) throw new Error(`${key} must be positive`)
       return value
     }
-    positive('referenceImpedanceOhm')
+    if (!isSourceTerminal(node)) positive('referenceImpedanceOhm')
     if (node.data.type === 'idealFilter') {
       const type = node.data.parameters.filterType
       if (
@@ -331,13 +342,46 @@ function validateIdealNodeParameters(
     } else if (node.data.type === 'idealDirectionalCoupler') {
       positive('couplingDb')
       nonnegative('excessLossDb')
-    } else {
+    } else if (node.data.type === 'idealDiplexer') {
       positive('crossoverFrequencyHz')
       const order = number('order')
       if (!Number.isInteger(order) || order < 1 || order > 10) {
         throw new Error('order must be an integer from 1 to 10')
       }
       nonnegative('insertionLossDb')
+    } else if (node.data.type === 'transmissionLine') {
+      nonnegative('delayS')
+      nonnegative('insertionLossDb')
+    } else if (node.data.type === 'matchingNetwork') {
+      if (!['l', 'pi', 't'].includes(String(node.data.parameters.topology))) {
+        throw new Error('topology is invalid')
+      }
+      if (
+        !['lowpass', 'highpass'].includes(String(node.data.parameters.response))
+      ) {
+        throw new Error('response is invalid')
+      }
+      positive('inductanceH')
+      positive('capacitanceF')
+      positive('componentQ')
+    } else if (node.data.type === 'idealBalun') {
+      nonnegative('excessLossDb')
+      number('amplitudeImbalanceDb')
+      number('phaseErrorDeg')
+      nonnegative('isolationDb')
+    } else if (node.data.type === 'vcoSource') {
+      const frequency =
+        positive('freeRunningFrequencyHz') +
+        number('tuningSensitivityHzPerV') * number('controlVoltageV')
+      if (frequency <= 0) throw new Error('tuned frequency must be positive')
+      number('powerDbm')
+      positive('sourceImpedanceOhm')
+    } else if (node.data.type === 'rxAntenna') {
+      positive('centerFrequencyHz')
+      number('powerDbm')
+      positive('sourceImpedanceOhm')
+    } else {
+      positive('loadImpedanceOhm')
     }
   } catch (error) {
     issues.push({

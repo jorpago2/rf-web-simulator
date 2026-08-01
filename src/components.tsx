@@ -349,7 +349,7 @@ export function PropertiesPanel() {
         </>
       )}
 
-      {node.data.type === 'load' && (
+      {(node.data.type === 'load' || node.data.type === 'txAntenna') && (
         <>
           <NumberField
             label="Load impedance"
@@ -366,6 +366,87 @@ export function PropertiesPanel() {
             onChange={(value) =>
               updateParameters(node.id, { loadImpedanceToleranceOhm: value })
             }
+          />
+        </>
+      )}
+
+      {node.data.type === 'rxAntenna' && (
+        <>
+          <NumberField
+            label="Received center frequency"
+            unit="Hz"
+            min={Number.MIN_VALUE}
+            value={numberValue(node.data.parameters.centerFrequencyHz, 1e9)}
+            onChange={(value) => setNumber('centerFrequencyHz', value)}
+          />
+          <NumberField
+            label="Available received power"
+            unit="dBm"
+            value={numberValue(node.data.parameters.powerDbm, -80)}
+            onChange={(value) => setNumber('powerDbm', value)}
+          />
+          <NumberField
+            label="Antenna source impedance"
+            unit="Ω"
+            min={0.01}
+            value={numberValue(node.data.parameters.sourceImpedanceOhm, 50)}
+            onChange={(value) => setNumber('sourceImpedanceOhm', value)}
+          />
+        </>
+      )}
+
+      {node.data.type === 'vcoSource' && (
+        <>
+          <NumberField
+            label="Free-running frequency"
+            unit="Hz"
+            min={Number.MIN_VALUE}
+            value={numberValue(
+              node.data.parameters.freeRunningFrequencyHz,
+              0.9e9,
+            )}
+            onChange={(value) => setNumber('freeRunningFrequencyHz', value)}
+          />
+          <NumberField
+            label="Tuning sensitivity"
+            unit="Hz/V"
+            value={numberValue(
+              node.data.parameters.tuningSensitivityHzPerV,
+              100e6,
+            )}
+            onChange={(value) => setNumber('tuningSensitivityHzPerV', value)}
+          />
+          <NumberField
+            label="Control voltage"
+            unit="V"
+            value={numberValue(node.data.parameters.controlVoltageV, 1)}
+            onChange={(value) => setNumber('controlVoltageV', value)}
+          />
+          <p className="empty-state">
+            Tuned frequency:{' '}
+            {formatFrequency(
+              numberValue(
+                node.data.parameters.freeRunningFrequencyHz,
+                0.9e9,
+              ) +
+                numberValue(
+                  node.data.parameters.tuningSensitivityHzPerV,
+                  100e6,
+                ) * numberValue(node.data.parameters.controlVoltageV, 1),
+            )}
+          </p>
+          <NumberField
+            label="Output power"
+            unit="dBm"
+            value={numberValue(node.data.parameters.powerDbm, 10)}
+            onChange={(value) => setNumber('powerDbm', value)}
+          />
+          <NumberField
+            label="Source impedance"
+            unit="Ω"
+            min={0.01}
+            value={numberValue(node.data.parameters.sourceImpedanceOhm, 50)}
+            onChange={(value) => setNumber('sourceImpedanceOhm', value)}
           />
         </>
       )}
@@ -795,6 +876,107 @@ export function PropertiesPanel() {
             onChange={(value) =>
               updateParameters(node.id, { insertionLossToleranceDb: value })
             }
+          />
+        </>
+      )}
+
+      {node.data.type === 'transmissionLine' && (
+        <>
+          <NumberField
+            label="Propagation delay"
+            unit="s"
+            min={0}
+            value={numberValue(node.data.parameters.delayS, 1e-9)}
+            onChange={(value) => setNumber('delayS', value)}
+          />
+          <NumberField
+            label="Insertion loss"
+            unit="dB"
+            min={0}
+            value={numberValue(node.data.parameters.insertionLossDb, 0.5)}
+            onChange={(value) => setNumber('insertionLossDb', value)}
+          />
+        </>
+      )}
+
+      {node.data.type === 'matchingNetwork' && (
+        <>
+          <label className="field">
+            <span>Topology</span>
+            <select
+              value={String(node.data.parameters.topology ?? 'l')}
+              onChange={(event) =>
+                updateParameters(node.id, { topology: event.target.value })
+              }
+            >
+              <option value="l">L network</option>
+              <option value="pi">π network (symmetric)</option>
+              <option value="t">T network (symmetric)</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Reactive arrangement</span>
+            <select
+              value={String(node.data.parameters.response ?? 'lowpass')}
+              onChange={(event) =>
+                updateParameters(node.id, { response: event.target.value })
+              }
+            >
+              <option value="lowpass">Low-pass: series L / shunt C</option>
+              <option value="highpass">High-pass: series C / shunt L</option>
+            </select>
+          </label>
+          <NumberField
+            label="Inductance (each)"
+            unit="H"
+            min={Number.MIN_VALUE}
+            value={numberValue(node.data.parameters.inductanceH, 10e-9)}
+            onChange={(value) => setNumber('inductanceH', value)}
+          />
+          <NumberField
+            label="Capacitance (each)"
+            unit="F"
+            min={Number.MIN_VALUE}
+            value={numberValue(node.data.parameters.capacitanceF, 2.5e-12)}
+            onChange={(value) => setNumber('capacitanceF', value)}
+          />
+          <NumberField
+            label="Component Q"
+            unit=""
+            min={Number.MIN_VALUE}
+            value={numberValue(node.data.parameters.componentQ, 100)}
+            onChange={(value) => setNumber('componentQ', value)}
+          />
+        </>
+      )}
+
+      {node.data.type === 'idealBalun' && (
+        <>
+          <NumberField
+            label="Excess loss"
+            unit="dB"
+            min={0}
+            value={numberValue(node.data.parameters.excessLossDb, 1)}
+            onChange={(value) => setNumber('excessLossDb', value)}
+          />
+          <NumberField
+            label="Amplitude imbalance N/P"
+            unit="dB"
+            value={numberValue(node.data.parameters.amplitudeImbalanceDb, 0)}
+            onChange={(value) => setNumber('amplitudeImbalanceDb', value)}
+          />
+          <NumberField
+            label="Phase error from 180°"
+            unit="deg"
+            value={numberValue(node.data.parameters.phaseErrorDeg, 0)}
+            onChange={(value) => setNumber('phaseErrorDeg', value)}
+          />
+          <NumberField
+            label="Output isolation"
+            unit="dB"
+            min={0}
+            value={numberValue(node.data.parameters.isolationDb, 120)}
+            onChange={(value) => setNumber('isolationDb', value)}
           />
         </>
       )}
@@ -1380,6 +1562,11 @@ function defaultSweepRange(key: string, nominal: number): [number, number] {
     'forwardLossDb',
     'reverseIsolationDb',
     'couplingDb',
+    'delayS',
+    'inductanceH',
+    'capacitanceF',
+    'componentQ',
+    'freeRunningFrequencyHz',
     'cutoffFrequencyHz',
     'centerFrequencyHz',
     'crossoverFrequencyHz',

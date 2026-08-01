@@ -37,6 +37,12 @@ export type RFNodeType =
   | 'idealRFSwitch'
   | 'idealDirectionalCoupler'
   | 'idealDiplexer'
+  | 'transmissionLine'
+  | 'matchingNetwork'
+  | 'idealBalun'
+  | 'vcoSource'
+  | 'rxAntenna'
+  | 'txAntenna'
   | 'idealMixer'
   | 'idealSplitter'
   | 'idealCombiner'
@@ -104,6 +110,8 @@ export interface RFProject {
 
 export type MixerMode = 'downconvert' | 'upconvert'
 export type IdealFilterType = 'lowpass' | 'highpass' | 'bandpass' | 'bandstop'
+export type MatchingTopology = 'l' | 'pi' | 't'
+export type MatchingResponse = 'lowpass' | 'highpass'
 
 export interface FrequencyRange {
   startHz: number

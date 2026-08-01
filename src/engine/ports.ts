@@ -47,6 +47,22 @@ const PORTS: Record<RFNodeType, readonly RFPortDescriptor[]> = {
     { id: 'low', label: 'LOW', role: 'output' },
     { id: 'high', label: 'HIGH', role: 'output' },
   ],
+  transmissionLine: [
+    { id: 'input', label: 'IN', role: 'input' },
+    { id: 'output', label: 'OUT', role: 'output' },
+  ],
+  matchingNetwork: [
+    { id: 'input', label: 'IN', role: 'input' },
+    { id: 'output', label: 'OUT', role: 'output' },
+  ],
+  idealBalun: [
+    { id: 'input', label: 'UNBAL', role: 'input' },
+    { id: 'positive', label: 'P', role: 'output' },
+    { id: 'negative', label: 'N', role: 'output' },
+  ],
+  vcoSource: [{ id: 'output', label: 'RF', role: 'output' }],
+  rxAntenna: [{ id: 'output', label: 'RX', role: 'output' }],
+  txAntenna: [{ id: 'input', label: 'TX', role: 'input' }],
   idealMixer: [
     { id: 'input', label: 'RF', role: 'input' },
     { id: 'output', label: 'IF', role: 'output' },
@@ -91,6 +107,14 @@ export function portsForData(data: RFNodeData): readonly RFPortDescriptor[] {
 
 export function portsForType(type: RFNodeType): readonly RFPortDescriptor[] {
   return PORTS[type]
+}
+
+export function isSourceTerminal(node: RFProjectNode): boolean {
+  return ['source', 'vcoSource', 'rxAntenna'].includes(node.data.type)
+}
+
+export function isLoadTerminal(node: RFProjectNode): boolean {
+  return ['load', 'txAntenna'].includes(node.data.type)
 }
 
 export function resolveEdgePort(

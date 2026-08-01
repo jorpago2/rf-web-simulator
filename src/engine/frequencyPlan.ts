@@ -39,13 +39,23 @@ export function calculateFrequencyPlan(
   inputFrequencyHz: Float64Array,
   mixers: FrequencyMixerInput[],
   inputPowerDbm: number | null = null,
+  operatingInputFrequencyHz: number | null = null,
 ): FrequencyPlanResult {
   validateGrid(inputFrequencyHz)
-  const input = range(inputFrequencyHz)
+  if (
+    operatingInputFrequencyHz !== null &&
+    (!Number.isFinite(operatingInputFrequencyHz) ||
+      operatingInputFrequencyHz <= 0)
+  ) {
+    throw new RangeError('Operating input frequency must be positive.')
+  }
+  let operatingFrequencyHz =
+    operatingInputFrequencyHz ?? range(inputFrequencyHz).centerHz
+  const input = { ...range(inputFrequencyHz), centerHz: operatingFrequencyHz }
   let current = new Float64Array(inputFrequencyHz)
   let spectralLines: FrequencySpectralLine[] = [
     {
-      frequencyHz: input.centerHz,
+      frequencyHz: operatingFrequencyHz,
       powerDbm: inputPowerDbm,
       phaseDeg: inputPowerDbm === null ? null : 0,
       path: 'Input',
@@ -68,7 +78,7 @@ export function calculateFrequencyPlan(
       mixer.label,
       0,
     )
-    const mixerInput = range(current)
+    const mixerInput = { ...range(current), centerHz: operatingFrequencyHz }
     const output = new Float64Array(current.length)
     for (let index = 0; index < current.length; index += 1) {
       const inputHz = current[index]!
@@ -83,7 +93,16 @@ export function calculateFrequencyPlan(
       }
       output[index] = outputHz
     }
-    const mixerOutput = range(output)
+    operatingFrequencyHz =
+      mixer.mode === 'upconvert'
+        ? operatingFrequencyHz + mixer.loFrequencyHz
+        : operatingFrequencyHz - mixer.loFrequencyHz
+    if (operatingFrequencyHz <= 0) {
+      throw new RangeError(
+        `${mixer.label}: tuned input frequency must exceed the LO frequency for difference conversion.`,
+      )
+    }
+    const mixerOutput = { ...range(output), centerHz: operatingFrequencyHz }
     const imageFrequencyHz =
       mixer.mode === 'downconvert'
         ? 2 * mixer.loFrequencyHz - mixerInput.centerHz
@@ -184,7 +203,7 @@ export function calculateFrequencyPlan(
 
   return {
     input,
-    output: range(current),
+    output: { ...range(current), centerHz: operatingFrequencyHz },
     outputFrequencyHz: current,
     stages,
     spectralLines,

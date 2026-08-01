@@ -106,7 +106,7 @@ function scatteringToAbcd(
   ]
 }
 
-function abcdToScattering(
+export function abcdToScattering(
   abcd: ComplexValue[],
   referenceImpedanceOhm: number,
 ): ComplexValue[] {

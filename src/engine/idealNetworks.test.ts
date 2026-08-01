@@ -7,6 +7,8 @@ import {
   createIdealIsolator,
   createIdealPhaseShifter,
   createIdealRFSwitch,
+  createMatchingNetwork,
+  createTransmissionLine,
 } from './idealNetworks'
 import { calculateNetworkChecks } from './networkChecks'
 
@@ -111,5 +113,35 @@ describe('additional ideal RF networks', () => {
         high.re[0]! ** 2 +
         high.im[0]! ** 2,
     ).toBeCloseTo(10 ** (-1 / 10), 10)
+  })
+
+  it('applies causal transmission-line delay and matched loss', () => {
+    const network = createTransmissionLine(
+      new Float64Array([1e9]),
+      0.25e-9,
+      0.5,
+      50,
+    )
+    const transmission = { re: network.s21.re[0]!, im: network.s21.im[0]! }
+    expect(magnitudeDb(transmission)).toBeCloseTo(-0.5, 10)
+    expect(phaseDegrees(transmission)).toBeCloseTo(-90, 10)
+    expect(network.s11.re[0]).toBe(0)
+  })
+
+  it('creates a reciprocal passive finite-Q lumped matching network', () => {
+    const network = createMatchingNetwork(
+      new Float64Array([1e9]),
+      'pi',
+      'lowpass',
+      10e-9,
+      2.5e-12,
+      100,
+      50,
+    )
+    expect(network.s12.re[0]).toBeCloseTo(network.s21.re[0]!, 12)
+    expect(network.s12.im[0]).toBeCloseTo(network.s21.im[0]!, 12)
+    expect(
+      calculateNetworkChecks(network).passivityMaximumSingularValue[0],
+    ).toBeLessThanOrEqual(1 + 1e-12)
   })
 })
