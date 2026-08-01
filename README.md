@@ -106,6 +106,10 @@ All selected files and calculations remain on the device. The MVP includes no
 analytics, telemetry, remote database, authentication, or upload endpoint.
 Imported text is parsed as data and never executed.
 
+## Citation
+
+If you use this software in a scientific publication, please cite the exact version used. Citation metadata are provided in [`CITATION.cff`](CITATION.cff); GitHub's **Cite this repository** menu exports them in BibTeX and APA formats.
+
 ## License
 
 [MIT](LICENSE). Direct runtime dependencies used in this iteration are MIT
