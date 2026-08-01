@@ -1,6 +1,6 @@
 export const strings = {
   appName: 'RF Web Simulator',
-  version: 'MVP 0.1 · foundation',
+  version: 'MVP 0.2 · numerical core',
   localPrivacy: 'Files and calculations stay on this device.',
   libraryTitle: 'Block library',
   libraryHint: 'Drag a block to the canvas or click to add it.',
@@ -9,5 +9,5 @@ export const strings = {
   emptyProperties: 'Select a block to edit its parameters.',
   resultsTitle: 'Analysis',
   resultsPlaceholder:
-    'The numerical cascade and plots arrive in the next iteration. The editor and Touchstone validation are ready.',
+    'Run the validated source-to-load chain to inspect its center-frequency S-parameters and accumulated stage gain.',
 } as const

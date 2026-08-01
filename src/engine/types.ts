@@ -63,3 +63,27 @@ export interface RFProject {
   analysis: RFAnalysisSettings
   assets: Record<string, RFEmbeddedAsset>
 }
+
+export interface SimulationWarning {
+  code: 'RANGE_CLIPPED' | 'CASCADE_NEAR_SINGULAR'
+  message: string
+  frequencyHz?: number
+}
+
+export interface SimulationStageSummary {
+  nodeId: NodeId
+  label: string
+  s21DbAtCenter: number
+}
+
+export interface SimulationInput {
+  nodes: RFProjectNode[]
+  edges: RFProjectEdge[]
+  analysis: RFAnalysisSettings
+}
+
+export interface SimulationOutput {
+  total: TwoPortNetwork
+  stageSummaries: SimulationStageSummary[]
+  warnings: SimulationWarning[]
+}

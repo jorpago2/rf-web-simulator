@@ -1,7 +1,12 @@
 import { useState, type ChangeEvent, type DragEvent } from 'react'
 import { blockDescriptors } from './diagram/nodeRegistry'
 import { parseTouchstoneS2P } from './engine/touchstone'
-import type { RFNodeType } from './engine/types'
+import { magnitudeDb, phaseDegrees } from './engine/complex'
+import type {
+  RFAnalysisSettings,
+  RFNodeType,
+  SimulationOutput,
+} from './engine/types'
 import { useRFEditorStore } from './app/store'
 import { strings } from './app/strings'
 
@@ -267,4 +272,228 @@ function NumberField({
 
 function numberValue(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback
+}
+
+export type SimulationStatus = 'idle' | 'running' | 'success' | 'error'
+
+export function SimulationPanel({
+  analysis,
+  status,
+  result,
+  error,
+  onAnalysisChange,
+  onRun,
+}: {
+  analysis: RFAnalysisSettings
+  status: SimulationStatus
+  result: SimulationOutput | null
+  error: string | null
+  onAnalysisChange: (analysis: RFAnalysisSettings) => void
+  onRun: () => void
+}) {
+  const update = (values: Partial<RFAnalysisSettings>) =>
+    onAnalysisChange({ ...analysis, ...values })
+
+  return (
+    <section className="results-panel" aria-labelledby="results-title">
+      <div className="results-header">
+        <div
+          className="results-tabs"
+          role="tablist"
+          aria-label="Analysis views"
+        >
+          <button type="button" role="tab" aria-selected="true">
+            S-parameters
+          </button>
+          <button type="button" role="tab" aria-selected="false" disabled>
+            Phase plot
+          </button>
+          <button type="button" role="tab" aria-selected="false" disabled>
+            Group delay
+          </button>
+        </div>
+        <div
+          className="analysis-controls"
+          aria-label="Frequency analysis settings"
+        >
+          <CompactNumberField
+            label="Start"
+            unit="GHz"
+            min={0}
+            step={0.01}
+            value={analysis.startHz / 1e9}
+            onChange={(value) => update({ startHz: value * 1e9 })}
+          />
+          <CompactNumberField
+            label="Stop"
+            unit="GHz"
+            min={0}
+            step={0.01}
+            value={analysis.stopHz / 1e9}
+            onChange={(value) => update({ stopHz: value * 1e9 })}
+          />
+          <CompactNumberField
+            label="Points"
+            min={2}
+            max={10_001}
+            step={1}
+            value={analysis.points}
+            onChange={(value) => update({ points: value })}
+          />
+          <CompactNumberField
+            label="Z₀"
+            unit="Ω"
+            min={0.01}
+            step={1}
+            value={analysis.referenceImpedanceOhm}
+            onChange={(value) => update({ referenceImpedanceOhm: value })}
+          />
+          <button
+            className="run-button"
+            type="button"
+            disabled={status === 'running'}
+            onClick={onRun}
+          >
+            {status === 'running' ? 'Simulating…' : 'Run simulation'}
+          </button>
+        </div>
+      </div>
+
+      <div aria-live="polite">
+        {status === 'error' && error && (
+          <div className="simulation-message simulation-message--error">
+            <strong>Simulation stopped</strong>
+            <p>{error}</p>
+          </div>
+        )}
+        {status !== 'error' && result ? (
+          <SimulationSummary result={result} />
+        ) : (
+          status !== 'error' && (
+            <div className="results-empty">
+              <span className="results-empty__trace" aria-hidden="true" />
+              <div>
+                <h2 id="results-title">{strings.resultsTitle}</h2>
+                <p>{strings.resultsPlaceholder}</p>
+              </div>
+            </div>
+          )
+        )}
+      </div>
+    </section>
+  )
+}
+
+function SimulationSummary({ result }: { result: SimulationOutput }) {
+  const network = result.total
+  const centerIndex = Math.floor(network.frequencyHz.length / 2)
+  const sParameters = [
+    ['S11', network.s11],
+    ['S21', network.s21],
+    ['S12', network.s12],
+    ['S22', network.s22],
+  ] as const
+  const centerFrequencyHz = network.frequencyHz[centerIndex]!
+
+  return (
+    <div className="simulation-summary">
+      <div className="metric-grid">
+        {sParameters.map(([label, values]) => {
+          const complex = {
+            re: values.re[centerIndex]!,
+            im: values.im[centerIndex]!,
+          }
+          return (
+            <div className="metric-card" key={label}>
+              <span>{label}</span>
+              <strong>{formatDb(magnitudeDb(complex))}</strong>
+              <small>{formatDegrees(phaseDegrees(complex))}</small>
+            </div>
+          )
+        })}
+        <div className="metric-card metric-card--range">
+          <span>Center / points</span>
+          <strong>{formatFrequency(centerFrequencyHz)}</strong>
+          <small>
+            {network.frequencyHz.length.toLocaleString('en-US')} points
+          </small>
+        </div>
+      </div>
+
+      {result.stageSummaries.length > 0 && (
+        <ol className="stage-list" aria-label="Accumulated stage gain">
+          {result.stageSummaries.map((stage) => (
+            <li key={stage.nodeId}>
+              <span>{stage.label}</span>
+              <strong>{formatDb(stage.s21DbAtCenter)}</strong>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {result.warnings.length > 0 && (
+        <ul className="warning-list">
+          {result.warnings.map((warning, index) => (
+            <li key={`${warning.code}-${warning.frequencyHz ?? index}`}>
+              {warning.message}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+function CompactNumberField({
+  label,
+  unit,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+}: {
+  label: string
+  unit?: string
+  value: number
+  min?: number
+  max?: number
+  step: number
+  onChange: (value: number) => void
+}) {
+  return (
+    <label className="compact-field">
+      <span>{label}</span>
+      <span>
+        <input
+          type="number"
+          value={value}
+          min={min}
+          max={max}
+          step={step}
+          onChange={(event) => {
+            if (Number.isFinite(event.target.valueAsNumber)) {
+              onChange(event.target.valueAsNumber)
+            }
+          }}
+        />
+        {unit && <small>{unit}</small>}
+      </span>
+    </label>
+  )
+}
+
+function formatDb(value: number): string {
+  if (value === Number.NEGATIVE_INFINITY) return '−∞ dB'
+  return Number.isFinite(value) ? `${value.toFixed(2)} dB` : '—'
+}
+
+function formatDegrees(value: number): string {
+  return Number.isFinite(value) ? `${value.toFixed(1)}°` : '—'
+}
+
+function formatFrequency(frequencyHz: number): string {
+  return frequencyHz >= 1e9
+    ? `${(frequencyHz / 1e9).toFixed(3)} GHz`
+    : `${(frequencyHz / 1e6).toFixed(3)} MHz`
 }
