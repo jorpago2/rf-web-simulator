@@ -1,0 +1,86 @@
+import type { RFNodeData, RFNodeType } from '../engine/types'
+
+export interface BlockDescriptor {
+  type: RFNodeType
+  label: string
+  description: string
+  symbol: string
+  accent: string
+  defaultParameters: Record<string, unknown>
+}
+
+export const blockDescriptors: readonly BlockDescriptor[] = [
+  {
+    type: 'source',
+    label: 'RF source',
+    description: 'Signal origin',
+    symbol: 'SRC',
+    accent: '#48b8a5',
+    defaultParameters: { centerFrequencyHz: 1e9, powerDbm: 0 },
+  },
+  {
+    type: 'touchstone2Port',
+    label: 'Touchstone 2-port',
+    description: 'Local .s2p network',
+    symbol: 'S2P',
+    accent: '#6ea8fe',
+    defaultParameters: {},
+  },
+  {
+    type: 'idealAmplifier',
+    label: 'Ideal amplifier',
+    description: 'Matched forward gain',
+    symbol: 'AMP',
+    accent: '#f1b75b',
+    defaultParameters: {
+      gainDb: 10,
+      phaseDeg: 0,
+      referenceImpedanceOhm: 50,
+    },
+  },
+  {
+    type: 'idealAttenuator',
+    label: 'Ideal attenuator',
+    description: 'Matched insertion loss',
+    symbol: 'ATT',
+    accent: '#ee7b65',
+    defaultParameters: {
+      attenuationDb: 3,
+      phaseDeg: 0,
+      referenceImpedanceOhm: 50,
+    },
+  },
+  {
+    type: 'probe',
+    label: 'Probe',
+    description: 'Accumulated result point',
+    symbol: 'PRB',
+    accent: '#a98bea',
+    defaultParameters: {},
+  },
+  {
+    type: 'load',
+    label: 'Load',
+    description: 'Chain termination',
+    symbol: '50Ω',
+    accent: '#8d9aa8',
+    defaultParameters: { referenceImpedanceOhm: 50 },
+  },
+]
+
+export function getBlockDescriptor(type: RFNodeType): BlockDescriptor {
+  const descriptor = blockDescriptors.find(
+    (candidate) => candidate.type === type,
+  )
+  if (!descriptor) throw new Error(`Unknown RF block type: ${type}`)
+  return descriptor
+}
+
+export function createNodeData(type: RFNodeType): RFNodeData {
+  const descriptor = getBlockDescriptor(type)
+  return {
+    label: descriptor.label,
+    type,
+    parameters: { ...descriptor.defaultParameters },
+  }
+}
