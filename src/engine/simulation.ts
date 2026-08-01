@@ -73,8 +73,22 @@ export function simulateLinearChain(input: SimulationInput): SimulationOutput {
     parsedNetworks.set(node.id, network)
   }
 
+  const localFrequencyOffsetsHz = new Map<string, number>()
+  let localFrequencyOffsetHz = 0
+  for (const node of orderedNodes) {
+    localFrequencyOffsetsHz.set(node.id, localFrequencyOffsetHz)
+    if (node.data.type === 'idealMixer') {
+      const loFrequencyHz = finiteParameter(node, 'loFrequencyHz')
+      localFrequencyOffsetHz +=
+        mixerMode(node) === 'upconvert' ? loFrequencyHz : -loFrequencyHz
+    }
+  }
+
   const commonGrid = buildCommonFrequencyGrid(
-    [...parsedNetworks.values()],
+    [...parsedNetworks].map(([nodeId, network]) => ({
+      network,
+      inputFrequencyOffsetHz: localFrequencyOffsetsHz.get(nodeId) ?? 0,
+    })),
     input.analysis,
   )
   const warnings = [...commonGrid.warnings]
@@ -94,7 +108,7 @@ export function simulateLinearChain(input: SimulationInput): SimulationOutput {
     warnings.push({
       code: 'FREQUENCY_CONVERSION_MODEL',
       message:
-        'Mixer results are an ideal conversion-gain envelope versus input frequency; conversion phase, images, LO leakage, spurs, and translated-frequency Touchstone stages are not modeled.',
+        'Mixer results are an ideal conversion-gain envelope versus input frequency. Post-mixer Touchstone stages are evaluated at their translated local frequency; conversion phase, images, LO leakage, and spurs are not modeled.',
     })
   }
   let cumulative = createThroughNetwork(
@@ -119,6 +133,7 @@ export function simulateLinearChain(input: SimulationInput): SimulationOutput {
       const stageNetwork = networkForNode(
         node,
         commonGrid.frequencyHz,
+        localFrequencyOffsetsHz.get(node.id) ?? 0,
         input.analysis.referenceImpedanceOhm,
         parsedNetworks,
       )
@@ -190,6 +205,7 @@ function budgetStage(
 function networkForNode(
   node: RFProjectNode,
   frequencyHz: Float64Array,
+  localFrequencyOffsetHz: number,
   referenceImpedanceOhm: number,
   parsedNetworks: Map<string, TwoPortNetwork>,
 ): TwoPortNetwork {
@@ -200,7 +216,22 @@ function networkForNode(
         throw new SimulationError(
           `Missing parsed network for "${node.data.label}".`,
         )
-      return interpolateNetwork(network, frequencyHz)
+      const localFrequencyHz = Float64Array.from(
+        frequencyHz,
+        (value) => value + localFrequencyOffsetHz,
+      )
+      localFrequencyHz[0] = Math.max(
+        localFrequencyHz[0]!,
+        network.frequencyHz[0]!,
+      )
+      localFrequencyHz[localFrequencyHz.length - 1] = Math.min(
+        localFrequencyHz.at(-1)!,
+        network.frequencyHz.at(-1)!,
+      )
+      return {
+        ...interpolateNetwork(network, localFrequencyHz),
+        frequencyHz,
+      }
     }
     case 'idealAmplifier':
       return createIdealAmplifier(

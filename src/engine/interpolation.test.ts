@@ -30,14 +30,35 @@ describe('Cartesian network interpolation', () => {
   })
 
   it('uses the common intersection and warns when clipping', () => {
-    const result = buildCommonFrequencyGrid([network(2, 5), network(3, 6)], {
-      startHz: 1,
-      stopHz: 7,
-      points: 3,
-      referenceImpedanceOhm: 50,
-    })
+    const result = buildCommonFrequencyGrid(
+      [
+        { network: network(2, 5), inputFrequencyOffsetHz: 0 },
+        { network: network(3, 6), inputFrequencyOffsetHz: 0 },
+      ],
+      {
+        startHz: 1,
+        stopHz: 7,
+        points: 3,
+        referenceImpedanceOhm: 50,
+      },
+    )
 
     expect(result.frequencyHz).toEqual(new Float64Array([3, 4, 5]))
+    expect(result.warnings[0]?.code).toBe('RANGE_CLIPPED')
+  })
+
+  it('maps a translated network range back to the input grid', () => {
+    const result = buildCommonFrequencyGrid(
+      [{ network: network(0.1e9, 0.3e9), inputFrequencyOffsetHz: -0.9e9 }],
+      {
+        startHz: 0.9e9,
+        stopHz: 1.3e9,
+        points: 3,
+        referenceImpedanceOhm: 50,
+      },
+    )
+
+    expect(result.frequencyHz).toEqual(new Float64Array([1e9, 1.1e9, 1.2e9]))
     expect(result.warnings[0]?.code).toBe('RANGE_CLIPPED')
   })
 

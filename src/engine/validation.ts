@@ -10,7 +10,6 @@ export type GraphIssueCode =
   | 'CYCLE'
   | 'DISCONNECTED_NODE'
   | 'INVALID_TOUCHSTONE'
-  | 'TOUCHSTONE_AFTER_MIXER'
 
 export interface GraphIssue {
   code: GraphIssueCode
@@ -145,20 +144,6 @@ export function validateLinearGraph(
         message: `Block "${node.data.label}" is not on the source-to-load path.`,
       })
     }
-  }
-
-  let mixerSeen = false
-  for (const nodeId of orderedNodeIds) {
-    const node = nodesById.get(nodeId)
-    if (!node) continue
-    if (mixerSeen && node.data.type === 'touchstone2Port') {
-      issues.push({
-        code: 'TOUCHSTONE_AFTER_MIXER',
-        nodeId,
-        message: `Touchstone block "${node.data.label}" follows a mixer; translated-frequency S2P evaluation is not supported in this iteration.`,
-      })
-    }
-    if (node.data.type === 'idealMixer') mixerSeen = true
   }
 
   return { valid: issues.length === 0, orderedNodeIds, issues }

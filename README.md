@@ -6,7 +6,7 @@ backend, account, upload, or runtime other than a modern browser is required.
 
 Online demo: <https://jorpago2.github.io/rf-web-simulator/>
 
-## Current iteration: 0.7 frequency conversion
+## Current iteration: 0.8 translated Touchstone evaluation
 
 - Vite, React, strict TypeScript, React Flow, and Zustand.
 - Desktop/tablet RF editor with seven draggable block types.
@@ -37,6 +37,8 @@ Online demo: <https://jorpago2.github.io/rf-web-simulator/>
   conservative cascaded P1dB, and reciprocal cascaded IP3 bookkeeping.
 - Ideal mixer with sum/difference conversion, explicit LO, conversion loss,
   frequency-plan table, conversion-envelope plot, and output-frequency CSV data.
+- Touchstone stages after mixers evaluated on their translated local-frequency
+  grids, with the corresponding input sweep clipped rather than extrapolated.
 - Deterministic analytical and integration tests.
 - CI and GitHub Pages deployment workflows.
 
@@ -147,8 +149,9 @@ The conversion curve is plotted against RF input frequency, while CSV adds the
 corresponding `output_frequency_hz` sample. This is not a conventional same-
 frequency two-port S matrix: conversion phase and group delay are left undefined,
 and image responses, other mixing products, LO leakage, isolation, and spurs are
-not modeled. Touchstone stages after a mixer are rejected because they require
-evaluation on the translated frequency grid; ideal gain/loss stages remain valid.
+not modeled. A Touchstone stage after a mixer is interpolated at its translated
+local frequency while results remain indexed by the RF input sweep. This is a
+selected-product envelope, not a frequency-converting multiport S matrix.
 
 ## Phase and group delay
 
@@ -168,9 +171,8 @@ sampling condition is not met.
 
 ## Roadmap
 
-1. Evaluate post-mixer Touchstone stages on translated frequency grids.
-2. Image-frequency, rejection, LO leakage, and spur planning.
-3. PWA/offline installation only if classroom use demonstrates a need.
+1. Image-frequency, rejection, LO leakage, and spur planning.
+2. PWA/offline installation only if classroom use demonstrates a need.
 
 ## Project files and local storage
 

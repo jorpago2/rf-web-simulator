@@ -11,17 +11,26 @@ export interface CommonFrequencyGrid {
 }
 
 export function buildCommonFrequencyGrid(
-  networks: TwoPortNetwork[],
+  networks: Array<{
+    network: TwoPortNetwork
+    inputFrequencyOffsetHz: number
+  }>,
   analysis: RFAnalysisSettings,
 ): CommonFrequencyGrid {
   validateAnalysis(analysis)
 
   let startHz = analysis.startHz
   let stopHz = analysis.stopHz
-  for (const network of networks) {
+  for (const { network, inputFrequencyOffsetHz } of networks) {
     validateNetworkGrid(network)
-    startHz = Math.max(startHz, network.frequencyHz[0]!)
-    stopHz = Math.min(stopHz, network.frequencyHz.at(-1)!)
+    startHz = Math.max(
+      startHz,
+      network.frequencyHz[0]! - inputFrequencyOffsetHz,
+    )
+    stopHz = Math.min(
+      stopHz,
+      network.frequencyHz.at(-1)! - inputFrequencyOffsetHz,
+    )
   }
 
   if (!(startHz < stopHz)) {

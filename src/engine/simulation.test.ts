@@ -160,6 +160,49 @@ describe('RF simulation integration', () => {
     )
   })
 
+  it('evaluates a post-mixer Touchstone network on its translated grid', () => {
+    const ifFilter = [
+      '# GHz S RI R 50',
+      '0.1 0 0 0.5 0 0 0 0 0',
+      '0.3 0 0 1 0 0 0 0 0',
+    ].join('\n')
+    const result = simulateLinearChain({
+      analysis: {
+        startHz: 0.9e9,
+        stopHz: 1.3e9,
+        points: 3,
+        referenceImpedanceOhm: 50,
+      },
+      nodes: [
+        node('src', 'source', {}),
+        node('mixer', 'idealMixer', {
+          loFrequencyHz: 0.9e9,
+          mixerMode: 'downconvert',
+          conversionLossDb: 0,
+          referenceImpedanceOhm: 50,
+        }),
+        node('if-filter', 'touchstone2Port', { content: ifFilter }),
+        node('load', 'load', { referenceImpedanceOhm: 50 }),
+      ],
+      edges: [
+        { id: 'a', source: 'src', target: 'mixer' },
+        { id: 'b', source: 'mixer', target: 'if-filter' },
+        { id: 'c', source: 'if-filter', target: 'load' },
+      ],
+    })
+
+    expect(result.total.frequencyHz).toEqual(
+      new Float64Array([1e9, 1.1e9, 1.2e9]),
+    )
+    expect(result.frequencyPlan.outputFrequencyHz).toEqual(
+      new Float64Array([0.1e9, 0.2e9, 0.3e9]),
+    )
+    expect(result.total.s21.re).toEqual(new Float64Array([0.5, 0.75, 1]))
+    expect(result.warnings).toContainEqual(
+      expect.objectContaining({ code: 'RANGE_CLIPPED' }),
+    )
+  })
+
   it('rejects mismatched reference impedances explicitly', () => {
     expect(() =>
       simulateLinearChain({

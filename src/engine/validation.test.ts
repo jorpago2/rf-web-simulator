@@ -65,7 +65,7 @@ describe('linear RF graph validation', () => {
     )
   })
 
-  it('rejects Touchstone stages after frequency conversion', () => {
+  it('accepts Touchstone stages after frequency conversion', () => {
     const touchstone = '# GHz S RI R 50\n1 0 0 1 0 0 0 0 0\n2 0 0 1 0 0 0 0 0'
     const result = validateLinearGraph(
       [
@@ -81,11 +81,6 @@ describe('linear RF graph validation', () => {
       ],
     )
 
-    expect(result.issues).toContainEqual(
-      expect.objectContaining({
-        code: 'TOUCHSTONE_AFTER_MIXER',
-        nodeId: 'if-filter',
-      }),
-    )
+    expect(result.valid).toBe(true)
   })
 })
