@@ -207,6 +207,104 @@ export function createIdealIsolator(
   }
 }
 
+export function createIdealRFSwitch(
+  frequencyHz: Float64Array,
+  enabled: boolean,
+  insertionLossDb: number,
+  isolationDb: number,
+  phaseDeg: number,
+  referenceImpedanceOhm: number,
+  sourceName = 'Ideal RF switch',
+): TwoPortNetwork {
+  if (
+    typeof enabled !== 'boolean' ||
+    !Number.isFinite(insertionLossDb) ||
+    insertionLossDb < 0 ||
+    !Number.isFinite(isolationDb) ||
+    isolationDb < insertionLossDb
+  ) {
+    throw new RangeError(
+      'RF switch state is invalid or isolation is below insertion loss.',
+    )
+  }
+  return createIdealAttenuator(
+    frequencyHz,
+    enabled ? insertionLossDb : isolationDb,
+    phaseDeg,
+    referenceImpedanceOhm,
+    sourceName,
+  )
+}
+
+export function createIdealDirectionalCoupler(
+  frequencyHz: Float64Array,
+  couplingDb: number,
+  excessLossDb: number,
+  referenceImpedanceOhm: number,
+  sourceName = 'Ideal directional coupler',
+): NPortNetwork {
+  if (!Number.isFinite(couplingDb) || couplingDb <= 0) {
+    throw new RangeError('Directional coupling must be greater than 0 dB.')
+  }
+  const coupledPowerFraction = 10 ** (-couplingDb / 10)
+  const amplitudeImbalanceDb =
+    10 *
+    Math.log10(
+      coupledPowerFraction /
+        Math.max(Number.EPSILON, 1 - coupledPowerFraction),
+    )
+  return createIdealDivider(
+    frequencyHz,
+    0,
+    excessLossDb,
+    amplitudeImbalanceDb,
+    90,
+    300,
+    referenceImpedanceOhm,
+    sourceName,
+  )
+}
+
+export function createIdealDiplexer(
+  frequencyHz: Float64Array,
+  crossoverFrequencyHz: number,
+  order: number,
+  insertionLossDb: number,
+  referenceImpedanceOhm: number,
+  sourceName = 'Ideal LP/HP diplexer',
+): NPortNetwork {
+  const lowpass = createIdealFilter(
+    frequencyHz,
+    'lowpass',
+    crossoverFrequencyHz,
+    1,
+    order,
+    insertionLossDb,
+    referenceImpedanceOhm,
+  )
+  const highpass = createIdealFilter(
+    frequencyHz,
+    'highpass',
+    crossoverFrequencyHz,
+    1,
+    order,
+    insertionLossDb,
+    referenceImpedanceOhm,
+  )
+  const s = createNPortS(3, frequencyHz.length)
+  setArrayS(s, 3, 0, 1, lowpass.s21)
+  setArrayS(s, 3, 1, 0, lowpass.s21)
+  setArrayS(s, 3, 0, 2, highpass.s21)
+  setArrayS(s, 3, 2, 0, highpass.s21)
+  return {
+    frequencyHz,
+    portCount: 3,
+    referenceImpedancesOhm: new Float64Array(3).fill(referenceImpedanceOhm),
+    s,
+    sourceName,
+  }
+}
+
 function filterNormalizedFrequency(
   filterType: IdealFilterType,
   frequencyHz: number,
@@ -376,6 +474,19 @@ function setConstantS(
 ): void {
   matrix[outputPort * portCount + inputPort]!.re.fill(value.re)
   matrix[outputPort * portCount + inputPort]!.im.fill(value.im)
+}
+
+function setArrayS(
+  matrix: ComplexArray[],
+  portCount: number,
+  outputPort: number,
+  inputPort: number,
+  value: ComplexArray,
+): void {
+  matrix[outputPort * portCount + inputPort] = {
+    re: value.re.slice(),
+    im: value.im.slice(),
+  }
 }
 
 function validateInputs(

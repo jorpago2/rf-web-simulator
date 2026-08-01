@@ -10,7 +10,8 @@ Online demo: <https://jorpago2.github.io/rf-web-simulator/>
 
 - Directed acyclic RF graphs with coherent split/recombine paths, ideal
   splitters/combiners, Butterworth LP/HP/BP/BS filters, phase shifters,
-  isolators, probes, and arbitrary imported N-port blocks.
+  isolators, RF switches, directional couplers, LP/HP diplexers, probes, and
+  arbitrary imported N-port blocks.
 - General N-port connection solver including mismatch, multiple reflections,
   isolation, and coherent branch phase.
 - Touchstone 1.0 and 2.0 `.sNp` import (`S`, `Z`, `Y`, `H`, and `G`; `RI`, `MA`,
@@ -84,6 +85,13 @@ correction can itself change causality.
 A mixer changes the local frequency coordinate. Signals meeting at a combiner
 must have equal accumulated frequency translation; otherwise the graph is
 rejected because coherent recombination would be undefined.
+
+The RF switch is a matched reciprocal ON/OFF two-port. The directional coupler
+is a passive reduced three-port with an internally terminated isolated port;
+its through and sampled powers include the configured excess loss and a 90Â°
+coupled-path phase. The diplexer is a matched reciprocal three-port built from
+complementary equal-order Butterworth low- and high-pass responses. These are
+system-level models, not distributed-geometry or electromagnetic simulations.
 
 ### Power and noise budget
 

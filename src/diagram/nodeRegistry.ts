@@ -93,6 +93,42 @@ export const blockDescriptors: readonly BlockDescriptor[] = [
     },
   },
   {
+    type: 'idealRFSwitch',
+    label: 'RF switch',
+    description: 'Reciprocal ON / OFF path',
+    accent: '#db6e57',
+    defaultParameters: {
+      enabled: true,
+      insertionLossDb: 1,
+      isolationDb: 40,
+      phaseDeg: 0,
+      referenceImpedanceOhm: 50,
+    },
+  },
+  {
+    type: 'idealDirectionalCoupler',
+    label: 'Directional coupler',
+    description: 'Through and sampled outputs',
+    accent: '#28a8a0',
+    defaultParameters: {
+      couplingDb: 20,
+      excessLossDb: 0.5,
+      referenceImpedanceOhm: 50,
+    },
+  },
+  {
+    type: 'idealDiplexer',
+    label: 'LP / HP diplexer',
+    description: 'Complementary frequency split',
+    accent: '#537ed6',
+    defaultParameters: {
+      crossoverFrequencyHz: 1e9,
+      order: 3,
+      insertionLossDb: 1,
+      referenceImpedanceOhm: 50,
+    },
+  },
+  {
     type: 'idealMixer',
     label: 'Ideal mixer',
     description: 'Conversion and spur planning',

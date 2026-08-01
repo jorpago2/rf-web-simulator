@@ -264,7 +264,10 @@ function validateIdealNodeParameters(
   if (
     node.data.type !== 'idealFilter' &&
     node.data.type !== 'idealPhaseShifter' &&
-    node.data.type !== 'idealIsolator'
+    node.data.type !== 'idealIsolator' &&
+    node.data.type !== 'idealRFSwitch' &&
+    node.data.type !== 'idealDirectionalCoupler' &&
+    node.data.type !== 'idealDiplexer'
   ) {
     return
   }
@@ -308,13 +311,33 @@ function validateIdealNodeParameters(
     } else if (node.data.type === 'idealPhaseShifter') {
       number('phaseDeg')
       nonnegative('insertionLossDb')
-    } else {
+    } else if (node.data.type === 'idealIsolator') {
       const forwardLossDb = nonnegative('forwardLossDb')
       const reverseIsolationDb = nonnegative('reverseIsolationDb')
       number('phaseDeg')
       if (reverseIsolationDb < forwardLossDb) {
         throw new Error('reverseIsolationDb must not be below forwardLossDb')
       }
+    } else if (node.data.type === 'idealRFSwitch') {
+      if (typeof node.data.parameters.enabled !== 'boolean') {
+        throw new Error('enabled must be boolean')
+      }
+      const insertionLossDb = nonnegative('insertionLossDb')
+      const isolationDb = nonnegative('isolationDb')
+      number('phaseDeg')
+      if (isolationDb < insertionLossDb) {
+        throw new Error('isolationDb must not be below insertionLossDb')
+      }
+    } else if (node.data.type === 'idealDirectionalCoupler') {
+      positive('couplingDb')
+      nonnegative('excessLossDb')
+    } else {
+      positive('crossoverFrequencyHz')
+      const order = number('order')
+      if (!Number.isInteger(order) || order < 1 || order > 10) {
+        throw new Error('order must be an integer from 1 to 10')
+      }
+      nonnegative('insertionLossDb')
     }
   } catch (error) {
     issues.push({

@@ -692,6 +692,113 @@ export function PropertiesPanel() {
         </>
       )}
 
+      {node.data.type === 'idealRFSwitch' && (
+        <>
+          <label className="field checkbox-field">
+            <input
+              type="checkbox"
+              checked={node.data.parameters.enabled === true}
+              onChange={(event) =>
+                updateParameters(node.id, { enabled: event.target.checked })
+              }
+            />
+            <span>Conducting (ON)</span>
+          </label>
+          <NumberField
+            label="ON insertion loss"
+            unit="dB"
+            min={0}
+            value={numberValue(node.data.parameters.insertionLossDb, 1)}
+            onChange={(value) => setNumber('insertionLossDb', value)}
+          />
+          <NumberField
+            label="OFF isolation"
+            unit="dB"
+            min={0}
+            value={numberValue(node.data.parameters.isolationDb, 40)}
+            onChange={(value) => setNumber('isolationDb', value)}
+          />
+          <PhaseField nodeId={node.id} />
+          <OptionalNumberField
+            label="Insertion-loss Ïƒ"
+            unit="dB"
+            min={0}
+            value={node.data.parameters.insertionLossToleranceDb}
+            onChange={(value) =>
+              updateParameters(node.id, { insertionLossToleranceDb: value })
+            }
+          />
+        </>
+      )}
+
+      {node.data.type === 'idealDirectionalCoupler' && (
+        <>
+          <NumberField
+            label="Coupling"
+            unit="dB"
+            min={Number.MIN_VALUE}
+            value={numberValue(node.data.parameters.couplingDb, 20)}
+            onChange={(value) => setNumber('couplingDb', value)}
+          />
+          <NumberField
+            label="Excess loss"
+            unit="dB"
+            min={0}
+            value={numberValue(node.data.parameters.excessLossDb, 0.5)}
+            onChange={(value) => setNumber('excessLossDb', value)}
+          />
+          <OptionalNumberField
+            label="Excess-loss Ïƒ"
+            unit="dB"
+            min={0}
+            value={node.data.parameters.excessLossToleranceDb}
+            onChange={(value) =>
+              updateParameters(node.id, { excessLossToleranceDb: value })
+            }
+          />
+        </>
+      )}
+
+      {node.data.type === 'idealDiplexer' && (
+        <>
+          <NumberField
+            label="LP / HP crossover"
+            unit="Hz"
+            min={Number.MIN_VALUE}
+            value={numberValue(
+              node.data.parameters.crossoverFrequencyHz,
+              1e9,
+            )}
+            onChange={(value) => setNumber('crossoverFrequencyHz', value)}
+          />
+          <NumberField
+            label="Butterworth order"
+            unit=""
+            min={1}
+            max={10}
+            step={1}
+            value={numberValue(node.data.parameters.order, 3)}
+            onChange={(value) => setNumber('order', value)}
+          />
+          <NumberField
+            label="Insertion loss"
+            unit="dB"
+            min={0}
+            value={numberValue(node.data.parameters.insertionLossDb, 1)}
+            onChange={(value) => setNumber('insertionLossDb', value)}
+          />
+          <OptionalNumberField
+            label="Insertion-loss Ïƒ"
+            unit="dB"
+            min={0}
+            value={node.data.parameters.insertionLossToleranceDb}
+            onChange={(value) =>
+              updateParameters(node.id, { insertionLossToleranceDb: value })
+            }
+          />
+        </>
+      )}
+
       {(node.data.type === 'idealSplitter' ||
         node.data.type === 'idealCombiner') && (
         <>
@@ -1272,8 +1379,10 @@ function defaultSweepRange(key: string, nominal: number): [number, number] {
     'insertionLossDb',
     'forwardLossDb',
     'reverseIsolationDb',
+    'couplingDb',
     'cutoffFrequencyHz',
     'centerFrequencyHz',
+    'crossoverFrequencyHz',
     'bandwidthHz',
     'noiseFigureDb',
     'conversionLossDb',

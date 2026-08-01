@@ -33,6 +33,20 @@ const PORTS: Record<RFNodeType, readonly RFPortDescriptor[]> = {
     { id: 'input', label: 'IN', role: 'input' },
     { id: 'output', label: 'OUT', role: 'output' },
   ],
+  idealRFSwitch: [
+    { id: 'input', label: 'IN', role: 'input' },
+    { id: 'output', label: 'OUT', role: 'output' },
+  ],
+  idealDirectionalCoupler: [
+    { id: 'input', label: 'IN', role: 'input' },
+    { id: 'through', label: 'THRU', role: 'output' },
+    { id: 'coupled', label: 'CPL', role: 'output' },
+  ],
+  idealDiplexer: [
+    { id: 'common', label: 'COM', role: 'input' },
+    { id: 'low', label: 'LOW', role: 'output' },
+    { id: 'high', label: 'HIGH', role: 'output' },
+  ],
   idealMixer: [
     { id: 'input', label: 'RF', role: 'input' },
     { id: 'output', label: 'IF', role: 'output' },

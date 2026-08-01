@@ -13,10 +13,13 @@ import { calculateFrequencyPlan } from './frequencyPlan'
 import {
   createIdealAmplifier,
   createIdealAttenuator,
+  createIdealDiplexer,
+  createIdealDirectionalCoupler,
   createIdealDivider,
   createIdealFilter,
   createIdealIsolator,
   createIdealPhaseShifter,
+  createIdealRFSwitch,
   createTabulatedAmplifier,
   createThroughNetwork,
 } from './idealNetworks'
@@ -567,24 +570,49 @@ function simulateBranchedNetwork(
     }
     if (
       node.data.type === 'idealSplitter' ||
-      node.data.type === 'idealCombiner'
+      node.data.type === 'idealCombiner' ||
+      node.data.type === 'idealDirectionalCoupler' ||
+      node.data.type === 'idealDiplexer'
     ) {
-      const divider = createIdealDivider(
+      const localFrequencyHz = Float64Array.from(
         frequencyHz,
-        node.data.type === 'idealSplitter' ? 0 : 2,
-        finiteParameter(node, 'excessLossDb'),
-        finiteParameter(node, 'amplitudeImbalanceDb'),
-        finiteParameter(node, 'phaseImbalanceDeg'),
-        finiteParameter(node, 'isolationDb'),
-        referenceImpedanceOhm,
-        node.data.label,
+        (value) => value + (localFrequencyOffsetsHz.get(node.id) ?? 0),
       )
+      const divider =
+        node.data.type === 'idealDirectionalCoupler'
+          ? createIdealDirectionalCoupler(
+              localFrequencyHz,
+              finiteParameter(node, 'couplingDb'),
+              finiteParameter(node, 'excessLossDb'),
+              referenceImpedanceOhm,
+              node.data.label,
+            )
+          : node.data.type === 'idealDiplexer'
+            ? createIdealDiplexer(
+                localFrequencyHz,
+                finiteParameter(node, 'crossoverFrequencyHz'),
+                finiteParameter(node, 'order'),
+                finiteParameter(node, 'insertionLossDb'),
+                referenceImpedanceOhm,
+                node.data.label,
+              )
+            : createIdealDivider(
+                frequencyHz,
+                node.data.type === 'idealSplitter' ? 0 : 2,
+                finiteParameter(node, 'excessLossDb'),
+                finiteParameter(node, 'amplitudeImbalanceDb'),
+                finiteParameter(node, 'phaseImbalanceDeg'),
+                finiteParameter(node, 'isolationDb'),
+                referenceImpedanceOhm,
+                node.data.label,
+              )
+      const evaluatedDivider = { ...divider, frequencyHz }
       blocks.push({
         nodeId: node.id,
         portIds,
-        network: divider,
+        network: evaluatedDivider,
         noiseCorrelationAt: (pointIndex) =>
-          passiveNoiseCorrelationAt(divider, pointIndex),
+          passiveNoiseCorrelationAt(evaluatedDivider, pointIndex),
       })
       continue
     }
@@ -1085,6 +1113,16 @@ function networkForNode(
         referenceImpedanceOhm,
         node.data.label,
       )
+    case 'idealRFSwitch':
+      return createIdealRFSwitch(
+        frequencyHz,
+        node.data.parameters.enabled === true,
+        finiteParameter(node, 'insertionLossDb'),
+        finiteParameter(node, 'isolationDb'),
+        finiteParameter(node, 'phaseDeg'),
+        referenceImpedanceOhm,
+        node.data.label,
+      )
     case 'idealMixer':
       return createIdealAttenuator(
         frequencyHz,
@@ -1095,6 +1133,8 @@ function networkForNode(
       )
     case 'idealSplitter':
     case 'idealCombiner':
+    case 'idealDirectionalCoupler':
+    case 'idealDiplexer':
       throw new SimulationError(
         `Block "${node.data.label}" must be evaluated by the N-port graph solver.`,
       )
@@ -1199,6 +1239,9 @@ function validateBlockReferenceImpedances(
       node.data.type !== 'idealFilter' &&
       node.data.type !== 'idealPhaseShifter' &&
       node.data.type !== 'idealIsolator' &&
+      node.data.type !== 'idealRFSwitch' &&
+      node.data.type !== 'idealDirectionalCoupler' &&
+      node.data.type !== 'idealDiplexer' &&
       node.data.type !== 'idealMixer' &&
       node.data.type !== 'idealSplitter' &&
       node.data.type !== 'idealCombiner' &&
@@ -1240,7 +1283,8 @@ function isPassiveIdealTwoPort(node: RFProjectNode): boolean {
     node.data.type === 'idealAttenuator' ||
     node.data.type === 'idealFilter' ||
     node.data.type === 'idealPhaseShifter' ||
-    node.data.type === 'idealIsolator'
+    node.data.type === 'idealIsolator' ||
+    node.data.type === 'idealRFSwitch'
   )
 }
 

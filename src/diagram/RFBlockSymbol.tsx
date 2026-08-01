@@ -99,6 +99,29 @@ function symbolForType(type: RFNodeType) {
           <path className="rf-block-symbol__fill" d="M14 7v30l36-15z" />
         </>
       )
+    case 'idealRFSwitch':
+      return (
+        <>
+          <path d="M2 30h18M44 30h18M20 30 44 14" />
+          <circle className="rf-block-symbol__fill" cx="20" cy="30" r="3" />
+          <circle className="rf-block-symbol__fill" cx="44" cy="30" r="3" />
+        </>
+      )
+    case 'idealDirectionalCoupler':
+      return (
+        <>
+          <path d="M2 15h60M11 31h51M43 15c-2 8-8 16-18 16" />
+          <path d="m28 26-3 5 6 1" />
+        </>
+      )
+    case 'idealDiplexer':
+      return (
+        <>
+          <path d="M2 22h20M22 22 44 10h18M22 22l22 12h18" />
+          <path d="M47 7h11M47 31h4l3 6 4-6h2" />
+          <circle className="rf-block-symbol__junction" cx="22" cy="22" r="3" />
+        </>
+      )
     case 'idealMixer':
       return (
         <>
