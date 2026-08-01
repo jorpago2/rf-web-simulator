@@ -6,13 +6,14 @@ import type {
   FrequencyPlanResult,
   FrequencyRange,
   MixerProduct,
+  NonlinearSweepResult,
   RFAnalysisSettings,
   RFNodeType,
   RFBudgetResult,
   SimulationOutput,
 } from './engine/types'
 import { RFPlot, type FrequencyUnit, type PlotView } from './plots/RFPlot'
-import { simulationOutputToCsv } from './persistence/csv'
+import { nonlinearSweepToCsv, simulationOutputToCsv } from './persistence/csv'
 import { downloadTextFile, safeFileName } from './persistence/download'
 import { useRFEditorStore } from './app/store'
 import { strings } from './app/strings'
@@ -442,10 +443,12 @@ export function SimulationPanel({
   const [frequencyUnit, setFrequencyUnit] = useState<FrequencyUnit>('auto')
   const probeViewAvailable = (result?.probeResults.length ?? 0) > 0
   const frequencyPlanAvailable = (result?.frequencyPlan.stages.length ?? 0) > 0
+  const nonlinearAvailable = result?.nonlinear.available ?? false
   const visibleResultView =
     (resultView === 'probes' && !probeViewAvailable) ||
     (resultView === 'budget' && !result) ||
     (resultView === 'frequencyPlan' && !frequencyPlanAvailable) ||
+    (resultView === 'nonlinear' && !nonlinearAvailable) ||
     ((resultView === 'phase' || resultView === 'groupDelay') &&
       frequencyPlanAvailable)
       ? 'sParameters'
@@ -461,6 +464,16 @@ export function SimulationPanel({
           role="tablist"
           aria-label="Analysis views"
         >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={visibleResultView === 'nonlinear'}
+            disabled={!nonlinearAvailable}
+            title="Chain-level P1dB compression and two-tone IM3 estimate"
+            onClick={() => setResultView('nonlinear')}
+          >
+            Nonlinear
+          </button>
           <button
             type="button"
             role="tab"
@@ -566,6 +579,7 @@ export function SimulationPanel({
             <span>Display</span>
             <select
               value={frequencyUnit}
+              disabled={visibleResultView === 'nonlinear'}
               onChange={(event) =>
                 setFrequencyUnit(event.target.value as FrequencyUnit)
               }
@@ -593,13 +607,20 @@ export function SimulationPanel({
             onClick={() =>
               result &&
               downloadTextFile(
-                safeFileName(`${projectName}-results`, 'csv'),
-                simulationOutputToCsv(result),
+                safeFileName(
+                  `${projectName}-${visibleResultView === 'nonlinear' ? 'power-sweep' : 'results'}`,
+                  'csv',
+                ),
+                visibleResultView === 'nonlinear'
+                  ? nonlinearSweepToCsv(result)
+                  : simulationOutputToCsv(result),
                 'text/csv;charset=utf-8',
               )
             }
           >
-            Export sweep CSV
+            {visibleResultView === 'nonlinear'
+              ? 'Export power CSV'
+              : 'Export sweep CSV'}
           </button>
         </div>
       </div>
@@ -670,36 +691,40 @@ function SimulationSummary({
           />
         </div>
       )}
-      <div className="metric-grid">
-        {sParameters.map(([label, values]) => {
-          const complex = {
-            re: values.re[centerIndex]!,
-            im: values.im[centerIndex]!,
-          }
-          return (
-            <div className="metric-card" key={label}>
-              <span>{label}</span>
-              <strong>{formatDb(magnitudeDb(complex))}</strong>
-              <small>
-                {frequencyConverting
-                  ? 'Ideal envelope model'
-                  : formatDegrees(phaseDegrees(complex))}
-              </small>
-            </div>
-          )
-        })}
-        <div className="metric-card metric-card--range">
-          <span>
-            {frequencyConverting ? 'Input / output' : 'Center / points'}
-          </span>
-          <strong>{formatFrequency(centerFrequencyHz)}</strong>
-          <small>
-            {frequencyConverting
-              ? `→ ${formatFrequency(result.frequencyPlan.output.centerHz)}`
-              : `${network.frequencyHz.length.toLocaleString('en-US')} points`}
-          </small>
+      {resultView === 'nonlinear' ? (
+        <NonlinearMetrics nonlinear={result.nonlinear} />
+      ) : (
+        <div className="metric-grid">
+          {sParameters.map(([label, values]) => {
+            const complex = {
+              re: values.re[centerIndex]!,
+              im: values.im[centerIndex]!,
+            }
+            return (
+              <div className="metric-card" key={label}>
+                <span>{label}</span>
+                <strong>{formatDb(magnitudeDb(complex))}</strong>
+                <small>
+                  {frequencyConverting
+                    ? 'Ideal envelope model'
+                    : formatDegrees(phaseDegrees(complex))}
+                </small>
+              </div>
+            )
+          })}
+          <div className="metric-card metric-card--range">
+            <span>
+              {frequencyConverting ? 'Input / output' : 'Center / points'}
+            </span>
+            <strong>{formatFrequency(centerFrequencyHz)}</strong>
+            <small>
+              {frequencyConverting
+                ? `→ ${formatFrequency(result.frequencyPlan.output.centerHz)}`
+                : `${network.frequencyHz.length.toLocaleString('en-US')} points`}
+            </small>
+          </div>
         </div>
-      </div>
+      )}
 
       {result.stageSummaries.length > 0 && (
         <ol className="stage-list" aria-label="Accumulated stage gain">
@@ -721,6 +746,37 @@ function SimulationSummary({
           ))}
         </ul>
       )}
+    </div>
+  )
+}
+
+function NonlinearMetrics({ nonlinear }: { nonlinear: NonlinearSweepResult }) {
+  return (
+    <div className="metric-grid" aria-label="Nonlinear chain metrics">
+      <div className="metric-card">
+        <span>Small-signal gain</span>
+        <strong>{formatBudgetValue(nonlinear.smallSignalGainDb, 'dB')}</strong>
+        <small>Matched chain estimate</small>
+      </div>
+      <div className="metric-card">
+        <span>Input / output P1dB</span>
+        <strong>{formatBudgetValue(nonlinear.inputP1Dbm, 'dBm')}</strong>
+        <small>→ {formatBudgetValue(nonlinear.outputP1Dbm, 'dBm')}</small>
+      </div>
+      <div className="metric-card">
+        <span>Output IP3</span>
+        <strong>{formatBudgetValue(nonlinear.outputIp3Dbm, 'dBm')}</strong>
+        <small>Two-tone extrapolation</small>
+      </div>
+      <div className="metric-card">
+        <span>Configured operating point</span>
+        <strong>
+          {formatBudgetValue(nonlinear.operatingOutputPowerDbm, 'dBm')}
+        </strong>
+        <small>
+          Input {formatBudgetValue(nonlinear.operatingInputPowerDbm, 'dBm')}
+        </small>
+      </div>
     </div>
   )
 }

@@ -110,6 +110,7 @@ export interface SimulationWarning {
     | 'CASCADE_NEAR_SINGULAR'
     | 'S21_PHASE_UNDEFINED'
     | 'FREQUENCY_CONVERSION_MODEL'
+    | 'NONLINEAR_MODEL'
   message: string
   frequencyHz?: number
 }
@@ -147,6 +148,20 @@ export interface RFBudgetResult {
   warnings: string[]
 }
 
+export interface NonlinearSweepResult {
+  available: boolean
+  inputPowerDbm: Float64Array
+  linearOutputPowerDbm: Float64Array
+  compressedOutputPowerDbm: Float64Array
+  im3OutputPowerDbm: Float64Array
+  smallSignalGainDb: number | null
+  inputP1Dbm: number | null
+  outputP1Dbm: number | null
+  outputIp3Dbm: number | null
+  operatingInputPowerDbm: number | null
+  operatingOutputPowerDbm: number | null
+}
+
 export interface SimulationInput {
   nodes: RFProjectNode[]
   edges: RFProjectEdge[]
@@ -159,6 +174,7 @@ export interface SimulationOutput {
   stageSummaries: SimulationStageSummary[]
   probeResults: SimulationProbeResult[]
   budget: RFBudgetResult
+  nonlinear: NonlinearSweepResult
   frequencyPlan: FrequencyPlanResult
   warnings: SimulationWarning[]
 }

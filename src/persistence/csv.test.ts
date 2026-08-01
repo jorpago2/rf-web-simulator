@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 import type { SimulationOutput } from '../engine/types'
-import { simulationOutputToCsv } from './csv'
+import { nonlinearSweepToCsv, simulationOutputToCsv } from './csv'
 
 it('exports interoperable scientific CSV with empty undefined values', () => {
   const empty = { re: new Float64Array([0]), im: new Float64Array([0]) }
@@ -35,6 +35,19 @@ it('exports interoperable scientific CSV with empty undefined values', () => {
       stages: [],
       warnings: [],
     },
+    nonlinear: {
+      available: true,
+      inputPowerDbm: new Float64Array([-10]),
+      linearOutputPowerDbm: new Float64Array([0]),
+      compressedOutputPowerDbm: new Float64Array([-1]),
+      im3OutputPowerDbm: new Float64Array([-40]),
+      smallSignalGainDb: 10,
+      inputP1Dbm: -10,
+      outputP1Dbm: -1,
+      outputIp3Dbm: 20,
+      operatingInputPowerDbm: -10,
+      operatingOutputPowerDbm: -1,
+    },
     frequencyPlan: {
       input: { startHz: 1.25e9, centerHz: 1.25e9, stopHz: 1.25e9 },
       output: { startHz: 0.25e9, centerHz: 0.25e9, stopHz: 0.25e9 },
@@ -47,5 +60,9 @@ it('exports interoperable scientific CSV with empty undefined values', () => {
   expect(simulationOutputToCsv(output)).toBe(
     'frequency_hz,output_frequency_hz,s11_db,s21_db,s12_db,s22_db,s21_phase_deg,s21_group_delay_s,"probe_s21_db:Input, plane [probe""1]"\n' +
       '1250000000,250000000,-20.5,10.25,-40,-18,,2.5e-9,8.75\n',
+  )
+  expect(nonlinearSweepToCsv(output)).toBe(
+    'input_power_dbm,linear_output_power_dbm,compressed_output_power_dbm,im3_output_power_dbm\n' +
+      '-10,0,-1,-40\n',
   )
 })

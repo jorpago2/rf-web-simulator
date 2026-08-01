@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef } from 'react'
 import type { Config, Data, Layout } from 'plotly.js'
 import type { SimulationOutput } from '../engine/types'
 
-export type PlotView = 'sParameters' | 'phase' | 'groupDelay' | 'probes'
+export type PlotView =
+  'sParameters' | 'phase' | 'groupDelay' | 'probes' | 'nonlinear'
 export type FrequencyUnit = 'auto' | 'Hz' | 'kHz' | 'MHz' | 'GHz'
 
 const TRACE_STYLES = [
@@ -50,7 +51,11 @@ export function RFPlot({
 
   return (
     <PlotlyFigure
-      ariaLabel={`${plotTitle(view, frequencyConverting)} versus frequency`}
+      ariaLabel={
+        view === 'nonlinear'
+          ? 'Nonlinear transfer and IM3 versus per-tone input power'
+          : `${plotTitle(view, frequencyConverting)} versus frequency`
+      }
       config={{
         displaylogo: false,
         responsive: true,
@@ -111,6 +116,8 @@ function createFigure(
   unit: Exclude<FrequencyUnit, 'auto'>,
   frequency: number[],
 ): { data: Data[]; layout: Partial<Layout> } {
+  if (view === 'nonlinear') return createNonlinearFigure(result)
+
   const commonLayout: Partial<Layout> = {
     autosize: true,
     height: 330,
@@ -252,6 +259,89 @@ function createFigure(
   }
 }
 
+function createNonlinearFigure(result: SimulationOutput): {
+  data: Data[]
+  layout: Partial<Layout>
+} {
+  const nonlinear = result.nonlinear
+  const inputPowerDbm = Array.from(nonlinear.inputPowerDbm)
+  const data: Data[] = [
+    {
+      type: 'scatter',
+      mode: 'lines',
+      name: 'Linear fundamental',
+      x: inputPowerDbm,
+      y: Array.from(nonlinear.linearOutputPowerDbm),
+      line: { color: '#6b7280', dash: 'dash', width: 2 },
+      hovertemplate: 'Linear output: %{y:.3f} dBm<extra></extra>',
+    },
+  ]
+  if (nonlinear.inputP1Dbm !== null) {
+    data.push({
+      type: 'scatter',
+      mode: 'lines',
+      name: 'Compressed fundamental',
+      x: inputPowerDbm,
+      y: Array.from(nonlinear.compressedOutputPowerDbm),
+      line: { color: TRACE_STYLES[1].color, width: 2.5 },
+      hovertemplate: 'Compressed output: %{y:.3f} dBm<extra></extra>',
+    })
+  }
+  if (nonlinear.outputIp3Dbm !== null) {
+    data.push({
+      type: 'scatter',
+      mode: 'lines',
+      name: 'IM3 extrapolation',
+      x: inputPowerDbm,
+      y: Array.from(nonlinear.im3OutputPowerDbm),
+      line: { color: TRACE_STYLES[3].color, dash: 'dot', width: 2 },
+      hovertemplate: 'IM3 output: %{y:.3f} dBm<extra></extra>',
+    })
+  }
+  if (
+    nonlinear.operatingInputPowerDbm !== null &&
+    nonlinear.operatingOutputPowerDbm !== null
+  ) {
+    data.push({
+      type: 'scatter',
+      mode: 'markers',
+      name: 'Configured source',
+      x: [nonlinear.operatingInputPowerDbm],
+      y: [nonlinear.operatingOutputPowerDbm],
+      marker: { color: '#000000', size: 9, symbol: 'diamond' },
+      hovertemplate:
+        'Configured source: %{x:.3f} dBm<br>Output: %{y:.3f} dBm<extra></extra>',
+    })
+  }
+
+  return {
+    data,
+    layout: {
+      autosize: true,
+      height: 330,
+      margin: { l: 68, r: 22, t: 32, b: 56 },
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: '#ffffff',
+      font: {
+        family: 'Inter, Arial, sans-serif',
+        size: 12,
+        color: '#334155',
+      },
+      hovermode: 'x unified',
+      uirevision: 'nonlinear-power',
+      xaxis: {
+        title: { text: 'Per-tone input power (dBm)' },
+        gridcolor: '#e8edf0',
+        zeroline: false,
+        showline: true,
+        linecolor: '#aab5be',
+      },
+      yaxis: axis('Output power (dBm)'),
+      legend: { orientation: 'h', x: 0, y: 1.14 },
+    },
+  }
+}
+
 function axis(title: string): Partial<Layout['yaxis']> {
   return {
     title: { text: title },
@@ -294,5 +384,6 @@ function plotTitle(view: PlotView, frequencyConverting = false): string {
     phase: 'Unwrapped S21 phase',
     groupDelay: 'S21 group delay',
     probes: 'Cumulative S21 at probe planes',
+    nonlinear: 'Nonlinear transfer and IM3',
   }[view]
 }

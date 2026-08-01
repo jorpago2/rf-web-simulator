@@ -30,7 +30,7 @@ describe('matched RF cascade budget', () => {
     expect(total.cumulativeNoiseFigureDb).toBeCloseTo(
       10 * Math.log10(10 ** 0.3 + (10 ** 0.3 - 1) / 10),
     )
-    expect(total.cumulativeInputP1Dbm).toBeCloseTo(0)
+    expect(total.cumulativeInputP1Dbm).toBeCloseTo(1)
     expect(total.cumulativeOutputP1Dbm).toBeCloseTo(20)
     expect(total.cumulativeInputIp3Dbm).toBeCloseTo(
       10 * Math.log10(1 / (1 / 100 + 10 / 100)),

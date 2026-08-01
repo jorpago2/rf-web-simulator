@@ -6,7 +6,7 @@ backend, account, upload, or runtime other than a modern browser is required.
 
 Online demo: <https://jorpago2.github.io/rf-web-simulator/>
 
-## Current iteration: 0.9 mixer spur planning
+## Current iteration: 1.0 active and nonlinear analysis
 
 - Vite, React, strict TypeScript, React Flow, and Zustand.
 - Desktop/tablet RF editor with seven draggable block types.
@@ -19,7 +19,8 @@ Online demo: <https://jorpago2.github.io/rf-web-simulator/>
   real and imaginary parts are interpolated independently without extrapolation.
 - Full two-port cascade with mismatch and internal reflections, common real
   reference-impedance enforcement, and near-singular warnings.
-- Ideal amplifier and attenuator networks plus accumulated stage summaries.
+- Active amplifier with matched small-signal gain and ideal attenuator networks,
+  plus accumulated stage summaries.
 - Typed Web Worker execution with transferable output buffers.
 - Browser controls for range, points, reference impedance, and center-frequency
   S-parameter results.
@@ -41,6 +42,8 @@ Online demo: <https://jorpago2.github.io/rf-web-simulator/>
   grids, with the corresponding input sweep clipped rather than extrapolated.
 - Center-frequency image, LO leakage, and mixing-product plan through total
   order 3, with optional user-supplied rejection and isolation metadata.
+- Automatic per-tone input-power sweep with a P1dB-calibrated fundamental,
+  two-tone IM3 extrapolation, operating-point marker, and dedicated CSV export.
 - Deterministic analytical and integration tests.
 - CI and GitHub Pages deployment workflows.
 
@@ -131,13 +134,33 @@ equal to its loss in dB and no modeled compression or intermodulation limit.
 Cascaded input IP3 uses
 `1/IIP3 = 1/IIP3_1 + G1/IIP3_2 + G1*G2/IIP3_3 + ...` in linear power units.
 P1dB uses the conservative first-stage-to-compress approximation: each stage's
-output P1dB is referred to the chain input and the minimum is retained. These
-are engineering estimates, not a nonlinear harmonic-balance simulation.
+output P1dB is referred to the chain input as `OP1dB + 1 dB - gain`, and the
+minimum is retained. These are engineering estimates, not a nonlinear
+harmonic-balance simulation.
 
 Amplifiers and Touchstone blocks accept independent NF, output P1dB, and output
 IP3 metadata. Touchstone S2P data alone do not contain those quantities; missing
 metadata remain visibly unavailable rather than being inferred. The small-signal
 S-parameter cascade continues to include mismatch, while the budget does not.
+
+## Active and nonlinear model
+
+When finite P1dB or IP3 metadata are available, the simulator creates a
+101-point input-power sweep at the center frequency. Powers are interpreted per
+tone in dBm and the matched small-signal fundamental is
+`P_out,linear = P_in + G`. Compression uses the smooth phenomenological law
+
+`C(P_in) = 10 log10[1 + (10^0.1 - 1) 10^((P_in - IIP1dB)/10)]`,
+
+so the compressed fundamental `P_out = P_out,linear - C` is exactly 1 dB below
+the linear extrapolation at IIP1dB and equals the supplied OP1dB. The two-tone
+third-order line uses `P_IM3,out = 3 P_out,linear - 2 OIP3`; therefore it
+intersects the linear fundamental at the cascaded OIP3 by construction.
+
+This is a chain-level, matched, center-frequency estimate. It does not propagate
+compression stage by stage or model AM/PM, memory, bias, thermal effects,
+harmonics, load-pull, tone spacing, or device-specific polynomial coefficients.
+The Nonlinear view exports its independent power sweep as CSV.
 
 ## Mixer and frequency-plan model
 
@@ -180,7 +203,9 @@ sampling condition is not met.
 
 ## Roadmap
 
-1. PWA/offline installation only if classroom use demonstrates a need.
+1. Per-stage nonlinear propagation and selectable two-tone spacing.
+2. Harmonic-balance/device models only when measured coefficients are available.
+3. PWA/offline installation only if classroom use demonstrates a need.
 
 ## Project files and local storage
 

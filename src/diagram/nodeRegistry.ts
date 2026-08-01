@@ -28,8 +28,8 @@ export const blockDescriptors: readonly BlockDescriptor[] = [
   },
   {
     type: 'idealAmplifier',
-    label: 'Ideal amplifier',
-    description: 'Matched forward gain',
+    label: 'Active amplifier',
+    description: 'Active gain and limits',
     symbol: 'AMP',
     accent: '#f1b75b',
     defaultParameters: {

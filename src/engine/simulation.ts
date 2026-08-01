@@ -9,6 +9,7 @@ import {
   createThroughNetwork,
 } from './idealNetworks'
 import { buildCommonFrequencyGrid, interpolateNetwork } from './interpolation'
+import { calculateNonlinearSweep } from './nonlinear'
 import { parseTouchstoneS2P } from './touchstone'
 import type {
   RFProjectNode,
@@ -161,16 +162,26 @@ export function simulateLinearChain(input: SimulationInput): SimulationOutput {
   warnings.push(...derived.warnings)
   const centerIndex = Math.floor(commonGrid.frequencyHz.length / 2)
   const source = orderedNodes[0]!
+  const budget = calculateRFBudget(
+    commonGrid.frequencyHz[centerIndex]!,
+    optionalFiniteParameter(source, 'powerDbm'),
+    budgetStages,
+  )
+  const nonlinear = calculateNonlinearSweep(budget)
+  if (nonlinear.available) {
+    warnings.push({
+      code: 'NONLINEAR_MODEL',
+      message:
+        'The nonlinear sweep is a matched chain-level estimate: smooth P1dB-calibrated compression and two-tone IM3 from cascaded OIP3. AM/PM, memory, bias, harmonics, load-pull, and device-specific behavior are not modeled.',
+    })
+  }
   return {
     total: cumulative,
     curves: derived.curves,
     stageSummaries,
     probeResults,
-    budget: calculateRFBudget(
-      commonGrid.frequencyHz[centerIndex]!,
-      optionalFiniteParameter(source, 'powerDbm'),
-      budgetStages,
-    ),
+    budget,
+    nonlinear,
     frequencyPlan,
     warnings,
   }

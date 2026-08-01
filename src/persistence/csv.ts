@@ -36,6 +36,26 @@ export function simulationOutputToCsv(output: SimulationOutput): string {
   return `${lines.join('\n')}\n`
 }
 
+export function nonlinearSweepToCsv(output: SimulationOutput): string {
+  const nonlinear = output.nonlinear
+  const lines = [
+    'input_power_dbm,linear_output_power_dbm,compressed_output_power_dbm,im3_output_power_dbm',
+  ]
+  for (let index = 0; index < nonlinear.inputPowerDbm.length; index += 1) {
+    lines.push(
+      [
+        nonlinear.inputPowerDbm[index],
+        nonlinear.linearOutputPowerDbm[index],
+        nonlinear.compressedOutputPowerDbm[index],
+        nonlinear.im3OutputPowerDbm[index],
+      ]
+        .map(csvNumber)
+        .join(','),
+    )
+  }
+  return `${lines.join('\n')}\n`
+}
+
 function csvCell(value: string): string {
   return /[",\n\r]/u.test(value) ? `"${value.replaceAll('"', '""')}"` : value
 }

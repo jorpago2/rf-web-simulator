@@ -49,6 +49,10 @@ function transferables(output: SimulationOutput): Transferable[] {
     output.curves.s21GroupDelayS.buffer,
     ...output.probeResults.map((probe) => probe.s21Db.buffer),
     output.frequencyPlan.outputFrequencyHz.buffer,
+    output.nonlinear.inputPowerDbm.buffer,
+    output.nonlinear.linearOutputPowerDbm.buffer,
+    output.nonlinear.compressedOutputPowerDbm.buffer,
+    output.nonlinear.im3OutputPowerDbm.buffer,
   ]
 }
 

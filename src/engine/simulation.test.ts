@@ -109,6 +109,11 @@ describe('RF simulation integration', () => {
     )
     expect(budgetTotal.cumulativeOutputP1Dbm).toBeCloseTo(17)
     expect(budgetTotal.cumulativeOutputIp3Dbm).toBeCloseTo(32)
+    expect(result.nonlinear.available).toBe(true)
+    expect(result.nonlinear.inputP1Dbm).toBeCloseTo(11)
+    expect(result.nonlinear.outputP1Dbm).toBeCloseTo(17)
+    expect(result.nonlinear.outputIp3Dbm).toBeCloseTo(32)
+    expect(result.nonlinear.operatingOutputPowerDbm).toBeCloseTo(-23)
   })
 
   it('tracks an ideal downconversion envelope and frequency plan', () => {

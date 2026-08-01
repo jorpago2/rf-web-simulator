@@ -60,7 +60,7 @@ export function calculateRFBudget(
     ) {
       cumulativeInputP1Dbm = Math.min(
         cumulativeInputP1Dbm,
-        stage.outputP1Dbm - cumulativeGainDb,
+        stage.outputP1Dbm + 1 - cumulativeGainDb,
       )
     } else {
       cumulativeInputP1Dbm = null
@@ -113,7 +113,7 @@ export function calculateRFBudget(
     const cumulativeOutputP1Dbm =
       cumulativeInputP1Dbm === null || cumulativeGainDb === null
         ? null
-        : cumulativeInputP1Dbm + cumulativeGainDb
+        : cumulativeInputP1Dbm + cumulativeGainDb - 1
 
     if (
       outputPowerDbm !== null &&

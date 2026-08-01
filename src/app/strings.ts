@@ -1,6 +1,6 @@
 export const strings = {
   appName: 'RF Web Simulator',
-  version: 'MVP 0.9 · mixer spur planning',
+  version: 'MVP 1.0 · active and nonlinear',
   localPrivacy: 'Files and calculations stay on this device.',
   libraryTitle: 'Block library',
   libraryHint: 'Drag a block to the canvas or click to add it.',
