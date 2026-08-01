@@ -165,9 +165,9 @@ function createFigure(
   if (view === 'stability') {
     const traces = [
       ['K', result.networkChecks.stabilityK],
-      ['μ source', result.networkChecks.stabilityMuSource],
-      ['μ load', result.networkChecks.stabilityMuLoad],
-      ['σmax(S)', result.networkChecks.passivityMaximumSingularValue],
+      ['μ<sub>source</sub>', result.networkChecks.stabilityMuSource],
+      ['μ<sub>load</sub>', result.networkChecks.stabilityMuLoad],
+      ['σ<sub>max</sub>(S)', result.networkChecks.passivityMaximumSingularValue],
     ] as const
     return {
       data: traces.map(([name, values], index) => ({
@@ -229,10 +229,10 @@ function createFigure(
       }
     }
     const traces = [
-      ['S11', result.curves.s11Db],
-      ['S21', result.curves.s21Db],
-      ['S12', result.curves.s12Db],
-      ['S22', result.curves.s22Db],
+      ['S<sub>11</sub>', result.curves.s11Db],
+      ['S<sub>21</sub>', result.curves.s21Db],
+      ['S<sub>12</sub>', result.curves.s12Db],
+      ['S<sub>22</sub>', result.curves.s22Db],
     ] as const
     return {
       data: traces.map(([name, values], index) => ({
@@ -268,14 +268,14 @@ function createFigure(
         x: frequency,
         y: Array.from(probe.s21Db),
         line: { ...probeTraceStyle(index), width: 2 },
-        hovertemplate: `${conversion ? 'Accumulated conversion gain' : 'Accumulated S21'}: %{y:.3f} dB<extra>%{fullData.name}</extra>`,
+        hovertemplate: `${conversion ? 'Accumulated conversion gain' : 'Accumulated S<sub>21</sub>'}: %{y:.3f} dB<extra>%{fullData.name}</extra>`,
       })),
       layout: {
         ...commonLayout,
         yaxis: axis(
           conversion
             ? 'Cumulative conversion magnitude (dB)'
-            : 'Cumulative S21 magnitude (dB)',
+            : 'Cumulative S<sub>21</sub> magnitude (dB)',
         ),
       },
     }
@@ -287,7 +287,7 @@ function createFigure(
         {
           type: 'scatter',
           mode: 'lines',
-          name: '∠S21',
+          name: '∠S<sub>21</sub>',
           x: frequency,
           y: Array.from(result.curves.s21PhaseDeg),
           connectgaps: false,
@@ -298,7 +298,7 @@ function createFigure(
       layout: {
         ...commonLayout,
         showlegend: false,
-        yaxis: axis('Unwrapped phase of S21 (deg)'),
+        yaxis: axis('Unwrapped phase of S<sub>21</sub> (°)'),
       },
     }
   }
@@ -308,7 +308,7 @@ function createFigure(
       {
         type: 'scatter',
         mode: 'lines',
-        name: 'τg(S21)',
+        name: 'τ<sub>g</sub>(S<sub>21</sub>)',
         x: frequency,
         y: [...result.curves.s21GroupDelayS].map((value) => value * 1e9),
         connectgaps: false,
@@ -319,7 +319,7 @@ function createFigure(
     layout: {
       ...commonLayout,
       showlegend: false,
-      yaxis: axis('Group delay of S21 (ns)'),
+      yaxis: axis('Group delay of S<sub>21</sub> (ns)'),
     },
   }
 }
@@ -397,7 +397,7 @@ function createAntennaFigure(result: SimulationOutput): {
       font: { family: 'Inter, Arial, sans-serif', size: 12, color: '#334155' },
       showlegend: false,
       xaxis: {
-        title: { text: 'Angle from boresight (deg)' },
+        title: { text: 'Angle from boresight (°)' },
         range: [-180, 180],
         dtick: 45,
         gridcolor: '#e8edf0',
@@ -439,11 +439,11 @@ function createNonlinearFigure(result: SimulationOutput): {
     data.push({
       type: 'scatter',
       mode: 'lines',
-      name: 'IM3 extrapolation',
+      name: 'IM<sub>3</sub> extrapolation',
       x: inputPowerDbm,
       y: Array.from(nonlinear.im3OutputPowerDbm),
       line: { color: TRACE_STYLES[3].color, dash: 'dot', width: 2 },
-      hovertemplate: 'IM3 output: %{y:.3f} dBm<extra></extra>',
+      hovertemplate: 'IM<sub>3</sub> output: %{y:.3f} dBm<extra></extra>',
     })
   }
   if (
@@ -502,7 +502,7 @@ function createNonlinearFigure(result: SimulationOutput): {
       },
       yaxis: axis('Output power (dBm)'),
       yaxis2: {
-        title: { text: 'AM/PM phase (deg)' },
+        title: { text: 'AM/PM phase (°)' },
         overlaying: 'y',
         side: 'right',
         showgrid: false,
@@ -554,13 +554,13 @@ function createSmithFigure(result: SimulationOutput): {
       {
         type: 'scatter',
         mode: 'lines',
-        name: 'S11',
+        name: 'S<sub>11</sub>',
         x: Array.from(result.total.s11.re),
         y: Array.from(result.total.s11.im),
         customdata: Array.from(result.total.frequencyHz),
         line: { color: TRACE_STYLES[0].color, width: 2 },
         hovertemplate:
-          'S11 = %{x:.4f} %{y:+.4f}j<br>f = %{customdata:.6g} Hz<extra></extra>',
+          'S<sub>11</sub> = %{x:.4f} %{y:+.4f}j<br>f = %{customdata:.6g} Hz<extra></extra>',
       },
     ],
     layout: {
