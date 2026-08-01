@@ -2,10 +2,17 @@ import { cascadeTwoPorts } from './cascade'
 import { calculateRFBudget, type BudgetStageInput } from './budget'
 import { magnitudeDb } from './complex'
 import { deriveSimulationCurves, magnitudeDbArray } from './derivedMetrics'
+import {
+  deviceMetricAt,
+  devicePowerTransferAt,
+  parseDeviceTableCsv,
+  type DeviceTable,
+} from './deviceTable'
 import { calculateFrequencyPlan } from './frequencyPlan'
 import {
   createIdealAmplifier,
   createIdealAttenuator,
+  createTabulatedAmplifier,
   createThroughNetwork,
 } from './idealNetworks'
 import { buildCommonFrequencyGrid, interpolateNetwork } from './interpolation'
@@ -56,18 +63,39 @@ export function simulateLinearChain(input: SimulationInput): SimulationOutput {
     input.analysis.referenceImpedanceOhm,
   )
   const parsedNetworks = new Map<string, TwoPortNetwork>()
+  const deviceTables = new Map<string, DeviceTable>()
   for (const node of orderedNodes) {
-    if (node.data.type !== 'touchstone2Port') continue
-    const content = node.data.parameters.content
-    if (typeof content !== 'string') {
-      throw new SimulationError(
-        `Touchstone block "${node.data.label}" has no file.`,
+    if (
+      node.data.type === 'idealAmplifier' &&
+      typeof node.data.parameters.deviceTableContent === 'string'
+    ) {
+      deviceTables.set(
+        node.id,
+        parseDeviceTableCsv(
+          node.data.parameters.deviceTableContent,
+          typeof node.data.parameters.deviceTableFileName === 'string'
+            ? node.data.parameters.deviceTableFileName
+            : node.data.label,
+        ),
       )
     }
-    const sourceName =
-      typeof node.data.parameters.fileName === 'string'
+    const content =
+      node.data.type === 'touchstone2Port'
+        ? node.data.parameters.content
+        : node.data.type === 'idealAmplifier'
+          ? node.data.parameters.sParameterContent
+          : undefined
+    if (content === undefined || content === null) continue
+    if (typeof content !== 'string') {
+      throw new SimulationError(
+        `Touchstone data at "${node.data.label}" are invalid.`,
+      )
+    }
+    const fileName =
+      node.data.type === 'touchstone2Port'
         ? node.data.parameters.fileName
-        : node.data.label
+        : node.data.parameters.sParameterFileName
+    const sourceName = typeof fileName === 'string' ? fileName : node.data.label
     const network = parseTouchstoneS2P(content, sourceName)
     assertReferenceImpedance(
       network.referenceImpedanceOhm,
@@ -147,11 +175,19 @@ export function simulateLinearChain(input: SimulationInput): SimulationOutput {
         localFrequencyOffsetsHz.get(node.id) ?? 0,
         input.analysis.referenceImpedanceOhm,
         parsedNetworks,
+        deviceTables,
       )
       const cascade = cascadeTwoPorts(cumulative, stageNetwork)
       cumulative = cascade.network
       warnings.push(...cascade.warnings)
-      budgetStages.push(budgetStage(node, stageNetwork))
+      budgetStages.push(
+        budgetStage(
+          node,
+          stageNetwork,
+          localFrequencyOffsetsHz.get(node.id) ?? 0,
+          deviceTables.get(node.id),
+        ),
+      )
     }
 
     stageSummaries.push(summarizeStage(node, cumulative))
@@ -178,10 +214,16 @@ export function simulateLinearChain(input: SimulationInput): SimulationOutput {
       DEFAULT_TWO_TONE_SPACING_HZ,
   )
   if (nonlinear.available) {
+    const measuredCompression = budgetStages.some(
+      (stage) => stage.powerTransfer,
+    )
     warnings.push({
       code: 'NONLINEAR_MODEL',
       message:
-        'The nonlinear sweep propagates a smooth P1dB-calibrated compression estimate through each matched stage. Two-tone IM3 remains an extrapolation from cascaded OIP3; phase cancellation, AM/PM, memory, bias, harmonics, load-pull, and device-specific behavior are not modeled.',
+        (measuredCompression
+          ? 'Measured Pout(Pin) curves are interpolated inside their frequency and input-power domains; the P1dB law is used outside the measured power range. '
+          : 'A smooth P1dB-calibrated compression estimate is propagated through each matched stage. ') +
+        'Two-tone IM3 remains an extrapolation from cascaded OIP3; phase cancellation, AM/PM, memory, bias, harmonics, load-pull, and device-specific behavior are not modeled.',
     })
   }
   return {
@@ -199,6 +241,8 @@ export function simulateLinearChain(input: SimulationInput): SimulationOutput {
 function budgetStage(
   node: RFProjectNode,
   network: TwoPortNetwork,
+  localFrequencyOffsetHz: number,
+  deviceTable?: DeviceTable,
 ): BudgetStageInput {
   const centerIndex = Math.floor(network.frequencyHz.length / 2)
   const gainDb = magnitudeDb({
@@ -206,6 +250,8 @@ function budgetStage(
     im: network.s21.im[centerIndex]!,
   })
   const stageGainDb = Number.isFinite(gainDb) ? gainDb : null
+  const localCenterFrequencyHz =
+    network.frequencyHz[centerIndex]! + localFrequencyOffsetHz
 
   if (node.data.type === 'idealAttenuator') {
     return {
@@ -223,9 +269,21 @@ function budgetStage(
     label: node.data.label,
     type: node.data.type,
     gainDb: stageGainDb,
-    noiseFigureDb: optionalFiniteParameter(node, 'noiseFigureDb', 0),
-    outputP1Dbm: optionalFiniteParameter(node, 'outputP1Dbm'),
-    outputIp3Dbm: optionalFiniteParameter(node, 'outputIp3Dbm'),
+    noiseFigureDb:
+      (deviceTable
+        ? deviceMetricAt(deviceTable, 'noiseFigureDb', localCenterFrequencyHz)
+        : null) ?? optionalFiniteParameter(node, 'noiseFigureDb', 0),
+    outputP1Dbm:
+      (deviceTable
+        ? deviceMetricAt(deviceTable, 'outputP1Dbm', localCenterFrequencyHz)
+        : null) ?? optionalFiniteParameter(node, 'outputP1Dbm'),
+    outputIp3Dbm:
+      (deviceTable
+        ? deviceMetricAt(deviceTable, 'outputIp3Dbm', localCenterFrequencyHz)
+        : null) ?? optionalFiniteParameter(node, 'outputIp3Dbm'),
+    powerTransfer: deviceTable
+      ? devicePowerTransferAt(deviceTable, localCenterFrequencyHz)
+      : null,
   }
 }
 
@@ -235,6 +293,7 @@ function networkForNode(
   localFrequencyOffsetHz: number,
   referenceImpedanceOhm: number,
   parsedNetworks: Map<string, TwoPortNetwork>,
+  deviceTables: Map<string, DeviceTable>,
 ): TwoPortNetwork {
   switch (node.data.type) {
     case 'touchstone2Port': {
@@ -243,24 +302,44 @@ function networkForNode(
         throw new SimulationError(
           `Missing parsed network for "${node.data.label}".`,
         )
-      const localFrequencyHz = Float64Array.from(
+      return interpolateLocalNetwork(
+        network,
         frequencyHz,
-        (value) => value + localFrequencyOffsetHz,
+        localFrequencyOffsetHz,
       )
-      localFrequencyHz[0] = Math.max(
-        localFrequencyHz[0]!,
-        network.frequencyHz[0]!,
-      )
-      localFrequencyHz[localFrequencyHz.length - 1] = Math.min(
-        localFrequencyHz.at(-1)!,
-        network.frequencyHz.at(-1)!,
-      )
-      return {
-        ...interpolateNetwork(network, localFrequencyHz),
-        frequencyHz,
-      }
     }
-    case 'idealAmplifier':
+    case 'idealAmplifier': {
+      const network = parsedNetworks.get(node.id)
+      if (network) {
+        return interpolateLocalNetwork(
+          network,
+          frequencyHz,
+          localFrequencyOffsetHz,
+        )
+      }
+      const table = deviceTables.get(node.id)
+      if (table) {
+        const localFrequencyHz = Float64Array.from(
+          frequencyHz,
+          (value) => value + localFrequencyOffsetHz,
+        )
+        const gainDb = Float64Array.from(localFrequencyHz, (value) => {
+          const gain = deviceMetricAt(table, 'gainDb', value)
+          if (gain === null) {
+            throw new SimulationError(
+              `${table.sourceName}: gain data are required when no amplifier .s2p file is loaded.`,
+            )
+          }
+          return gain
+        })
+        return createTabulatedAmplifier(
+          frequencyHz,
+          gainDb,
+          finiteParameter(node, 'phaseDeg'),
+          referenceImpedanceOhm,
+          node.data.label,
+        )
+      }
       return createIdealAmplifier(
         frequencyHz,
         finiteParameter(node, 'gainDb'),
@@ -268,6 +347,7 @@ function networkForNode(
         referenceImpedanceOhm,
         node.data.label,
       )
+    }
     case 'idealAttenuator':
       return createIdealAttenuator(
         frequencyHz,
@@ -291,6 +371,23 @@ function networkForNode(
         `Block "${node.data.label}" is not a two-port stage.`,
       )
   }
+}
+
+function interpolateLocalNetwork(
+  network: TwoPortNetwork,
+  frequencyHz: Float64Array,
+  localFrequencyOffsetHz: number,
+): TwoPortNetwork {
+  const localFrequencyHz = Float64Array.from(
+    frequencyHz,
+    (value) => value + localFrequencyOffsetHz,
+  )
+  localFrequencyHz[0] = Math.max(localFrequencyHz[0]!, network.frequencyHz[0]!)
+  localFrequencyHz[localFrequencyHz.length - 1] = Math.min(
+    localFrequencyHz.at(-1)!,
+    network.frequencyHz.at(-1)!,
+  )
+  return { ...interpolateNetwork(network, localFrequencyHz), frequencyHz }
 }
 
 function summarizeStage(

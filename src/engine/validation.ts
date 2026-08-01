@@ -1,4 +1,5 @@
 import { parseTouchstoneS2P } from './touchstone'
+import { parseDeviceTableCsv } from './deviceTable'
 import type { RFProjectEdge, RFProjectNode } from './types'
 
 export type GraphIssueCode =
@@ -10,6 +11,7 @@ export type GraphIssueCode =
   | 'CYCLE'
   | 'DISCONNECTED_NODE'
   | 'INVALID_TOUCHSTONE'
+  | 'INVALID_DEVICE_TABLE'
 
 export interface GraphIssue {
   code: GraphIssueCode
@@ -112,6 +114,36 @@ export function validateLinearGraph(
             code: 'INVALID_TOUCHSTONE',
             nodeId: node.id,
             message: `Touchstone block "${node.data.label}": ${errorMessage(error)}`,
+          })
+        }
+      }
+    }
+    if (node.data.type === 'idealAmplifier') {
+      const sParameterContent = node.data.parameters.sParameterContent
+      if (sParameterContent !== undefined && sParameterContent !== null) {
+        try {
+          if (typeof sParameterContent !== 'string')
+            throw new Error('invalid content')
+          parseTouchstoneS2P(sParameterContent)
+        } catch (error) {
+          issues.push({
+            code: 'INVALID_TOUCHSTONE',
+            nodeId: node.id,
+            message: `Amplifier "${node.data.label}" S-parameters: ${errorMessage(error)}`,
+          })
+        }
+      }
+      const deviceTableContent = node.data.parameters.deviceTableContent
+      if (deviceTableContent !== undefined && deviceTableContent !== null) {
+        try {
+          if (typeof deviceTableContent !== 'string')
+            throw new Error('invalid content')
+          parseDeviceTableCsv(deviceTableContent)
+        } catch (error) {
+          issues.push({
+            code: 'INVALID_DEVICE_TABLE',
+            nodeId: node.id,
+            message: `Amplifier "${node.data.label}" device table: ${errorMessage(error)}`,
           })
         }
       }

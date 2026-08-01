@@ -1,6 +1,6 @@
 export const strings = {
   appName: 'RF Web Simulator',
-  version: 'MVP 1.1 · per-stage nonlinearity',
+  version: 'MVP 1.2 · measured device tables',
   localPrivacy: 'Files and calculations stay on this device.',
   libraryTitle: 'Block library',
   libraryHint: 'Drag a block to the canvas or click to add it.',

@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent, type DragEvent } from 'react'
 import { blockDescriptors } from './diagram/nodeRegistry'
 import { parseTouchstoneS2P } from './engine/touchstone'
+import { deviceTableSummary, parseDeviceTableCsv } from './engine/deviceTable'
 import { magnitudeDb, phaseDegrees } from './engine/complex'
 import type {
   FrequencyPlanResult,
@@ -128,6 +129,61 @@ export function PropertiesPanel() {
     }
   }
 
+  const loadAmplifierSParameters = async (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    try {
+      const content = await file.text()
+      const network = parseTouchstoneS2P(content, file.name)
+      updateParameters(node.id, {
+        sParameterFileName: file.name,
+        sParameterContent: content,
+        sParameterPointCount: network.frequencyHz.length,
+        referenceImpedanceOhm: network.referenceImpedanceOhm,
+      })
+      setFileStatus({
+        nodeId: node.id,
+        kind: 'success',
+        message: `${file.name}: ${network.frequencyHz.length} valid S-parameter points.`,
+      })
+    } catch (error) {
+      setFileStatus({
+        nodeId: node.id,
+        kind: 'error',
+        message:
+          error instanceof Error ? error.message : 'Invalid Touchstone file.',
+      })
+    }
+  }
+
+  const loadDeviceTable = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    try {
+      const content = await file.text()
+      const table = parseDeviceTableCsv(content, file.name)
+      updateParameters(node.id, {
+        deviceTableFileName: file.name,
+        deviceTableContent: content,
+        deviceTableSummary: deviceTableSummary(table),
+      })
+      setFileStatus({
+        nodeId: node.id,
+        kind: 'success',
+        message: `${file.name}: ${deviceTableSummary(table)}.`,
+      })
+    } catch (error) {
+      setFileStatus({
+        nodeId: node.id,
+        kind: 'error',
+        message:
+          error instanceof Error ? error.message : 'Invalid device table.',
+      })
+    }
+  }
+
   return (
     <aside className="panel properties" aria-labelledby="properties-title">
       <div className="panel__heading">
@@ -168,8 +224,87 @@ export function PropertiesPanel() {
 
       {node.data.type === 'idealAmplifier' && (
         <>
+          <label className="field file-field">
+            <span>Small-signal Touchstone (optional)</span>
+            <input
+              type="file"
+              accept=".s2p,text/plain"
+              onChange={loadAmplifierSParameters}
+            />
+          </label>
+          {typeof node.data.parameters.sParameterFileName === 'string' && (
+            <>
+              <dl className="file-summary">
+                <div>
+                  <dt>S-parameters</dt>
+                  <dd>{node.data.parameters.sParameterFileName}</dd>
+                </div>
+                <div>
+                  <dt>Points</dt>
+                  <dd>{String(node.data.parameters.sParameterPointCount)}</dd>
+                </div>
+              </dl>
+              <button
+                className="file-reset-button"
+                type="button"
+                onClick={() =>
+                  updateParameters(node.id, {
+                    sParameterFileName: null,
+                    sParameterContent: null,
+                    sParameterPointCount: null,
+                  })
+                }
+              >
+                Use matched gain instead
+              </button>
+            </>
+          )}
+          <label className="field file-field">
+            <span>Datasheet / measured table (optional)</span>
+            <input
+              type="file"
+              accept=".csv,text/csv,text/plain"
+              onChange={loadDeviceTable}
+            />
+            <small>
+              CSV: frequency plus gain, NF, OP1dB, OIP3, or Pin/Pout columns.
+            </small>
+            <a
+              href={`${import.meta.env.BASE_URL}examples/device-performance-template.csv`}
+              download
+            >
+              Download CSV template
+            </a>
+          </label>
+          {typeof node.data.parameters.deviceTableFileName === 'string' && (
+            <>
+              <dl className="file-summary">
+                <div>
+                  <dt>Performance</dt>
+                  <dd>{node.data.parameters.deviceTableFileName}</dd>
+                </div>
+                <div>
+                  <dt>Content</dt>
+                  <dd>{String(node.data.parameters.deviceTableSummary)}</dd>
+                </div>
+              </dl>
+              <button
+                className="file-reset-button"
+                type="button"
+                onClick={() =>
+                  updateParameters(node.id, {
+                    deviceTableFileName: null,
+                    deviceTableContent: null,
+                    deviceTableSummary: null,
+                  })
+                }
+              >
+                Use analytic metadata instead
+              </button>
+            </>
+          )}
           <NumberField
-            label="Gain"
+            label="Fallback gain"
             unit="dB"
             value={numberValue(node.data.parameters.gainDb, 10)}
             onChange={(value) => setNumber('gainDb', value)}

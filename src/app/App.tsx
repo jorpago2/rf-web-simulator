@@ -190,7 +190,11 @@ export default function App() {
   const resultIsCurrent = resultRevision === modelRevision
   const visibleResult = resultIsCurrent ? result : null
   const visibleStatus =
-    status === 'running' ? status : resultIsCurrent ? status : 'idle'
+    status === 'running' || status === 'error'
+      ? status
+      : resultIsCurrent
+        ? status
+        : 'idle'
   const statusText = {
     idle: 'Linear chain · draft',
     running: 'Simulating in worker…',
@@ -251,7 +255,7 @@ export default function App() {
 
           <SimulationPanel
             analysis={analysis}
-            error={resultIsCurrent ? error : null}
+            error={status === 'error' ? error : null}
             onAnalysisChange={updateAnalysis}
             onRun={runSimulation}
             projectName={project.name}

@@ -1,0 +1,11 @@
+# Replace these illustrative values with one documented bias and temperature condition.
+# Supported frequency units: frequency_hz, frequency_mhz, or frequency_ghz.
+frequency_ghz,gain_db,noise_figure_db,output_p1dbm,output_ip3_dbm,input_power_dbm,output_power_dbm
+0.8,20,2.2,14,35,,
+1.2,18,3.0,12,31,,
+0.8,,,,,-20,0
+0.8,,,,,-10,10
+0.8,,,,,0,18
+1.2,,,,,-20,-2
+1.2,,,,,-10,8
+1.2,,,,,0,16

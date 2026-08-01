@@ -1,4 +1,5 @@
 import type { BudgetStageInput } from './budget'
+import { interpolateDeviceOutputPower } from './deviceTable'
 import type { NonlinearSweepResult, RFBudgetResult } from './types'
 
 export const NONLINEAR_SWEEP_POINTS = 101
@@ -145,11 +146,12 @@ function propagatePower(
     const stageInputP1Dbm = Number.isFinite(stage.outputP1Dbm)
       ? stage.outputP1Dbm! + 1 - stage.gainDb!
       : null
-    const compressedOutputDbm = compressedPowerDbm(
-      outputDbm,
-      linearOutputDbm,
-      stageInputP1Dbm,
-    )
+    const measuredOutputDbm = stage.powerTransfer
+      ? interpolateDeviceOutputPower(stage.powerTransfer, outputDbm)
+      : null
+    const compressedOutputDbm =
+      measuredOutputDbm ??
+      compressedPowerDbm(outputDbm, linearOutputDbm, stageInputP1Dbm)
     const compressionDb = linearOutputDbm - compressedOutputDbm
     if (compressionDb > largestCompressionDb) {
       largestCompressionDb = compressionDb

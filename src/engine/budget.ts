@@ -1,4 +1,5 @@
 import type { RFBudgetResult, RFNodeType } from './types'
+import type { DevicePowerTransfer } from './deviceTable'
 
 export interface BudgetStageInput {
   nodeId: string
@@ -8,6 +9,7 @@ export interface BudgetStageInput {
   noiseFigureDb: number | null
   outputP1Dbm: number | null
   outputIp3Dbm: number | null
+  powerTransfer?: DevicePowerTransfer | null
 }
 
 export function calculateRFBudget(

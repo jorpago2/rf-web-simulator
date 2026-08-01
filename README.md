@@ -6,7 +6,7 @@ backend, account, upload, or runtime other than a modern browser is required.
 
 Online demo: <https://jorpago2.github.io/rf-web-simulator/>
 
-## Current iteration: 1.1 per-stage nonlinear analysis
+## Current iteration: 1.2 measured device tables
 
 - Vite, React, strict TypeScript, React Flow, and Zustand.
 - Desktop/tablet RF editor with seven draggable block types.
@@ -45,6 +45,8 @@ Online demo: <https://jorpago2.github.io/rf-web-simulator/>
 - Automatic per-tone input-power sweep with P1dB-calibrated compression
   propagated through every stage, limiting-stage identification, configurable
   tone spacing, explicit tone/IM3 frequencies, and cascaded-OIP3 extrapolation.
+- Active-amplifier combination of optional Touchstone small-signal data and
+  CSV datasheet/measurement tables for gain, NF, OP1dB, OIP3, and Pout(Pin).
 - Deterministic analytical and integration tests.
 - CI and GitHub Pages deployment workflows.
 
@@ -173,6 +175,35 @@ cancellation between stages are unknown. AM/PM, memory, bias, thermal effects,
 harmonics, load-pull, and device-specific coefficients are not modeled. The
 Nonlinear view exports its independent power sweep as CSV.
 
+## Datasheet and measured-device model
+
+An Active amplifier can combine two independent local files. An optional `.s2p`
+file supplies the complete linear two-port response, including mismatch and
+phase. An optional CSV table supplies scalar performance versus frequency and
+measured power-transfer curves. When no `.s2p` is loaded, tabulated gain creates
+a matched unilateral network. Manual amplifier fields remain analytical
+fallbacks for quantities absent from the table.
+
+The CSV header accepts `frequency_hz`, `frequency_mhz`, or `frequency_ghz`, plus
+any of `gain_db`, `noise_figure_db`/`nf_db`, `output_p1dbm`/`op1dbm`,
+`output_ip3_dbm`/`oip3_dbm`, and paired `input_power_dbm`/`output_power_dbm`
+columns. Blank cells are allowed. Frequency metrics use piecewise-linear
+interpolation, but frequency extrapolation is rejected. Pout(Pin) uses linear
+interpolation in input power and between adjacent measured frequency curves.
+Outside their measured input-power range, the explicit P1dB law is used and the
+simulation reports that limitation. Download the
+[CSV template](public/examples/device-performance-template.csv).
+
+This contract reflects the data manufacturers actually publish: Mini-Circuits
+documents separate S-parameters plus NF/P1dB/OIP3/PSAT data and consolidated MDF
+files; Analog Devices product pages expose S-parameters and behavioral
+parameters; TI publishes S-parameter downloads and frequency-dependent RF
+specifications. Vendor-native MDF/Sys-Parameter parsing is not claimed: export
+or transcribe one documented operating condition to the neutral CSV format.
+See the official [Mini-Circuits MDF note](https://blog.minicircuits.com/using-generalized-multi-dimensional-data-files-to-model-amplifier-temperature-and-dc-operating-point-dependence-within-the-amplifier2-behavioral-model-in-ads/),
+[Analog Devices ADL5545 resources](https://www.analog.com/en/products/adl5545.html),
+and [TI TRF0206-SP resources](https://www.ti.com/product/TRF0206-SP).
+
 ## Mixer and frequency-plan model
 
 An ideal Mixer retains one selected product. Difference conversion uses
@@ -214,8 +245,10 @@ sampling condition is not met.
 
 ## Roadmap
 
-1. Harmonic-balance/device models only when measured coefficients are available.
-2. PWA/offline installation only if classroom use demonstrates a need.
+1. Native Mini-Circuits MDF and condition selection when representative files
+   from multiple device families are available for regression tests.
+2. Harmonic-balance or X-parameter models only with documented model data.
+3. PWA/offline installation only if classroom use demonstrates a need.
 
 ## Project files and local storage
 

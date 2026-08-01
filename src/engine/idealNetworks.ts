@@ -36,6 +36,40 @@ export function createIdealAmplifier(
   )
 }
 
+export function createTabulatedAmplifier(
+  frequencyHz: Float64Array,
+  gainDb: Float64Array,
+  phaseDeg: number,
+  referenceImpedanceOhm: number,
+  sourceName = 'Tabulated amplifier',
+): TwoPortNetwork {
+  validateInputs(frequencyHz, referenceImpedanceOhm)
+  if (gainDb.length !== frequencyHz.length || !Number.isFinite(phaseDeg)) {
+    throw new RangeError('Tabulated gain must match the frequency grid.')
+  }
+  const s21: ComplexArray = {
+    re: new Float64Array(frequencyHz.length),
+    im: new Float64Array(frequencyHz.length),
+  }
+  for (let index = 0; index < frequencyHz.length; index += 1) {
+    if (!Number.isFinite(gainDb[index])) {
+      throw new RangeError('Tabulated gain values must be finite.')
+    }
+    const value = fromPolar(10 ** (gainDb[index]! / 20), phaseDeg)
+    s21.re[index] = value.re
+    s21.im[index] = value.im
+  }
+  return {
+    frequencyHz,
+    referenceImpedanceOhm,
+    s11: constantComplexArray(frequencyHz.length, 0, 0),
+    s21,
+    s12: constantComplexArray(frequencyHz.length, 0, 0),
+    s22: constantComplexArray(frequencyHz.length, 0, 0),
+    sourceName,
+  }
+}
+
 export function createIdealAttenuator(
   frequencyHz: Float64Array,
   attenuationDb: number,

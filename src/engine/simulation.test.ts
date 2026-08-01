@@ -17,6 +17,52 @@ function node(
 }
 
 describe('RF simulation integration', () => {
+  it('uses tabulated datasheet performance for an active amplifier', () => {
+    const deviceTableContent = `frequency_ghz,gain_db,nf_db,oip3_dbm,pin_dbm,pout_dbm
+1,20,2,35,,
+2,18,4,31,,
+1,,,,-20,0
+1,,,,-10,9.8
+1,,,,0,18
+2,,,,-20,-2
+2,,,,-10,7.5
+2,,,,0,16`
+    const result = simulateLinearChain({
+      analysis: {
+        startHz: 1e9,
+        stopHz: 2e9,
+        points: 3,
+        referenceImpedanceOhm: 50,
+      },
+      nodes: [
+        node('src', 'source', { powerDbm: -10 }),
+        node('amp', 'idealAmplifier', {
+          gainDb: 10,
+          phaseDeg: 0,
+          noiseFigureDb: 9,
+          outputP1Dbm: 9,
+          outputIp3Dbm: 9,
+          referenceImpedanceOhm: 50,
+          deviceTableContent,
+          deviceTableFileName: 'measured.csv',
+        }),
+        node('load', 'load', { referenceImpedanceOhm: 50 }),
+      ],
+      edges: [
+        { id: 'a', source: 'src', target: 'amp' },
+        { id: 'b', source: 'amp', target: 'load' },
+      ],
+    })
+
+    expect(result.curves.s21Db[0]).toBeCloseTo(20)
+    expect(result.curves.s21Db[1]).toBeCloseTo(19)
+    expect(result.curves.s21Db[2]).toBeCloseTo(18)
+    expect(result.budget.stages[0]!.cumulativeNoiseFigureDb).toBeCloseTo(3)
+    expect(result.budget.stages[0]!.cumulativeOutputIp3Dbm).toBeCloseTo(33)
+    expect(result.nonlinear.operatingOutputPowerDbm).toBeCloseTo(8.65)
+    expect(result.nonlinear.outputP1Dbm).toBeCloseTo(11.9394, 3)
+  })
+
   it('imports, clips, interpolates, and cascades a Touchstone through network', () => {
     const result = simulateLinearChain({
       analysis: {
