@@ -5,6 +5,7 @@ import { magnitudeDb, phaseDegrees } from './engine/complex'
 import type {
   RFAnalysisSettings,
   RFNodeType,
+  RFBudgetResult,
   SimulationOutput,
 } from './engine/types'
 import { RFPlot, type FrequencyUnit, type PlotView } from './plots/RFPlot'
@@ -163,6 +164,7 @@ export function PropertiesPanel() {
             onChange={(value) => setNumber('gainDb', value)}
           />
           <PhaseField nodeId={node.id} />
+          <BudgetMetadataFields nodeId={node.id} />
         </>
       )}
 
@@ -205,6 +207,7 @@ export function PropertiesPanel() {
               </div>
             </dl>
           )}
+          <BudgetMetadataFields nodeId={node.id} />
         </>
       )}
 
@@ -244,6 +247,43 @@ function PhaseField({ nodeId }: { nodeId: string }) {
   )
 }
 
+function BudgetMetadataFields({ nodeId }: { nodeId: string }) {
+  const node = useRFEditorStore((state) =>
+    state.nodes.find((candidate) => candidate.id === nodeId),
+  )
+  const updateParameters = useRFEditorStore(
+    (state) => state.updateNodeParameters,
+  )
+  if (!node) return null
+
+  const update = (key: string, value: number | null) =>
+    updateParameters(nodeId, { [key]: value })
+
+  return (
+    <>
+      <OptionalNumberField
+        label="Noise figure"
+        unit="dB"
+        min={0}
+        value={node.data.parameters.noiseFigureDb}
+        onChange={(value) => update('noiseFigureDb', value)}
+      />
+      <OptionalNumberField
+        label="Output P1dB"
+        unit="dBm"
+        value={node.data.parameters.outputP1Dbm}
+        onChange={(value) => update('outputP1Dbm', value)}
+      />
+      <OptionalNumberField
+        label="Output IP3"
+        unit="dBm"
+        value={node.data.parameters.outputIp3Dbm}
+        onChange={(value) => update('outputIp3Dbm', value)}
+      />
+    </>
+  )
+}
+
 function NumberField({
   label,
   unit,
@@ -273,11 +313,48 @@ function NumberField({
   )
 }
 
+function OptionalNumberField({
+  label,
+  unit,
+  value,
+  min,
+  onChange,
+}: {
+  label: string
+  unit: string
+  value: unknown
+  min?: number
+  onChange: (value: number | null) => void
+}) {
+  return (
+    <label className="field">
+      <span>{label}</span>
+      <span className="input-with-unit">
+        <input
+          type="number"
+          value={
+            typeof value === 'number' && Number.isFinite(value) ? value : ''
+          }
+          min={min}
+          placeholder="Not set"
+          onChange={(event) =>
+            onChange(
+              event.target.value === '' ? null : event.target.valueAsNumber,
+            )
+          }
+        />
+        <span>{unit}</span>
+      </span>
+    </label>
+  )
+}
+
 function numberValue(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback
 }
 
 export type SimulationStatus = 'idle' | 'running' | 'success' | 'error'
+type ResultView = PlotView | 'budget'
 
 export function SimulationPanel({
   projectName,
@@ -296,11 +373,14 @@ export function SimulationPanel({
   onAnalysisChange: (analysis: RFAnalysisSettings) => void
   onRun: () => void
 }) {
-  const [plotView, setPlotView] = useState<PlotView>('sParameters')
+  const [resultView, setResultView] = useState<ResultView>('sParameters')
   const [frequencyUnit, setFrequencyUnit] = useState<FrequencyUnit>('auto')
   const probeViewAvailable = (result?.probeResults.length ?? 0) > 0
-  const visiblePlotView =
-    plotView === 'probes' && !probeViewAvailable ? 'sParameters' : plotView
+  const visibleResultView =
+    (resultView === 'probes' && !probeViewAvailable) ||
+    (resultView === 'budget' && !result)
+      ? 'sParameters'
+      : resultView
   const update = (values: Partial<RFAnalysisSettings>) =>
     onAnalysisChange({ ...analysis, ...values })
 
@@ -315,36 +395,45 @@ export function SimulationPanel({
           <button
             type="button"
             role="tab"
-            aria-selected={visiblePlotView === 'sParameters'}
-            onClick={() => setPlotView('sParameters')}
+            aria-selected={visibleResultView === 'sParameters'}
+            onClick={() => setResultView('sParameters')}
           >
             S-parameters
           </button>
           <button
             type="button"
             role="tab"
-            aria-selected={visiblePlotView === 'phase'}
-            onClick={() => setPlotView('phase')}
+            aria-selected={visibleResultView === 'phase'}
+            onClick={() => setResultView('phase')}
           >
             Phase
           </button>
           <button
             type="button"
             role="tab"
-            aria-selected={visiblePlotView === 'groupDelay'}
-            onClick={() => setPlotView('groupDelay')}
+            aria-selected={visibleResultView === 'groupDelay'}
+            onClick={() => setResultView('groupDelay')}
           >
             Group delay
           </button>
           <button
             type="button"
             role="tab"
-            aria-selected={visiblePlotView === 'probes'}
+            aria-selected={visibleResultView === 'probes'}
             disabled={!probeViewAvailable}
             title="Cumulative S21 to each probe reference plane, terminated in Z0"
-            onClick={() => setPlotView('probes')}
+            onClick={() => setResultView('probes')}
           >
             Probes ({result?.probeResults.length ?? 0})
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={visibleResultView === 'budget'}
+            disabled={!result}
+            onClick={() => setResultView('budget')}
+          >
+            RF budget
           </button>
         </div>
         <div
@@ -420,7 +509,7 @@ export function SimulationPanel({
               )
             }
           >
-            Export CSV
+            Export sweep CSV
           </button>
         </div>
       </div>
@@ -435,7 +524,7 @@ export function SimulationPanel({
         {status !== 'error' && result ? (
           <SimulationSummary
             frequencyUnit={frequencyUnit}
-            plotView={visiblePlotView}
+            resultView={visibleResultView}
             result={result}
           />
         ) : (
@@ -456,11 +545,11 @@ export function SimulationPanel({
 
 function SimulationSummary({
   result,
-  plotView,
+  resultView,
   frequencyUnit,
 }: {
   result: SimulationOutput
-  plotView: PlotView
+  resultView: ResultView
   frequencyUnit: FrequencyUnit
 }) {
   const network = result.total
@@ -475,9 +564,17 @@ function SimulationSummary({
 
   return (
     <div className="simulation-summary">
-      <div className="rf-plot-shell">
-        <RFPlot frequencyUnit={frequencyUnit} result={result} view={plotView} />
-      </div>
+      {resultView === 'budget' ? (
+        <RFBudgetTable budget={result.budget} />
+      ) : (
+        <div className="rf-plot-shell">
+          <RFPlot
+            frequencyUnit={frequencyUnit}
+            result={result}
+            view={resultView}
+          />
+        </div>
+      )}
       <div className="metric-grid">
         {sParameters.map(([label, values]) => {
           const complex = {
@@ -522,6 +619,64 @@ function SimulationSummary({
         </ul>
       )}
     </div>
+  )
+}
+
+function RFBudgetTable({ budget }: { budget: RFBudgetResult }) {
+  return (
+    <section className="budget-panel" aria-label="Matched RF cascade budget">
+      <div className="budget-table-wrap">
+        <table>
+          <caption>
+            Matched available-power budget at{' '}
+            {formatFrequency(budget.centerFrequencyHz)}
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Stage</th>
+              <th scope="col">Gain</th>
+              <th scope="col">Cumulative gain</th>
+              <th scope="col">Output power</th>
+              <th scope="col">Cumulative NF</th>
+              <th scope="col">Input P1dB</th>
+              <th scope="col">Output P1dB</th>
+              <th scope="col">Input IP3</th>
+              <th scope="col">Output IP3</th>
+            </tr>
+          </thead>
+          <tbody>
+            {budget.stages.map((stage) => (
+              <tr key={stage.nodeId}>
+                <th scope="row">{stage.label}</th>
+                <td>{formatBudgetValue(stage.stageGainDb, 'dB')}</td>
+                <td>{formatBudgetValue(stage.cumulativeGainDb, 'dB')}</td>
+                <td>{formatBudgetValue(stage.outputPowerDbm, 'dBm')}</td>
+                <td>
+                  {formatBudgetValue(stage.cumulativeNoiseFigureDb, 'dB')}
+                </td>
+                <td>{formatBudgetValue(stage.cumulativeInputP1Dbm, 'dBm')}</td>
+                <td>{formatBudgetValue(stage.cumulativeOutputP1Dbm, 'dBm')}</td>
+                <td>{formatBudgetValue(stage.cumulativeInputIp3Dbm, 'dBm')}</td>
+                <td>
+                  {formatBudgetValue(stage.cumulativeOutputIp3Dbm, 'dBm')}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="budget-assumption">
+        Matched, unilateral stage estimate. Passive loss uses NF = loss at 290
+        K; P1dB uses the first-limit approximation.
+      </p>
+      {budget.warnings.length > 0 && (
+        <ul className="budget-warnings">
+          {budget.warnings.map((warning) => (
+            <li key={warning}>{warning}</li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
 
@@ -571,6 +726,13 @@ function formatDb(value: number): string {
 
 function formatDegrees(value: number): string {
   return Number.isFinite(value) ? `${value.toFixed(1)}°` : '—'
+}
+
+function formatBudgetValue(value: number | null, unit: 'dB' | 'dBm'): string {
+  if (value === null) return '—'
+  if (value === Number.POSITIVE_INFINITY) return `∞ ${unit}`
+  if (value === Number.NEGATIVE_INFINITY) return `−∞ ${unit}`
+  return Number.isFinite(value) ? `${value.toFixed(2)} ${unit}` : '—'
 }
 
 function formatFrequency(frequencyHz: number): string {

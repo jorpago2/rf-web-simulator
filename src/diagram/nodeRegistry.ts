@@ -35,6 +35,9 @@ export const blockDescriptors: readonly BlockDescriptor[] = [
     defaultParameters: {
       gainDb: 10,
       phaseDeg: 0,
+      noiseFigureDb: 2,
+      outputP1Dbm: 20,
+      outputIp3Dbm: 35,
       referenceImpedanceOhm: 50,
     },
   },

@@ -783,6 +783,81 @@ h2 {
   min-height: 330px;
 }
 
+.budget-panel {
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgb(255 255 255 / 96%);
+}
+
+.budget-table-wrap {
+  overflow-x: auto;
+}
+
+.budget-panel table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.budget-panel caption {
+  padding: 13px 14px;
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 750;
+  text-align: left;
+}
+
+.budget-panel th,
+.budget-panel td {
+  padding: 9px 11px;
+  border-top: 1px solid #e8edf0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.budget-panel thead th {
+  color: var(--muted);
+  background: #f6f8f9;
+  font-size: 0.61rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.budget-panel th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 145px;
+  color: var(--ink);
+  background: white;
+  text-align: left;
+}
+
+.budget-panel thead th:first-child {
+  background: #f6f8f9;
+}
+
+.budget-assumption {
+  padding: 10px 14px;
+  color: var(--muted);
+  font-size: 0.67rem;
+  line-height: 1.45;
+}
+
+.budget-warnings {
+  margin: 0;
+  padding: 9px 14px 11px 32px;
+  color: #755333;
+  background: #fff1dc;
+  font-size: 0.67rem;
+  line-height: 1.45;
+}
+
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(105px, 1fr));

@@ -6,7 +6,7 @@ backend, account, upload, or runtime other than a modern browser is required.
 
 Online demo: <https://jorpago2.github.io/rf-web-simulator/>
 
-## Current iteration: 0.5 probe sweeps
+## Current iteration: 0.6 RF budget
 
 - Vite, React, strict TypeScript, React Flow, and Zustand.
 - Desktop/tablet RF editor with six draggable block types.
@@ -33,6 +33,8 @@ Online demo: <https://jorpago2.github.io/rf-web-simulator/>
   magnitudes, S21 phase, and S21 group delay.
 - Full-frequency accumulated S21 traces at every non-invasive Probe block,
   transferred from the worker and included in CSV exports.
+- Center-frequency matched RF budget with signal power, Friis noise figure,
+  conservative cascaded P1dB, and reciprocal cascaded IP3 bookkeeping.
 - Deterministic analytical and integration tests.
 - CI and GitHub Pages deployment workflows.
 
@@ -112,6 +114,25 @@ with the probe plane terminated in the analysis reference impedance `Z0`.
 Therefore it is a cumulative two-port transfer function, not an internal
 voltage or available-power measurement with downstream mismatch included.
 
+## RF budget model
+
+The RF budget is evaluated at the center of the simulated frequency grid as a
+matched, unilateral available-power cascade. Stage power gain is `|S21|^2`.
+Noise factor uses Friis' formula in linear units,
+`F = F1 + (F2 - 1)/G1 + ...`. An ideal attenuator at 290 K has noise figure
+equal to its loss in dB and no modeled compression or intermodulation limit.
+
+Cascaded input IP3 uses
+`1/IIP3 = 1/IIP3_1 + G1/IIP3_2 + G1*G2/IIP3_3 + ...` in linear power units.
+P1dB uses the conservative first-stage-to-compress approximation: each stage's
+output P1dB is referred to the chain input and the minimum is retained. These
+are engineering estimates, not a nonlinear harmonic-balance simulation.
+
+Amplifiers and Touchstone blocks accept independent NF, output P1dB, and output
+IP3 metadata. Touchstone S2P data alone do not contain those quantities; missing
+metadata remain visibly unavailable rather than being inferred. The small-signal
+S-parameter cascade continues to include mismatch, while the budget does not.
+
 ## Phase and group delay
 
 S21 phase is unwrapped in radians. Group delay is evaluated as
@@ -125,15 +146,14 @@ phase and group delay are marked as gaps, with an explicit warning, when
 than pi radians after wrapping; a denser frequency grid is required when that
 sampling condition is not met.
 
-> S-parameters describe linear small-signal behavior. On their own they cannot
-> determine P1dB, saturation, AM/AM, AM/PM, or intermodulation products.
+> S-parameters describe linear small-signal behavior. Budget P1dB and IP3 values
+> come from independent block metadata; they are not inferred from S2P data.
 
 ## Roadmap
 
-1. RF budget with gain, loss, noise figure, P1dB, and IP3 bookkeeping.
-2. Mixer and frequency-conversion behavior after the linear small-signal path
+1. Mixer and frequency-conversion behavior after the linear small-signal path
    is stable.
-3. PWA/offline installation only if classroom use demonstrates a need.
+2. PWA/offline installation only if classroom use demonstrates a need.
 
 ## Project files and local storage
 

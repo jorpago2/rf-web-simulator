@@ -1,4 +1,5 @@
 import { cascadeTwoPorts } from './cascade'
+import { calculateRFBudget, type BudgetStageInput } from './budget'
 import { magnitudeDb } from './complex'
 import { deriveSimulationCurves, magnitudeDbArray } from './derivedMetrics'
 import {
@@ -83,6 +84,7 @@ export function simulateLinearChain(input: SimulationInput): SimulationOutput {
   )
   const stageSummaries: SimulationStageSummary[] = []
   const probeResults: SimulationProbeResult[] = []
+  const budgetStages: BudgetStageInput[] = []
 
   for (const node of orderedNodes) {
     if (node.data.type === 'source' || node.data.type === 'load') continue
@@ -103,6 +105,7 @@ export function simulateLinearChain(input: SimulationInput): SimulationOutput {
       const cascade = cascadeTwoPorts(cumulative, stageNetwork)
       cumulative = cascade.network
       warnings.push(...cascade.warnings)
+      budgetStages.push(budgetStage(node, stageNetwork))
     }
 
     stageSummaries.push(summarizeStage(node, cumulative))
@@ -110,12 +113,52 @@ export function simulateLinearChain(input: SimulationInput): SimulationOutput {
 
   const derived = deriveSimulationCurves(cumulative)
   warnings.push(...derived.warnings)
+  const centerIndex = Math.floor(commonGrid.frequencyHz.length / 2)
+  const source = orderedNodes[0]!
   return {
     total: cumulative,
     curves: derived.curves,
     stageSummaries,
     probeResults,
+    budget: calculateRFBudget(
+      commonGrid.frequencyHz[centerIndex]!,
+      optionalFiniteParameter(source, 'powerDbm'),
+      budgetStages,
+    ),
     warnings,
+  }
+}
+
+function budgetStage(
+  node: RFProjectNode,
+  network: TwoPortNetwork,
+): BudgetStageInput {
+  const centerIndex = Math.floor(network.frequencyHz.length / 2)
+  const gainDb = magnitudeDb({
+    re: network.s21.re[centerIndex]!,
+    im: network.s21.im[centerIndex]!,
+  })
+  const stageGainDb = Number.isFinite(gainDb) ? gainDb : null
+
+  if (node.data.type === 'idealAttenuator') {
+    return {
+      nodeId: node.id,
+      label: node.data.label,
+      type: node.data.type,
+      gainDb: stageGainDb,
+      noiseFigureDb: finiteParameter(node, 'attenuationDb'),
+      outputP1Dbm: Number.POSITIVE_INFINITY,
+      outputIp3Dbm: Number.POSITIVE_INFINITY,
+    }
+  }
+  return {
+    nodeId: node.id,
+    label: node.data.label,
+    type: node.data.type,
+    gainDb: stageGainDb,
+    noiseFigureDb: optionalFiniteParameter(node, 'noiseFigureDb', 0),
+    outputP1Dbm: optionalFiniteParameter(node, 'outputP1Dbm'),
+    outputIp3Dbm: optionalFiniteParameter(node, 'outputIp3Dbm'),
   }
 }
 
@@ -216,6 +259,25 @@ function finiteParameter(node: RFProjectNode, key: string): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     throw new SimulationError(
       `Parameter "${key}" is invalid at "${node.data.label}".`,
+    )
+  }
+  return value
+}
+
+function optionalFiniteParameter(
+  node: RFProjectNode,
+  key: string,
+  minimum?: number,
+): number | null {
+  const value = node.data.parameters[key]
+  if (value === undefined || value === null) return null
+  if (
+    typeof value !== 'number' ||
+    !Number.isFinite(value) ||
+    (minimum !== undefined && value < minimum)
+  ) {
+    throw new SimulationError(
+      `Optional parameter "${key}" is invalid at "${node.data.label}".`,
     )
   }
   return value

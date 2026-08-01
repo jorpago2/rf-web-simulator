@@ -29,6 +29,12 @@ it('exports interoperable scientific CSV with empty undefined values', () => {
         s21Db: new Float64Array([8.75]),
       },
     ],
+    budget: {
+      centerFrequencyHz: 1.25e9,
+      sourcePowerDbm: 0,
+      stages: [],
+      warnings: [],
+    },
     warnings: [],
   }
 

@@ -63,10 +63,13 @@ describe('RF simulation integration', () => {
         referenceImpedanceOhm: 50,
       },
       nodes: [
-        node('src', 'source', {}),
+        node('src', 'source', { powerDbm: -30 }),
         node('amp', 'idealAmplifier', {
           gainDb: 10,
           phaseDeg: 0,
+          noiseFigureDb: 2,
+          outputP1Dbm: 20,
+          outputIp3Dbm: 35,
           referenceImpedanceOhm: 50,
         }),
         node('probe-after-amp', 'probe', {}),
@@ -98,6 +101,14 @@ describe('RF simulation integration', () => {
       expect(value).toBeCloseTo(7)
     }
     expect(result.curves.s21Db[1]).toBeCloseTo(7)
+    const budgetTotal = result.budget.stages.at(-1)!
+    expect(budgetTotal.cumulativeGainDb).toBeCloseTo(7)
+    expect(budgetTotal.outputPowerDbm).toBeCloseTo(-23)
+    expect(budgetTotal.cumulativeNoiseFigureDb).toBeCloseTo(
+      10 * Math.log10(10 ** 0.2 + (10 ** 0.3 - 1) / 10),
+    )
+    expect(budgetTotal.cumulativeOutputP1Dbm).toBeCloseTo(17)
+    expect(budgetTotal.cumulativeOutputIp3Dbm).toBeCloseTo(32)
   })
 
   it('rejects mismatched reference impedances explicitly', () => {

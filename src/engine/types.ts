@@ -82,6 +82,27 @@ export interface SimulationProbeResult {
   s21Db: Float64Array
 }
 
+export interface RFBudgetStage {
+  nodeId: NodeId
+  label: string
+  type: RFNodeType
+  stageGainDb: number | null
+  cumulativeGainDb: number | null
+  outputPowerDbm: number | null
+  cumulativeNoiseFigureDb: number | null
+  cumulativeInputP1Dbm: number | null
+  cumulativeOutputP1Dbm: number | null
+  cumulativeInputIp3Dbm: number | null
+  cumulativeOutputIp3Dbm: number | null
+}
+
+export interface RFBudgetResult {
+  centerFrequencyHz: number
+  sourcePowerDbm: number | null
+  stages: RFBudgetStage[]
+  warnings: string[]
+}
+
 export interface SimulationInput {
   nodes: RFProjectNode[]
   edges: RFProjectEdge[]
@@ -93,6 +114,7 @@ export interface SimulationOutput {
   curves: SimulationCurves
   stageSummaries: SimulationStageSummary[]
   probeResults: SimulationProbeResult[]
+  budget: RFBudgetResult
   warnings: SimulationWarning[]
 }
 
