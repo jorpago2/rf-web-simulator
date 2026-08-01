@@ -1,5 +1,6 @@
 import { cascadeTwoPorts } from './cascade'
 import { magnitudeDb } from './complex'
+import { deriveSimulationCurves } from './derivedMetrics'
 import {
   createIdealAmplifier,
   createIdealAttenuator,
@@ -99,7 +100,14 @@ export function simulateLinearChain(input: SimulationInput): SimulationOutput {
     stageSummaries.push(summarizeStage(node, cumulative))
   }
 
-  return { total: cumulative, stageSummaries, warnings }
+  const derived = deriveSimulationCurves(cumulative)
+  warnings.push(...derived.warnings)
+  return {
+    total: cumulative,
+    curves: derived.curves,
+    stageSummaries,
+    warnings,
+  }
 }
 
 function networkForNode(

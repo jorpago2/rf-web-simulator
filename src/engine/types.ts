@@ -65,7 +65,7 @@ export interface RFProject {
 }
 
 export interface SimulationWarning {
-  code: 'RANGE_CLIPPED' | 'CASCADE_NEAR_SINGULAR'
+  code: 'RANGE_CLIPPED' | 'CASCADE_NEAR_SINGULAR' | 'S21_PHASE_UNDEFINED'
   message: string
   frequencyHz?: number
 }
@@ -84,6 +84,16 @@ export interface SimulationInput {
 
 export interface SimulationOutput {
   total: TwoPortNetwork
+  curves: SimulationCurves
   stageSummaries: SimulationStageSummary[]
   warnings: SimulationWarning[]
+}
+
+export interface SimulationCurves {
+  s11Db: Float64Array
+  s21Db: Float64Array
+  s12Db: Float64Array
+  s22Db: Float64Array
+  s21PhaseDeg: Float64Array
+  s21GroupDelayS: Float64Array
 }

@@ -42,6 +42,10 @@ describe('RF simulation integration', () => {
     expect(result.total.frequencyHz[0]).toBe(1e9)
     expect(result.total.frequencyHz.at(-1)).toBe(2e9)
     expect(result.total.s21.re).toEqual(new Float64Array([1, 1, 1, 1, 1]))
+    expect(result.curves.s21Db).toEqual(new Float64Array([0, 0, 0, 0, 0]))
+    for (const groupDelaySeconds of result.curves.s21GroupDelayS) {
+      expect(groupDelaySeconds).toBeCloseTo(0)
+    }
     expect(result.warnings[0]?.code).toBe('RANGE_CLIPPED')
     expect(result.stageSummaries[0]?.s21DbAtCenter).toBeCloseTo(0)
     expect(

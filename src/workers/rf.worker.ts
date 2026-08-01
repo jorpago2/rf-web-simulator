@@ -41,6 +41,12 @@ function transferables(output: SimulationOutput): Transferable[] {
     network.s12.im.buffer,
     network.s22.re.buffer,
     network.s22.im.buffer,
+    output.curves.s11Db.buffer,
+    output.curves.s21Db.buffer,
+    output.curves.s12Db.buffer,
+    output.curves.s22Db.buffer,
+    output.curves.s21PhaseDeg.buffer,
+    output.curves.s21GroupDelayS.buffer,
   ]
 }
 

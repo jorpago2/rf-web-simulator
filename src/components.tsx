@@ -7,6 +7,7 @@ import type {
   RFNodeType,
   SimulationOutput,
 } from './engine/types'
+import { RFPlot, type FrequencyUnit, type PlotView } from './plots/RFPlot'
 import { useRFEditorStore } from './app/store'
 import { strings } from './app/strings'
 
@@ -291,6 +292,8 @@ export function SimulationPanel({
   onAnalysisChange: (analysis: RFAnalysisSettings) => void
   onRun: () => void
 }) {
+  const [plotView, setPlotView] = useState<PlotView>('sParameters')
+  const [frequencyUnit, setFrequencyUnit] = useState<FrequencyUnit>('auto')
   const update = (values: Partial<RFAnalysisSettings>) =>
     onAnalysisChange({ ...analysis, ...values })
 
@@ -302,13 +305,28 @@ export function SimulationPanel({
           role="tablist"
           aria-label="Analysis views"
         >
-          <button type="button" role="tab" aria-selected="true">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={plotView === 'sParameters'}
+            onClick={() => setPlotView('sParameters')}
+          >
             S-parameters
           </button>
-          <button type="button" role="tab" aria-selected="false" disabled>
-            Phase plot
+          <button
+            type="button"
+            role="tab"
+            aria-selected={plotView === 'phase'}
+            onClick={() => setPlotView('phase')}
+          >
+            Phase
           </button>
-          <button type="button" role="tab" aria-selected="false" disabled>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={plotView === 'groupDelay'}
+            onClick={() => setPlotView('groupDelay')}
+          >
             Group delay
           </button>
         </div>
@@ -348,6 +366,22 @@ export function SimulationPanel({
             value={analysis.referenceImpedanceOhm}
             onChange={(value) => update({ referenceImpedanceOhm: value })}
           />
+          <label className="compact-field compact-select">
+            <span>Display</span>
+            <select
+              value={frequencyUnit}
+              onChange={(event) =>
+                setFrequencyUnit(event.target.value as FrequencyUnit)
+              }
+              aria-label="Plot frequency unit"
+            >
+              <option value="auto">Auto</option>
+              <option value="Hz">Hz</option>
+              <option value="kHz">kHz</option>
+              <option value="MHz">MHz</option>
+              <option value="GHz">GHz</option>
+            </select>
+          </label>
           <button
             className="run-button"
             type="button"
@@ -367,7 +401,11 @@ export function SimulationPanel({
           </div>
         )}
         {status !== 'error' && result ? (
-          <SimulationSummary result={result} />
+          <SimulationSummary
+            frequencyUnit={frequencyUnit}
+            plotView={plotView}
+            result={result}
+          />
         ) : (
           status !== 'error' && (
             <div className="results-empty">
@@ -384,7 +422,15 @@ export function SimulationPanel({
   )
 }
 
-function SimulationSummary({ result }: { result: SimulationOutput }) {
+function SimulationSummary({
+  result,
+  plotView,
+  frequencyUnit,
+}: {
+  result: SimulationOutput
+  plotView: PlotView
+  frequencyUnit: FrequencyUnit
+}) {
   const network = result.total
   const centerIndex = Math.floor(network.frequencyHz.length / 2)
   const sParameters = [
@@ -397,6 +443,9 @@ function SimulationSummary({ result }: { result: SimulationOutput }) {
 
   return (
     <div className="simulation-summary">
+      <div className="rf-plot-shell">
+        <RFPlot frequencyUnit={frequencyUnit} result={result} view={plotView} />
+      </div>
       <div className="metric-grid">
         {sParameters.map(([label, values]) => {
           const complex = {

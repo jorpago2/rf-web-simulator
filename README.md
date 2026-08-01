@@ -6,7 +6,7 @@ backend, account, upload, or runtime other than a modern browser is required.
 
 Online demo: <https://jorpago2.github.io/rf-web-simulator/>
 
-## Current iteration: 0.2 numerical core
+## Current iteration: 0.3 scientific plots
 
 - Vite, React, strict TypeScript, React Flow, and Zustand.
 - Desktop/tablet RF editor with six draggable block types.
@@ -23,11 +23,15 @@ Online demo: <https://jorpago2.github.io/rf-web-simulator/>
 - Typed Web Worker execution with transferable output buffers.
 - Browser controls for range, points, reference impedance, and center-frequency
   S-parameter results.
+- Interactive Plotly views for S11/S21/S12/S22 magnitude, unwrapped S21 phase,
+  and S21 group delay, with zoom, pan, unified cursor, selectable frequency
+  units, and SVG export.
+- Colorblind-safe colors plus redundant line styles for S-parameter traces.
 - Deterministic analytical and integration tests.
 - CI and GitHub Pages deployment workflows.
 
-Full plots, group delay, IndexedDB project storage, JSON project files, and CSV
-export remain outside this iteration.
+IndexedDB project storage, JSON project files, and CSV export remain outside
+this iteration.
 
 ## Run locally
 
@@ -59,6 +63,7 @@ src/
 |-- app/       application shell, strings, and Zustand editor state
 |-- diagram/   React Flow canvas, registry, and RF node rendering
 |-- engine/    DOM-free validation, interpolation, cascade, and RF models
+|-- plots/     lazily loaded Plotly scientific views
 |-- test/      small deterministic scientific fixtures
 `-- workers/   typed browser-worker boundary
 ```
@@ -66,6 +71,10 @@ src/
 Vector network data uses `Float64Array`. The Web Worker transfers output buffers
 back to the UI instead of copying them. A future project JSON serializer must
 convert typed arrays to an explicitly serializable representation.
+
+Plotly is delivered as a separate basic-distribution chunk and is loaded only
+after simulation results are displayed. Switching view or display units does
+not rerun the RF engine.
 
 ## Touchstone assumptions and precision
 
@@ -91,13 +100,26 @@ If `|D| < 1e-12`, the denominator magnitude is regularized to that tolerance and
 a frequency-specific warning is returned. Different reference impedances are
 rejected; silent renormalization is intentionally not implemented.
 
+## Phase and group delay
+
+S21 phase is unwrapped in radians. Group delay is evaluated as
+`tau_g = -d(phi)/d(omega)` using central differences on interior points and
+one-sided differences at the endpoints; nonuniform frequency grids are
+supported. Values are stored in seconds and displayed in nanoseconds.
+
+Zero magnitudes are plotted at a configurable numerical floor of -300 dB. S21
+phase and group delay are marked as gaps, with an explicit warning, when
+`|S21| <= 1e-15`. Phase unwrapping assumes adjacent valid samples differ by less
+than pi radians after wrapping; a denser frequency grid is required when that
+sampling condition is not met.
+
 > S-parameters describe linear small-signal behavior. On their own they cannot
 > determine P1dB, saturation, AM/AM, AM/PM, or intermodulation products.
 
 ## Roadmap
 
-1. S-parameter, unwrapped-phase, and group-delay plots.
-2. IndexedDB autosave, versioned JSON projects, and CSV export.
+1. IndexedDB autosave, versioned JSON projects, and CSV export.
+2. Accumulated full-frequency curves at probes.
 3. RF budget, mixer behavior, and PWA support only after MVP stability.
 
 ## Privacy and security
