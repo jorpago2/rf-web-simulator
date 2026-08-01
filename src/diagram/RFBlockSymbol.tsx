@@ -23,28 +23,48 @@ function symbolForType(type: RFNodeType) {
     case 'source':
       return (
         <>
-          <path d="M2 22h9M47 22h15" />
-          <circle className="rf-block-symbol__fill" cx="29" cy="22" r="18" />
-          <path d="M16 22c4-10 8-10 12 0s8 10 13 0" />
+          <path d="M2 22h10M46 22h16" />
+          <circle className="rf-block-symbol__fill" cx="29" cy="22" r="17" />
+          <path d="M16 22c3.5-9 7-9 10.5 0s7 9 12.5 0" />
         </>
       )
     case 'touchstone2Port':
       return (
         <>
-          <path d="M2 12h10M2 32h10M52 12h10M52 32h10" />
+          <path d="M2 12h11M2 32h11M51 12h11M51 32h11" />
           <rect
             className="rf-block-symbol__fill"
-            x="12"
+            x="13"
             y="5"
-            width="40"
+            width="38"
             height="34"
-            rx="5"
+            rx="4"
           />
-          <circle cx="18" cy="12" r="2" />
-          <circle cx="18" cy="32" r="2" />
-          <circle cx="46" cy="12" r="2" />
-          <circle cx="46" cy="32" r="2" />
-          <path d="M20 29c7-16 15 7 24-10" />
+          <circle
+            className="rf-block-symbol__junction"
+            cx="18"
+            cy="12"
+            r="1.8"
+          />
+          <circle
+            className="rf-block-symbol__junction"
+            cx="18"
+            cy="32"
+            r="1.8"
+          />
+          <circle
+            className="rf-block-symbol__junction"
+            cx="46"
+            cy="12"
+            r="1.8"
+          />
+          <circle
+            className="rf-block-symbol__junction"
+            cx="46"
+            cy="32"
+            r="1.8"
+          />
+          <path d="M21 30c5-15 10 5 14-8s7 3 9-7" />
         </>
       )
     case 'idealAmplifier':
@@ -81,7 +101,8 @@ function symbolForType(type: RFNodeType) {
             height="30"
             rx="4"
           />
-          <path d="M20 30h5c3 0 3-16 7-16s4 16 7 16h5" />
+          <path className="rf-block-symbol__muted" d="M20 31V13M20 31h25" />
+          <path d="M22 29h5c2 0 2-13 5-13s3 13 5 13h6" />
         </>
       )
     case 'idealPhaseShifter':
@@ -89,7 +110,8 @@ function symbolForType(type: RFNodeType) {
         <>
           <path d="M2 22h14M48 22h14" />
           <circle className="rf-block-symbol__fill" cx="32" cy="22" r="16" />
-          <path d="M23 29c2-11 5-15 9-15s7 4 9 15M25 25h14" />
+          <path d="M23 29c2-10 5-15 9-15s7 5 9 15M25 25h14" />
+          <path className="rf-block-symbol__muted" d="M32 14v11" />
         </>
       )
     case 'idealIsolator':
@@ -110,23 +132,26 @@ function symbolForType(type: RFNodeType) {
     case 'idealDirectionalCoupler':
       return (
         <>
-          <path d="M2 15h60M11 31h51M43 15c-2 8-8 16-18 16" />
-          <path d="m28 26-3 5 6 1" />
+          <path d="M2 13h60M2 31h60" />
+          <path d="M44 13c-3 9-10 16-21 18" />
+          <path d="m28 26-5 5 7 1" />
+          <path className="rf-block-symbol__muted" d="M20 13c3 9 10 16 21 18" />
         </>
       )
     case 'idealDiplexer':
       return (
         <>
-          <path d="M2 22h20M22 22 44 10h18M22 22l22 12h18" />
-          <path d="M47 7h11M47 31h4l3 6 4-6h2" />
+          <path d="M2 22h20M22 22 43 10h19M22 22l21 12h19" />
+          <path d="M47 7v6h11M47 37v-6h4l3 6 4-6h2" />
           <circle className="rf-block-symbol__junction" cx="22" cy="22" r="3" />
         </>
       )
     case 'transmissionLine':
       return (
         <>
-          <path d="M2 15h60M2 29h60M13 10v24M51 10v24" />
-          <path d="m25 8 14 0M35 4l4 4-4 4" />
+          <path d="M2 22h60M14 10v24M50 10v24" />
+          <path className="rf-block-symbol__muted" d="M14 15h36M14 29h36" />
+          <path d="M24 7h16m-5-4 5 4-5 4" />
         </>
       )
     case 'matchingNetwork':
@@ -139,29 +164,33 @@ function symbolForType(type: RFNodeType) {
     case 'idealBalun':
       return (
         <>
-          <path d="M2 22h15M47 13h15M47 31h15" />
-          <path d="M17 10c8 0 8 24 0 24M26 10c8 0 8 24 0 24M38 8v28M42 8v28" />
+          <path d="M2 22h10M52 11h10M52 33h10" />
+          <path d="M12 10c8 0 8 8 0 8 8 0 8 8 0 8 8 0 8 8 0 8" />
+          <path d="M52 5c-8 0-8 6 0 6-8 0-8 7 0 7M52 26c-8 0-8 7 0 7-8 0-8 6 0 6" />
+          <path className="rf-block-symbol__muted" d="M29 7v30M34 7v30" />
         </>
       )
     case 'vcoSource':
       return (
         <>
           <circle className="rf-block-symbol__fill" cx="29" cy="22" r="17" />
-          <path d="M12 22c4-9 8-9 12 0s8 9 12 0M46 22h16M5 39 17 27M5 32v7h7" />
+          <path d="M14 22c3-8 6-8 9 0s6 8 11 0M46 22h16M5 39 17 27M5 32v7h7" />
         </>
       )
     case 'rxAntenna':
       return (
         <>
-          <path d="M31 10v32M31 15 18 3M31 15 44 3M31 28h31" />
-          <path d="m5 20 13 6M12 15l-7 5 2-9" />
+          <path d="M34 10v32M34 15 21 3M34 15 47 3M34 28h28" />
+          <path d="M5 12c8 2 13 7 16 15M11 7c9 3 15 9 18 18" />
+          <path d="m16 20 5 7-8-1" />
         </>
       )
     case 'txAntenna':
       return (
         <>
-          <path d="M2 28h31M33 10v32M33 15 20 3M33 15 46 3" />
-          <path d="m46 26 13-6M57 13l2 7-7 5" />
+          <path d="M2 28h28M30 10v32M30 15 17 3M30 15 43 3" />
+          <path d="M43 27c3-8 8-13 16-15M35 25c3-9 9-15 18-18" />
+          <path d="m51 13 8-1-5 7" />
         </>
       )
     case 'idealMixer':
@@ -189,24 +218,16 @@ function symbolForType(type: RFNodeType) {
     case 'probe':
       return (
         <>
-          <path d="M2 30h60M18 5l12 20" />
-          <circle className="rf-block-symbol__fill" cx="32" cy="30" r="5" />
-          <path d="m14 6 7-4 3 6-7 4" />
+          <path d="M2 31h60M31 31V10" />
+          <path className="rf-block-symbol__fill" d="m25 18 6-9 6 9z" />
+          <circle className="rf-block-symbol__junction" cx="31" cy="31" r="3" />
         </>
       )
     case 'load':
       return (
         <>
-          <path d="M2 22h22M48 22h5v12M45 34h16M48 39h10M51 43h4" />
-          <rect
-            className="rf-block-symbol__fill"
-            x="24"
-            y="12"
-            width="24"
-            height="20"
-            rx="2"
-          />
-          <path d="m29 22 4-6 5 12 5-6" />
+          <path d="M2 22h22l4-7 6 14 6-14 6 14 4-7h4v11" />
+          <path d="M46 33h16M49 38h10M52 43h4" />
         </>
       )
   }

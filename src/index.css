@@ -446,7 +446,10 @@ h2 {
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 2.25;
+  stroke-width: 2.1;
+}
+
+.rf-block-symbol > * {
   vector-effect: non-scaling-stroke;
 }
 
@@ -457,6 +460,10 @@ h2 {
 .rf-block-symbol__junction {
   fill: currentColor;
   stroke: none;
+}
+
+.rf-block-symbol__muted {
+  opacity: 0.48;
 }
 
 .rf-node__label {
