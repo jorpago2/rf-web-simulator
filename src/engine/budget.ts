@@ -1,5 +1,6 @@
-import type { RFBudgetResult, RFNodeType } from './types'
+import type { RFBudgetResult, RFNodeType, TwoPortNetwork } from './types'
 import type { DevicePowerTransfer } from './deviceTable'
+import { calculateTransducerGain } from './transducer'
 
 export interface BudgetStageInput {
   nodeId: string
@@ -9,6 +10,7 @@ export interface BudgetStageInput {
   noiseFigureDb: number | null
   outputP1Dbm: number | null
   outputIp3Dbm: number | null
+  im3PhaseDeg?: number | null
   powerTransfer?: DevicePowerTransfer | null
 }
 
@@ -16,6 +18,13 @@ export function calculateRFBudget(
   centerFrequencyHz: number,
   sourcePowerDbm: number | null,
   stages: BudgetStageInput[],
+  system?: {
+    network: TwoPortNetwork
+    pointIndex: number
+    sourceImpedanceOhm: number
+    loadImpedanceOhm: number
+    noiseFigureDb?: number | null
+  },
 ): RFBudgetResult {
   if (!Number.isFinite(centerFrequencyHz) || centerFrequencyHz <= 0) {
     throw new RangeError('RF budget center frequency must be positive.')
@@ -149,9 +158,38 @@ export function calculateRFBudget(
     }
   })
 
+  const sourceImpedanceOhm =
+    system?.sourceImpedanceOhm ?? system?.network.referenceImpedanceOhm ?? 50
+  const loadImpedanceOhm =
+    system?.loadImpedanceOhm ?? system?.network.referenceImpedanceOhm ?? 50
+  const transducer = system
+    ? calculateTransducerGain(
+        system.network,
+        system.pointIndex,
+        sourceImpedanceOhm,
+        loadImpedanceOhm,
+      )
+    : null
+  const hasNoiseOverride = system !== undefined && 'noiseFigureDb' in system
+  const cascadedNoiseFigureDb = hasNoiseOverride
+    ? (system.noiseFigureDb ?? null)
+    : (budgetStages.at(-1)?.cumulativeNoiseFigureDb ??
+      (stages.length === 0 ? 0 : null))
+  if (hasNoiseOverride && budgetStages.length > 0) {
+    budgetStages[budgetStages.length - 1]!.cumulativeNoiseFigureDb =
+      system.noiseFigureDb ?? null
+  }
   return {
     centerFrequencyHz,
     sourcePowerDbm,
+    sourceImpedanceOhm,
+    loadImpedanceOhm,
+    transducerGainDb: transducer?.transducerGainDb ?? null,
+    deliveredLoadPowerDbm:
+      sourcePowerDbm !== null && transducer
+        ? sourcePowerDbm + transducer.transducerGainDb
+        : null,
+    cascadedNoiseFigureDb,
     stages: budgetStages,
     warnings,
   }

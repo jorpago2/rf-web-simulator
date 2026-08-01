@@ -4,19 +4,20 @@ import {
   deviceMetricAt,
   devicePowerTransferAt,
   interpolateDeviceOutputPower,
+  interpolateDeviceOutputPhase,
   parseDeviceTableCsv,
 } from './deviceTable'
 
 const tableText = `# Typical values under one documented bias condition
-frequency_ghz,gain_db,nf_db,oip3_dbm,pin_dbm,pout_dbm
-1,20,2,35,,
-2,18,4,31,,
-1,,,,-20,0
-1,,,,-10,9.8
-1,,,,0,18
-2,,,,-20,-2
-2,,,,-10,7.5
-2,,,,0,16
+frequency_ghz,gain_db,nf_db,oip3_dbm,pin_dbm,pout_dbm,ampm_deg
+1,20,2,35,,,
+2,18,4,31,,,
+1,,,,-20,0,0
+1,,,,-10,9.8,-2
+1,,,,0,18,-6
+2,,,,-20,-2,0
+2,,,,-10,7.5,-4
+2,,,,0,16,-8
 `
 
 describe('datasheet device tables', () => {
@@ -44,6 +45,9 @@ describe('datasheet device tables', () => {
     expect(
       interpolateDeviceOutputPower(devicePowerTransferAt(table, 1.5e9)!, -10),
     ).toBeCloseTo(8.65)
+    expect(
+      interpolateDeviceOutputPhase(devicePowerTransferAt(table, 1.5e9)!, -10),
+    ).toBeCloseTo(-3)
   })
 
   it('rejects frequency extrapolation and incomplete power rows', () => {

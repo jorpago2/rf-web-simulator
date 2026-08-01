@@ -47,12 +47,20 @@ function transferables(output: SimulationOutput): Transferable[] {
     output.curves.s22Db.buffer,
     output.curves.s21PhaseDeg.buffer,
     output.curves.s21GroupDelayS.buffer,
+    output.networkChecks.stabilityK.buffer,
+    output.networkChecks.stabilityMuSource.buffer,
+    output.networkChecks.stabilityMuLoad.buffer,
+    output.networkChecks.passivityMaximumSingularValue.buffer,
+    output.networkChecks.reciprocityErrorMagnitude.buffer,
     ...output.probeResults.map((probe) => probe.s21Db.buffer),
     output.frequencyPlan.outputFrequencyHz.buffer,
     output.nonlinear.inputPowerDbm.buffer,
     output.nonlinear.linearOutputPowerDbm.buffer,
     output.nonlinear.compressedOutputPowerDbm.buffer,
+    output.nonlinear.outputPhaseDeg.buffer,
     output.nonlinear.im3OutputPowerDbm.buffer,
+    output.parametricSweep.parameterValues.buffer,
+    output.parametricSweep.metricValues.buffer,
   ]
 }
 

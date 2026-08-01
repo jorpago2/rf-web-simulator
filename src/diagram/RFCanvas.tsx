@@ -18,6 +18,8 @@ const nodeTypes: NodeTypes = {
   idealAmplifier: RFBlockNode,
   idealAttenuator: RFBlockNode,
   idealMixer: RFBlockNode,
+  idealSplitter: RFBlockNode,
+  idealCombiner: RFBlockNode,
   load: RFBlockNode,
   probe: RFBlockNode,
 }

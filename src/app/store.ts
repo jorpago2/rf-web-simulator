@@ -26,6 +26,8 @@ export const INITIAL_ANALYSIS: RFAnalysisSettings = {
   stopHz: 1.2e9,
   points: 1001,
   referenceImpedanceOhm: 50,
+  monteCarloRuns: 0,
+  monteCarloSeed: 1,
 }
 
 function initialNodes(): RFCanvasNode[] {
@@ -152,6 +154,8 @@ export const useRFEditorStore = create<RFEditorState>((set, get) => ({
         id: edge.id,
         source: edge.source,
         target: edge.target,
+        sourceHandle: edge.sourceHandle,
+        targetHandle: edge.targetHandle,
       })),
       selectedNodeId: null,
       modelRevision: state.modelRevision + 1,

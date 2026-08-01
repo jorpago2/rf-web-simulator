@@ -17,6 +17,11 @@ function budget(): RFBudgetResult {
   return {
     centerFrequencyHz: 1e9,
     sourcePowerDbm: null,
+    sourceImpedanceOhm: 50,
+    loadImpedanceOhm: 50,
+    transducerGainDb: 20,
+    deliveredLoadPowerDbm: null,
+    cascadedNoiseFigureDb: 3,
     stages: [
       {
         nodeId: 'amp',
@@ -44,10 +49,14 @@ describe('chain-level nonlinear sweep', () => {
     expect(result.inputPowerDbm[75]).toBeCloseTo(1)
     expect(result.linearOutputPowerDbm[75]).toBeCloseTo(21)
     expect(result.compressedOutputPowerDbm[75]).toBeCloseTo(20)
-    expect(result.im3OutputPowerDbm[75]).toBeCloseTo(3 * 21 - 2 * 29.586073)
+    expect(result.im3OutputPowerDbm[75]).toBeCloseTo(3 * 21 - 2 * 30)
     expect(result.toneFrequenciesHz).toEqual([995e6, 1005e6])
     expect(result.im3FrequenciesHz).toEqual([985e6, 1015e6])
     expect(result.limitingStageLabel).toBe('Amplifier')
+    const fundamental = result.envelopeSpectrum.find((line) => line.index === 1)
+    const im3 = result.envelopeSpectrum.find((line) => line.index === 3)
+    expect(fundamental).toBeDefined()
+    expect(im3?.outputPowerDbm).toBeLessThan(fundamental!.outputPowerDbm)
   })
 
   it('propagates compression through every stage', () => {
@@ -85,5 +94,26 @@ describe('chain-level nonlinear sweep', () => {
     ])
     expect(result.available).toBe(false)
     expect(result.inputPowerDbm).toHaveLength(0)
+  })
+
+  it('coherently combines stage IM3 phase', () => {
+    const stages: BudgetStageInput[] = [
+      { ...amplifier, gainDb: 0, outputIp3Dbm: 20, im3PhaseDeg: 0 },
+      {
+        ...amplifier,
+        nodeId: 'amp-2',
+        gainDb: 0,
+        outputIp3Dbm: 20,
+        im3PhaseDeg: 180,
+      },
+    ]
+    const result = calculateNonlinearSweep(
+      calculateRFBudget(1e9, -30, stages),
+      stages,
+    )
+    expect(result.outputIp3Dbm).toBe(Number.POSITIVE_INFINITY)
+    expect(Array.from(result.im3OutputPowerDbm)).toContain(
+      Number.NEGATIVE_INFINITY,
+    )
   })
 })

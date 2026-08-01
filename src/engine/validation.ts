@@ -1,5 +1,7 @@
-import { parseTouchstoneS2P } from './touchstone'
 import { parseDeviceTableCsv } from './deviceTable'
+import { portsForNode, resolveEdgePort } from './ports'
+import { parseMixerProductCsv } from './mixerProducts'
+import { parseTouchstone } from './touchstone'
 import type { RFProjectEdge, RFProjectNode } from './types'
 
 export type GraphIssueCode =
@@ -7,6 +9,7 @@ export type GraphIssueCode =
   | 'DANGLING_EDGE'
   | 'SOURCE_COUNT'
   | 'LOAD_COUNT'
+  | 'INVALID_PORT'
   | 'INVALID_PORT_DEGREE'
   | 'CYCLE'
   | 'DISCONNECTED_NODE'
@@ -24,6 +27,7 @@ export interface GraphValidationResult {
   valid: boolean
   orderedNodeIds: string[]
   issues: GraphIssue[]
+  branched: boolean
 }
 
 export function validateLinearGraph(
@@ -32,7 +36,6 @@ export function validateLinearGraph(
 ): GraphValidationResult {
   const issues: GraphIssue[] = []
   const nodesById = new Map<string, RFProjectNode>()
-
   for (const node of nodes) {
     if (nodesById.has(node.id)) {
       issues.push({
@@ -45,15 +48,33 @@ export function validateLinearGraph(
     }
   }
 
-  const incoming = new Map<string, RFProjectEdge[]>()
+  const sources = nodes.filter((node) => node.data.type === 'source')
+  const loads = nodes.filter((node) => node.data.type === 'load')
+  if (sources.length !== 1) {
+    issues.push({
+      code: 'SOURCE_COUNT',
+      message: `An RF network requires exactly one source; found ${sources.length}.`,
+    })
+  }
+  if (loads.length !== 1) {
+    issues.push({
+      code: 'LOAD_COUNT',
+      message: `An RF network requires exactly one load; found ${loads.length}.`,
+    })
+  }
+
   const outgoing = new Map<string, RFProjectEdge[]>()
+  const incoming = new Map<string, RFProjectEdge[]>()
+  const usedPorts = new Map<string, RFProjectEdge[]>()
   for (const nodeId of nodesById.keys()) {
-    incoming.set(nodeId, [])
     outgoing.set(nodeId, [])
+    incoming.set(nodeId, [])
   }
 
   for (const edge of edges) {
-    if (!nodesById.has(edge.source) || !nodesById.has(edge.target)) {
+    const source = nodesById.get(edge.source)
+    const target = nodesById.get(edge.target)
+    if (!source || !target) {
       issues.push({
         code: 'DANGLING_EDGE',
         edgeId: edge.id,
@@ -61,124 +82,231 @@ export function validateLinearGraph(
       })
       continue
     }
-    outgoing.get(edge.source)?.push(edge)
-    incoming.get(edge.target)?.push(edge)
-  }
-
-  const sources = nodes.filter((node) => node.data.type === 'source')
-  const loads = nodes.filter((node) => node.data.type === 'load')
-  if (sources.length !== 1) {
-    issues.push({
-      code: 'SOURCE_COUNT',
-      message: `A linear chain requires exactly one source; found ${sources.length}.`,
-    })
-  }
-  if (loads.length !== 1) {
-    issues.push({
-      code: 'LOAD_COUNT',
-      message: `A linear chain requires exactly one load; found ${loads.length}.`,
-    })
+    const sourcePort = resolveEdgePort(source, 'output', edge.sourceHandle)
+    const targetPort = resolveEdgePort(target, 'input', edge.targetHandle)
+    if (!sourcePort || !targetPort) {
+      issues.push({
+        code: 'INVALID_PORT',
+        edgeId: edge.id,
+        message: `Connection "${edge.id}" requires explicit valid source and target ports.`,
+      })
+      continue
+    }
+    addUsedPort(usedPorts, `${source.id}:${sourcePort.id}`, edge)
+    addUsedPort(usedPorts, `${target.id}:${targetPort.id}`, edge)
+    outgoing.get(source.id)!.push(edge)
+    incoming.get(target.id)!.push(edge)
   }
 
   for (const node of nodesById.values()) {
-    const inputCount = incoming.get(node.id)?.length ?? 0
-    const outputCount = outgoing.get(node.id)?.length ?? 0
-    const validDegree =
-      node.data.type === 'source'
-        ? inputCount === 0 && outputCount === 1
-        : node.data.type === 'load'
-          ? inputCount === 1 && outputCount === 0
-          : inputCount === 1 && outputCount === 1
+    for (const port of portsForNode(node)) {
+      const count = usedPorts.get(`${node.id}:${port.id}`)?.length ?? 0
+      if (count !== 1) {
+        issues.push({
+          code: 'INVALID_PORT_DEGREE',
+          nodeId: node.id,
+          message: `Port ${port.label} on "${node.data.label}" has ${count} connection(s); exactly one is required.`,
+        })
+      }
+    }
+    validateNodeAssets(node, issues)
+  }
 
-    if (!validDegree) {
+  const orderedNodeIds = topologicalOrder(nodesById, outgoing, incoming)
+  if (orderedNodeIds.length !== nodesById.size) {
+    issues.push({
+      code: 'CYCLE',
+      message: 'The RF network contains a directed cycle.',
+    })
+  }
+
+  if (sources.length === 1 && loads.length === 1) {
+    const reachableFromSource = reachable(sources[0]!.id, outgoing, 'target')
+    const reachingLoad = reachable(loads[0]!.id, incoming, 'source')
+    for (const node of nodesById.values()) {
+      if (!reachableFromSource.has(node.id) || !reachingLoad.has(node.id)) {
+        issues.push({
+          code: 'DISCONNECTED_NODE',
+          nodeId: node.id,
+          message: `Block "${node.data.label}" is not on a source-to-load path.`,
+        })
+      }
+    }
+  }
+
+  return {
+    valid: issues.length === 0,
+    orderedNodeIds,
+    issues,
+    branched: nodes.some(
+      (node) =>
+        node.data.type === 'idealSplitter' ||
+        node.data.type === 'idealCombiner' ||
+        portsForNode(node).length > 2,
+    ),
+  }
+}
+
+function validateNodeAssets(node: RFProjectNode, issues: GraphIssue[]): void {
+  if (
+    node.data.type === 'idealMixer' &&
+    node.data.parameters.productTableContent !== undefined &&
+    node.data.parameters.productTableContent !== null
+  ) {
+    try {
+      if (typeof node.data.parameters.productTableContent !== 'string') {
+        throw new Error('invalid content')
+      }
+      parseMixerProductCsv(node.data.parameters.productTableContent)
+    } catch (error) {
       issues.push({
-        code: 'INVALID_PORT_DEGREE',
+        code: 'INVALID_DEVICE_TABLE',
         nodeId: node.id,
-        message: `Block "${node.data.label}" has ${inputCount} input(s) and ${outputCount} output(s); the MVP accepts one linear path only.`,
+        message: `Mixer "${node.data.label}" product table: ${errorMessage(error)}`,
       })
     }
-
-    if (node.data.type === 'touchstone2Port') {
-      const content = node.data.parameters.content
-      if (typeof content !== 'string' || content.trim() === '') {
+  }
+  if (node.data.type === 'touchstone2Port') {
+    const content = node.data.parameters.content
+    if (typeof content !== 'string' || content.trim() === '') {
+      issues.push({
+        code: 'INVALID_TOUCHSTONE',
+        nodeId: node.id,
+        message: `Touchstone block "${node.data.label}" has no valid file.`,
+      })
+    } else {
+      try {
+        parseTouchstone(
+          content,
+          typeof node.data.parameters.fileName === 'string'
+            ? node.data.parameters.fileName
+            : undefined,
+          Number.isInteger(node.data.parameters.portCount)
+            ? (node.data.parameters.portCount as number)
+            : 2,
+        )
+      } catch (error) {
         issues.push({
           code: 'INVALID_TOUCHSTONE',
           nodeId: node.id,
-          message: `Touchstone block "${node.data.label}" has no valid .s2p file.`,
+          message: `Touchstone block "${node.data.label}": ${errorMessage(error)}`,
         })
-      } else {
-        try {
-          parseTouchstoneS2P(content)
-        } catch (error) {
-          issues.push({
-            code: 'INVALID_TOUCHSTONE',
-            nodeId: node.id,
-            message: `Touchstone block "${node.data.label}": ${errorMessage(error)}`,
-          })
-        }
       }
     }
-    if (node.data.type === 'idealAmplifier') {
-      const sParameterContent = node.data.parameters.sParameterContent
-      if (sParameterContent !== undefined && sParameterContent !== null) {
-        try {
-          if (typeof sParameterContent !== 'string')
-            throw new Error('invalid content')
-          parseTouchstoneS2P(sParameterContent)
-        } catch (error) {
-          issues.push({
-            code: 'INVALID_TOUCHSTONE',
-            nodeId: node.id,
-            message: `Amplifier "${node.data.label}" S-parameters: ${errorMessage(error)}`,
-          })
-        }
-      }
-      const deviceTableContent = node.data.parameters.deviceTableContent
-      if (deviceTableContent !== undefined && deviceTableContent !== null) {
-        try {
-          if (typeof deviceTableContent !== 'string')
-            throw new Error('invalid content')
-          parseDeviceTableCsv(deviceTableContent)
-        } catch (error) {
-          issues.push({
-            code: 'INVALID_DEVICE_TABLE',
-            nodeId: node.id,
-            message: `Amplifier "${node.data.label}" device table: ${errorMessage(error)}`,
-          })
-        }
+    for (const [contentKey, fileNameKey, side] of [
+      ['leftFixtureContent', 'leftFixtureFileName', 'left'],
+      ['rightFixtureContent', 'rightFixtureFileName', 'right'],
+    ] as const) {
+      const fixtureContent = node.data.parameters[contentKey]
+      if (fixtureContent === undefined || fixtureContent === null) continue
+      try {
+        if (typeof fixtureContent !== 'string')
+          throw new Error('invalid content')
+        parseTouchstone(
+          fixtureContent,
+          typeof node.data.parameters[fileNameKey] === 'string'
+            ? (node.data.parameters[fileNameKey] as string)
+            : undefined,
+          2,
+        )
+      } catch (error) {
+        issues.push({
+          code: 'INVALID_TOUCHSTONE',
+          nodeId: node.id,
+          message: `${node.data.label} ${side} fixture: ${errorMessage(error)}`,
+        })
       }
     }
   }
-
-  const orderedNodeIds: string[] = []
-  const visited = new Set<string>()
-  let current = sources.length === 1 ? sources[0] : undefined
-  while (current) {
-    if (visited.has(current.id)) {
+  if (node.data.type !== 'idealAmplifier') return
+  const sParameterContent = node.data.parameters.sParameterContent
+  if (sParameterContent !== undefined && sParameterContent !== null) {
+    try {
+      if (typeof sParameterContent !== 'string')
+        throw new Error('invalid content')
+      parseTouchstone(
+        sParameterContent,
+        typeof node.data.parameters.sParameterFileName === 'string'
+          ? node.data.parameters.sParameterFileName
+          : undefined,
+        2,
+      )
+    } catch (error) {
       issues.push({
-        code: 'CYCLE',
-        nodeId: current.id,
-        message: `A cycle reaches block "${current.data.label}".`,
-      })
-      break
-    }
-    visited.add(current.id)
-    orderedNodeIds.push(current.id)
-    const nextEdge = outgoing.get(current.id)?.[0]
-    current = nextEdge ? nodesById.get(nextEdge.target) : undefined
-  }
-
-  for (const node of nodesById.values()) {
-    if (!visited.has(node.id)) {
-      issues.push({
-        code: 'DISCONNECTED_NODE',
+        code: 'INVALID_TOUCHSTONE',
         nodeId: node.id,
-        message: `Block "${node.data.label}" is not on the source-to-load path.`,
+        message: `Amplifier "${node.data.label}" S-parameters: ${errorMessage(error)}`,
       })
     }
   }
+  const deviceTableContent = node.data.parameters.deviceTableContent
+  if (deviceTableContent !== undefined && deviceTableContent !== null) {
+    try {
+      if (typeof deviceTableContent !== 'string')
+        throw new Error('invalid content')
+      parseDeviceTableCsv(deviceTableContent)
+    } catch (error) {
+      issues.push({
+        code: 'INVALID_DEVICE_TABLE',
+        nodeId: node.id,
+        message: `Amplifier "${node.data.label}" device table: ${errorMessage(error)}`,
+      })
+    }
+  }
+}
 
-  return { valid: issues.length === 0, orderedNodeIds, issues }
+function addUsedPort(
+  usedPorts: Map<string, RFProjectEdge[]>,
+  key: string,
+  edge: RFProjectEdge,
+): void {
+  const existing = usedPorts.get(key)
+  if (existing) existing.push(edge)
+  else usedPorts.set(key, [edge])
+}
+
+function topologicalOrder(
+  nodesById: Map<string, RFProjectNode>,
+  outgoing: Map<string, RFProjectEdge[]>,
+  incoming: Map<string, RFProjectEdge[]>,
+): string[] {
+  const remainingIncoming = new Map(
+    Array.from(nodesById.keys(), (nodeId) => [
+      nodeId,
+      incoming.get(nodeId)?.length ?? 0,
+    ]),
+  )
+  const queue = Array.from(nodesById.keys()).filter(
+    (nodeId) => remainingIncoming.get(nodeId) === 0,
+  )
+  const ordered: string[] = []
+  while (queue.length > 0) {
+    const nodeId = queue.shift()!
+    ordered.push(nodeId)
+    for (const edge of outgoing.get(nodeId) ?? []) {
+      const remaining = (remainingIncoming.get(edge.target) ?? 0) - 1
+      remainingIncoming.set(edge.target, remaining)
+      if (remaining === 0) queue.push(edge.target)
+    }
+  }
+  return ordered
+}
+
+function reachable(
+  startId: string,
+  edgesByNode: Map<string, RFProjectEdge[]>,
+  nextKey: 'source' | 'target',
+): Set<string> {
+  const visited = new Set<string>()
+  const pending = [startId]
+  while (pending.length > 0) {
+    const nodeId = pending.pop()!
+    if (visited.has(nodeId)) continue
+    visited.add(nodeId)
+    for (const edge of edgesByNode.get(nodeId) ?? [])
+      pending.push(edge[nextKey])
+  }
+  return visited
 }
 
 function errorMessage(error: unknown): string {

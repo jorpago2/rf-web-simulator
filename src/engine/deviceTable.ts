@@ -10,6 +10,7 @@ interface DevicePowerCurve {
   frequencyHz: number
   inputPowerDbm: number[]
   outputPowerDbm: number[]
+  outputPhaseDeg: Array<number | null>
 }
 
 export interface DevicePowerTransfer {
@@ -23,6 +24,26 @@ export interface DeviceTable {
   rowCount: number
   metrics: Record<DeviceMetric, DevicePoint[]>
   powerCurves: DevicePowerCurve[]
+}
+
+export function deviceTableOverridesParameter(
+  table: DeviceTable,
+  parameter: string,
+): boolean {
+  switch (parameter) {
+    case 'gainDb':
+      return table.metrics.gainDb.length > 0 || table.powerCurves.length > 0
+    case 'noiseFigureDb':
+      return table.metrics.noiseFigureDb.length > 0
+    case 'outputP1Dbm':
+      return (
+        table.metrics.outputP1Dbm.length > 0 || table.powerCurves.length > 0
+      )
+    case 'outputIp3Dbm':
+      return table.metrics.outputIp3Dbm.length > 0
+    default:
+      return false
+  }
 }
 
 export const MAX_DEVICE_TABLE_CHARACTERS = 2 * 1024 * 1024
@@ -49,6 +70,8 @@ const HEADER_ALIASES: Record<string, { key: string; scale?: number }> = {
   pindbm: { key: 'inputPowerDbm' },
   outputpowerdbm: { key: 'outputPowerDbm' },
   poutdbm: { key: 'outputPowerDbm' },
+  outputphasedeg: { key: 'outputPhaseDeg' },
+  ampmdeg: { key: 'outputPhaseDeg' },
 }
 
 export class DeviceTableError extends Error {
@@ -100,7 +123,11 @@ export function parseDeviceTableCsv(
   }
   const powerRows = new Map<
     number,
-    Array<{ inputPowerDbm: number; outputPowerDbm: number }>
+    Array<{
+      inputPowerDbm: number
+      outputPowerDbm: number
+      outputPhaseDeg: number | null
+    }>
   >()
 
   for (let lineIndex = 1; lineIndex < lines.length; lineIndex += 1) {
@@ -142,14 +169,25 @@ export function parseDeviceTableCsv(
       'outputPowerDbm',
       lineIndex,
     )
+    const outputPhaseDeg = optionalNumber(
+      values,
+      columns,
+      'outputPhaseDeg',
+      lineIndex,
+    )
     if ((inputPowerDbm === null) !== (outputPowerDbm === null)) {
       throw new DeviceTableError(
         `Line ${lineIndex + 1}: input and output power must be supplied together.`,
       )
     }
+    if (outputPhaseDeg !== null && inputPowerDbm === null) {
+      throw new DeviceTableError(
+        `Line ${lineIndex + 1}: output phase requires input and output power.`,
+      )
+    }
     if (inputPowerDbm !== null && outputPowerDbm !== null) {
       const curve = powerRows.get(frequencyHz) ?? []
-      curve.push({ inputPowerDbm, outputPowerDbm })
+      curve.push({ inputPowerDbm, outputPowerDbm, outputPhaseDeg })
       powerRows.set(frequencyHz, curve)
       hasData = true
     }
@@ -189,6 +227,7 @@ export function parseDeviceTableCsv(
       frequencyHz,
       inputPowerDbm: rows.map((row) => row.inputPowerDbm),
       outputPowerDbm: rows.map((row) => row.outputPowerDbm),
+      outputPhaseDeg: rows.map((row) => row.outputPhaseDeg),
     }
   })
   powerCurves.sort((a, b) => a.frequencyHz - b.frequencyHz)
@@ -261,6 +300,16 @@ export function interpolateDeviceOutputPower(
   return lowerOutput + transfer.frequencyWeight * (upperOutput - lowerOutput)
 }
 
+export function interpolateDeviceOutputPhase(
+  transfer: DevicePowerTransfer,
+  inputPowerDbm: number,
+): number | null {
+  const lowerPhase = interpolatePhaseCurve(transfer.lower, inputPowerDbm)
+  const upperPhase = interpolatePhaseCurve(transfer.upper, inputPowerDbm)
+  if (lowerPhase == null || upperPhase == null) return null
+  return lowerPhase + transfer.frequencyWeight * (upperPhase - lowerPhase)
+}
+
 export function deviceTableSummary(table: DeviceTable): string {
   const labels = [
     table.metrics.gainDb.length > 0 || table.powerCurves.length > 0
@@ -272,6 +321,11 @@ export function deviceTableSummary(table: DeviceTable): string {
       : '',
     table.metrics.outputIp3Dbm.length > 0 ? 'OIP3' : '',
     table.powerCurves.length > 0 ? 'Pout(Pin)' : '',
+    table.powerCurves.some((curve) =>
+      curve.outputPhaseDeg.some((value) => value !== null),
+    )
+      ? 'AM/PM'
+      : '',
   ].filter(Boolean)
   return `${table.rowCount} rows; ${labels.join(', ')}`
 }
@@ -348,6 +402,26 @@ function interpolatePowerCurve(
       (curve.outputPowerDbm[upperIndex]! -
         curve.outputPowerDbm[upperIndex - 1]!)
   )
+}
+
+function interpolatePhaseCurve(
+  curve: DevicePowerCurve,
+  inputPowerDbm: number,
+): number | null {
+  const inputs = curve.inputPowerDbm
+  if (inputPowerDbm < inputs[0]! || inputPowerDbm > inputs.at(-1)!) return null
+  const exactIndex = inputs.findIndex((value) =>
+    nearlyEqual(value, inputPowerDbm),
+  )
+  if (exactIndex >= 0) return curve.outputPhaseDeg[exactIndex] ?? null
+  const upperIndex = inputs.findIndex((value) => value > inputPowerDbm)
+  const lowerPhase = curve.outputPhaseDeg[upperIndex - 1]
+  const upperPhase = curve.outputPhaseDeg[upperIndex]
+  if (lowerPhase == null || upperPhase == null) return null
+  const lowerInput = inputs[upperIndex - 1]!
+  const weight =
+    (inputPowerDbm - lowerInput) / (inputs[upperIndex]! - lowerInput)
+  return lowerPhase + weight * (upperPhase - lowerPhase)
 }
 
 function smallSignalGainDb(curve: DevicePowerCurve): number {

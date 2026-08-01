@@ -2,18 +2,22 @@ import type {
   FrequencyConversionStage,
   FrequencyPlanResult,
   FrequencyRange,
+  FrequencySpectralLine,
   MixerProduct,
   MixerMode,
 } from './types'
+import type { MixerProductModel } from './mixerProducts'
 
 export interface FrequencyMixerInput {
   nodeId: string
   label: string
   mode: MixerMode
   loFrequencyHz: number
+  conversionLossDb?: number
   loPowerDbm?: number | null
   imageRejectionDb?: number | null
   loToOutputIsolationDb?: number | null
+  productModels?: MixerProductModel[]
 }
 
 const PRODUCT_TERMS = [
@@ -34,15 +38,26 @@ const PRODUCT_TERMS = [
 export function calculateFrequencyPlan(
   inputFrequencyHz: Float64Array,
   mixers: FrequencyMixerInput[],
+  inputPowerDbm: number | null = null,
 ): FrequencyPlanResult {
   validateGrid(inputFrequencyHz)
   const input = range(inputFrequencyHz)
   let current = new Float64Array(inputFrequencyHz)
+  let spectralLines: FrequencySpectralLine[] = [
+    {
+      frequencyHz: input.centerHz,
+      powerDbm: inputPowerDbm,
+      phaseDeg: inputPowerDbm === null ? null : 0,
+      path: 'Input',
+    },
+  ]
   const stages = mixers.map((mixer): FrequencyConversionStage => {
     if (!Number.isFinite(mixer.loFrequencyHz) || mixer.loFrequencyHz <= 0) {
       throw new RangeError(`${mixer.label}: LO frequency must be positive.`)
     }
     const loPowerDbm = optionalNumber(mixer.loPowerDbm, mixer.label)
+    const conversionLossDb =
+      optionalNumber(mixer.conversionLossDb, mixer.label, 0) ?? 0
     const imageRejectionDb = optionalNumber(
       mixer.imageRejectionDb,
       mixer.label,
@@ -73,7 +88,13 @@ export function calculateFrequencyPlan(
       mixer.mode === 'downconvert'
         ? 2 * mixer.loFrequencyHz - mixerInput.centerHz
         : Math.abs(mixer.loFrequencyHz - mixerInput.centerHz)
-    const products = PRODUCT_TERMS.map(
+    const customProducts = new Map(
+      (mixer.productModels ?? []).map((product) => [
+        `${product.inputCoefficient},${product.loCoefficient}`,
+        product,
+      ]),
+    )
+    const products: MixerProduct[] = PRODUCT_TERMS.map(
       ([
         label,
         formula,
@@ -84,17 +105,61 @@ export function calculateFrequencyPlan(
         const desired =
           (mixer.mode === 'downconvert' && loCoefficient === -1) ||
           (mixer.mode === 'upconvert' && loCoefficient === 1)
+        const custom = customProducts.get(
+          `${inputCoefficient},${loCoefficient}`,
+        )
+        customProducts.delete(`${inputCoefficient},${loCoefficient}`)
         return {
-          label,
+          label: custom?.label ?? label,
           formula,
           frequencyHz: Math.abs(
             inputCoefficient * mixerInput.centerHz +
               loCoefficient * mixer.loFrequencyHz,
           ),
           order: Math.abs(inputCoefficient) + Math.abs(loCoefficient),
+          inputCoefficient,
+          loCoefficient,
+          relativeLevelDb:
+            custom?.relativeLevelDb ??
+            (desired && inputCoefficient === 1 ? -conversionLossDb : null),
+          phaseDeg: custom?.phaseDeg ?? (desired ? 0 : null),
           kind: desired && inputCoefficient === 1 ? 'desired' : kind,
         }
       },
+    )
+    products.push(
+      ...Array.from(customProducts.values(), (custom): MixerProduct => {
+        const desired =
+          custom.inputCoefficient === 1 &&
+          ((mixer.mode === 'downconvert' && custom.loCoefficient === -1) ||
+            (mixer.mode === 'upconvert' && custom.loCoefficient === 1))
+        return {
+          label: custom.label ?? 'Measured product',
+          formula: coefficientFormula(
+            custom.inputCoefficient,
+            custom.loCoefficient,
+          ),
+          frequencyHz: Math.abs(
+            custom.inputCoefficient * mixerInput.centerHz +
+              custom.loCoefficient * mixer.loFrequencyHz,
+          ),
+          order:
+            Math.abs(custom.inputCoefficient) + Math.abs(custom.loCoefficient),
+          inputCoefficient: custom.inputCoefficient,
+          loCoefficient: custom.loCoefficient,
+          relativeLevelDb: custom.relativeLevelDb,
+          phaseDeg: custom.phaseDeg,
+          kind: desired ? 'desired' : 'spur',
+        }
+      }),
+    )
+    spectralLines = propagateMixerProducts(
+      spectralLines,
+      products,
+      mixer.loFrequencyHz,
+      mixer.label,
+      loPowerDbm,
+      loToOutputIsolationDb,
     )
     current = output
     return {
@@ -117,7 +182,75 @@ export function calculateFrequencyPlan(
     }
   })
 
-  return { input, output: range(current), outputFrequencyHz: current, stages }
+  return {
+    input,
+    output: range(current),
+    outputFrequencyHz: current,
+    stages,
+    spectralLines,
+  }
+}
+
+function propagateMixerProducts(
+  inputs: FrequencySpectralLine[],
+  products: MixerProduct[],
+  loFrequencyHz: number,
+  mixerLabel: string,
+  loPowerDbm: number | null,
+  loIsolationDb: number | null,
+): FrequencySpectralLine[] {
+  const outputs = inputs.flatMap((input) =>
+    products.flatMap((product): FrequencySpectralLine[] => {
+      if (product.inputCoefficient === 0 || product.relativeLevelDb === null)
+        return []
+      const frequencyHz = Math.abs(
+        product.inputCoefficient * input.frequencyHz +
+          product.loCoefficient * loFrequencyHz,
+      )
+      if (frequencyHz <= 0) return []
+      return [
+        {
+          frequencyHz,
+          powerDbm:
+            input.powerDbm === null
+              ? null
+              : input.powerDbm + product.relativeLevelDb,
+          phaseDeg:
+            input.phaseDeg === null || product.phaseDeg === null
+              ? null
+              : normalizePhase(input.phaseDeg + product.phaseDeg),
+          path: `${input.path} → ${mixerLabel}: ${product.label}`,
+        },
+      ]
+    }),
+  )
+  if (loPowerDbm !== null && loIsolationDb !== null) {
+    outputs.push({
+      frequencyHz: loFrequencyHz,
+      powerDbm: loPowerDbm - loIsolationDb,
+      phaseDeg: null,
+      path: `${mixerLabel}: LO leakage`,
+    })
+  }
+  // ponytail: cap combinatorial spur growth; use a sparse-spectrum solver above 512 retained paths.
+  return outputs
+    .sort(
+      (left, right) =>
+        (right.powerDbm ?? -Infinity) - (left.powerDbm ?? -Infinity),
+    )
+    .slice(0, 512)
+}
+
+function normalizePhase(valueDeg: number): number {
+  return ((((valueDeg + 180) % 360) + 360) % 360) - 180
+}
+
+function coefficientFormula(
+  inputCoefficient: number,
+  loCoefficient: number,
+): string {
+  const sign = loCoefficient < 0 ? '−' : '+'
+  return `|${inputCoefficient}fIN ${sign} ${Math.abs(loCoefficient)}fLO|`
 }
 
 function optionalNumber(

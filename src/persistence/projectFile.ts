@@ -9,14 +9,16 @@ import type {
 } from '../engine/types'
 
 export const MAX_PROJECT_FILE_CHARACTERS = 20 * 1024 * 1024
-const MAX_NODES = 20
-const MAX_EDGES = 40
+const MAX_NODES = 256
+const MAX_EDGES = 1024
 const RF_NODE_TYPES = new Set<RFNodeType>([
   'source',
   'touchstone2Port',
   'idealAmplifier',
   'idealAttenuator',
   'idealMixer',
+  'idealSplitter',
+  'idealCombiner',
   'load',
   'probe',
 ])
@@ -49,9 +51,13 @@ export function parseProjectJson(text: string): RFProject {
 
 export function validateProject(value: unknown): RFProject {
   const project = record(value, 'Project')
-  if (project.schemaVersion !== 1 && project.schemaVersion !== 2) {
+  if (
+    project.schemaVersion !== 1 &&
+    project.schemaVersion !== 2 &&
+    project.schemaVersion !== 3
+  ) {
     throw new ProjectFileError(
-      `Unsupported schemaVersion "${String(project.schemaVersion)}"; expected 1 or 2.`,
+      `Unsupported schemaVersion "${String(project.schemaVersion)}"; expected 1, 2, or 3.`,
     )
   }
 
@@ -76,13 +82,47 @@ export function validateProject(value: unknown): RFProject {
       )
     }
   }
+  const analysis = validateAnalysis(project.analysis)
+  if (analysis.sweepNodeId) {
+    const sweepNode = nodes.find((node) => node.id === analysis.sweepNodeId)
+    if (!sweepNode) {
+      throw new ProjectFileError('Parametric sweep references a missing node.')
+    }
+    if (
+      !analysis.sweepParameter ||
+      typeof sweepNode.data.parameters[analysis.sweepParameter] !== 'number'
+    ) {
+      throw new ProjectFileError(
+        'Parametric sweep references a non-numeric parameter.',
+      )
+    }
+  }
+  if (analysis.sweepSecondNodeId) {
+    const sweepNode = nodes.find(
+      (node) => node.id === analysis.sweepSecondNodeId,
+    )
+    if (!sweepNode) {
+      throw new ProjectFileError(
+        'Second sweep variable references a missing node.',
+      )
+    }
+    if (
+      !analysis.sweepSecondParameter ||
+      typeof sweepNode.data.parameters[analysis.sweepSecondParameter] !==
+        'number'
+    ) {
+      throw new ProjectFileError(
+        'Second sweep variable references a non-numeric parameter.',
+      )
+    }
+  }
 
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     name,
     nodes,
     edges,
-    analysis: validateAnalysis(project.analysis),
+    analysis,
     assets: validateAssets(project.assets),
   }
 }
@@ -120,6 +160,24 @@ function validateEdge(value: unknown, index: number): RFProjectEdge {
     id: boundedString(edge.id, `edges[${index}].id`, 200),
     source: boundedString(edge.source, `edges[${index}].source`, 200),
     target: boundedString(edge.target, `edges[${index}].target`, 200),
+    ...(edge.sourceHandle === undefined
+      ? {}
+      : {
+          sourceHandle: boundedString(
+            edge.sourceHandle,
+            `edges[${index}].sourceHandle`,
+            100,
+          ),
+        }),
+    ...(edge.targetHandle === undefined
+      ? {}
+      : {
+          targetHandle: boundedString(
+            edge.targetHandle,
+            `edges[${index}].targetHandle`,
+            100,
+          ),
+        }),
   }
 }
 
@@ -132,6 +190,14 @@ function validateAnalysis(value: unknown): RFAnalysisSettings {
     analysis.referenceImpedanceOhm,
     'analysis.referenceImpedanceOhm',
   )
+  const monteCarloRuns =
+    analysis.monteCarloRuns === undefined
+      ? 0
+      : finiteNumber(analysis.monteCarloRuns, 'analysis.monteCarloRuns')
+  const monteCarloSeed =
+    analysis.monteCarloSeed === undefined
+      ? 1
+      : finiteNumber(analysis.monteCarloSeed, 'analysis.monteCarloSeed')
   if (startHz < 0 || stopHz <= startHz) {
     throw new ProjectFileError('Analysis requires 0 ≤ startHz < stopHz.')
   }
@@ -143,7 +209,149 @@ function validateAnalysis(value: unknown): RFAnalysisSettings {
   if (referenceImpedanceOhm <= 0) {
     throw new ProjectFileError('Reference impedance must be positive.')
   }
-  return { startHz, stopHz, points, referenceImpedanceOhm }
+  if (
+    !Number.isInteger(monteCarloRuns) ||
+    monteCarloRuns < 0 ||
+    monteCarloRuns > 500
+  ) {
+    throw new ProjectFileError(
+      'Monte Carlo runs must be an integer from 0 to 500.',
+    )
+  }
+  if (
+    !Number.isInteger(monteCarloSeed) ||
+    monteCarloSeed < 0 ||
+    monteCarloSeed > 0xffffffff
+  ) {
+    throw new ProjectFileError(
+      'Monte Carlo seed must be a 32-bit unsigned integer.',
+    )
+  }
+  const sweepActive =
+    typeof analysis.sweepNodeId === 'string' &&
+    typeof analysis.sweepParameter === 'string'
+  let sweep: Partial<RFAnalysisSettings> = {}
+  if (sweepActive) {
+    safeKey(analysis.sweepParameter as string, 'sweep parameter')
+    const sweepStart = finiteNumber(analysis.sweepStart, 'analysis.sweepStart')
+    const sweepStop = finiteNumber(analysis.sweepStop, 'analysis.sweepStop')
+    const sweepPoints =
+      analysis.sweepPoints === undefined
+        ? 11
+        : finiteNumber(analysis.sweepPoints, 'analysis.sweepPoints')
+    const sweepMetric = analysis.sweepMetric ?? 's21Db'
+    const sweepObjective = analysis.sweepObjective ?? 'maximize'
+    if (
+      sweepStart >= sweepStop ||
+      !Number.isInteger(sweepPoints) ||
+      sweepPoints < 2 ||
+      sweepPoints > 101
+    ) {
+      throw new ProjectFileError(
+        'Parametric sweep requires start < stop and 2–101 points.',
+      )
+    }
+    if (
+      !['s21Db', 'noiseFigureDb', 'inputP1Dbm', 'loadPowerDbm'].includes(
+        sweepMetric as string,
+      )
+    ) {
+      throw new ProjectFileError('Parametric sweep metric is invalid.')
+    }
+    if (sweepObjective !== 'minimize' && sweepObjective !== 'maximize') {
+      throw new ProjectFileError('Parametric sweep objective is invalid.')
+    }
+    sweep = {
+      sweepNodeId: analysis.sweepNodeId as string,
+      sweepParameter: analysis.sweepParameter as string,
+      sweepStart,
+      sweepStop,
+      sweepPoints,
+      sweepMetric: sweepMetric as RFAnalysisSettings['sweepMetric'],
+      sweepObjective,
+    }
+    if (
+      typeof analysis.sweepSecondNodeId === 'string' &&
+      typeof analysis.sweepSecondParameter === 'string'
+    ) {
+      safeKey(analysis.sweepSecondParameter, 'second sweep parameter')
+      const sweepSecondStart = finiteNumber(
+        analysis.sweepSecondStart,
+        'analysis.sweepSecondStart',
+      )
+      const sweepSecondStop = finiteNumber(
+        analysis.sweepSecondStop,
+        'analysis.sweepSecondStop',
+      )
+      const sweepSecondPoints =
+        analysis.sweepSecondPoints === undefined
+          ? 5
+          : finiteNumber(
+              analysis.sweepSecondPoints,
+              'analysis.sweepSecondPoints',
+            )
+      if (
+        sweepSecondStart >= sweepSecondStop ||
+        !Number.isInteger(sweepSecondPoints) ||
+        sweepSecondPoints < 2 ||
+        sweepSecondPoints > 51 ||
+        sweepPoints * sweepSecondPoints > 1000
+      ) {
+        throw new ProjectFileError(
+          'Second sweep variable requires start < stop, 2–51 points, and at most 1,000 combined evaluations.',
+        )
+      }
+      Object.assign(sweep, {
+        sweepSecondNodeId: analysis.sweepSecondNodeId,
+        sweepSecondParameter: analysis.sweepSecondParameter,
+        sweepSecondStart,
+        sweepSecondStop,
+        sweepSecondPoints,
+      })
+    }
+  }
+  if (
+    analysis.sweepConstraintMetric !== undefined &&
+    analysis.sweepConstraintMetric !== null
+  ) {
+    if (
+      !['s21Db', 'noiseFigureDb', 'inputP1Dbm', 'loadPowerDbm'].includes(
+        analysis.sweepConstraintMetric as string,
+      )
+    ) {
+      throw new ProjectFileError(
+        'Optimization/yield constraint metric is invalid.',
+      )
+    }
+    const sweepConstraintDirection =
+      analysis.sweepConstraintDirection ?? 'minimum'
+    if (
+      sweepConstraintDirection !== 'minimum' &&
+      sweepConstraintDirection !== 'maximum'
+    ) {
+      throw new ProjectFileError(
+        'Optimization/yield constraint direction is invalid.',
+      )
+    }
+    Object.assign(sweep, {
+      sweepConstraintMetric:
+        analysis.sweepConstraintMetric as RFAnalysisSettings['sweepConstraintMetric'],
+      sweepConstraintDirection,
+      sweepConstraintValue: finiteNumber(
+        analysis.sweepConstraintValue,
+        'analysis.sweepConstraintValue',
+      ),
+    })
+  }
+  return {
+    startHz,
+    stopHz,
+    points,
+    referenceImpedanceOhm,
+    monteCarloRuns,
+    monteCarloSeed,
+    ...sweep,
+  }
 }
 
 function validateAssets(value: unknown): Record<string, RFEmbeddedAsset> {

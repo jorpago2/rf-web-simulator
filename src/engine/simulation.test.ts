@@ -63,6 +63,40 @@ describe('RF simulation integration', () => {
     expect(result.nonlinear.outputP1Dbm).toBeCloseTo(11.9394, 3)
   })
 
+  it('uses analytic gain when a partial device table has no gain column', () => {
+    const result = simulateLinearChain({
+      analysis: {
+        startHz: 1e9,
+        stopHz: 2e9,
+        points: 3,
+        referenceImpedanceOhm: 50,
+      },
+      nodes: [
+        node('src', 'source', { powerDbm: -10 }),
+        node('amp', 'idealAmplifier', {
+          gainDb: 12,
+          phaseDeg: 0,
+          noiseFigureDb: 9,
+          outputP1Dbm: 20,
+          outputIp3Dbm: 35,
+          referenceImpedanceOhm: 50,
+          deviceTableContent: `frequency_ghz,nf_db
+1,2
+2,4`,
+          deviceTableFileName: 'noise-figure.csv',
+        }),
+        node('load', 'load', { referenceImpedanceOhm: 50 }),
+      ],
+      edges: [
+        { id: 'a', source: 'src', target: 'amp' },
+        { id: 'b', source: 'amp', target: 'load' },
+      ],
+    })
+
+    expect(result.curves.s21Db).toEqual(new Float64Array([12, 12, 12]))
+    expect(result.budget.stages[0]!.cumulativeNoiseFigureDb).toBeCloseTo(3)
+  })
+
   it('imports, clips, interpolates, and cascades a Touchstone through network', () => {
     const result = simulateLinearChain({
       analysis: {
@@ -277,5 +311,420 @@ describe('RF simulation integration', () => {
         edges: [{ id: 'a', source: 'src', target: 'load' }],
       }),
     ).toThrow(/mismatch/u)
+  })
+
+  it('solves coherent splitter and combiner branches as an N-port network', () => {
+    const dividerParameters = {
+      excessLossDb: 0,
+      amplitudeImbalanceDb: 0,
+      phaseImbalanceDeg: 0,
+      isolationDb: 300,
+      referenceImpedanceOhm: 50,
+    }
+    const result = simulateLinearChain({
+      analysis: {
+        startHz: 1e9,
+        stopHz: 2e9,
+        points: 3,
+        referenceImpedanceOhm: 50,
+      },
+      nodes: [
+        node('src', 'source', { powerDbm: -10, twoToneSpacingHz: 10e6 }),
+        node('split', 'idealSplitter', dividerParameters),
+        node('combine', 'idealCombiner', dividerParameters),
+        node('load', 'load', { referenceImpedanceOhm: 50 }),
+      ],
+      edges: [
+        {
+          id: 'source-split',
+          source: 'src',
+          target: 'split',
+          targetHandle: 'input',
+        },
+        {
+          id: 'branch-a',
+          source: 'split',
+          sourceHandle: 'output-1',
+          target: 'combine',
+          targetHandle: 'input-1',
+        },
+        {
+          id: 'branch-b',
+          source: 'split',
+          sourceHandle: 'output-2',
+          target: 'combine',
+          targetHandle: 'input-2',
+        },
+        {
+          id: 'combine-load',
+          source: 'combine',
+          sourceHandle: 'output',
+          target: 'load',
+        },
+      ],
+    })
+
+    expect(result.curves.s21Db[1]).toBeCloseTo(0, 10)
+    expect(result.curves.s11Db[1]).toBe(-300)
+    expect(result.budget.cascadedNoiseFigureDb).toBeCloseTo(0, 10)
+    expect(result.warnings).toContainEqual(
+      expect.objectContaining({ code: 'BRANCHED_NETWORK_MODEL' }),
+    )
+  })
+
+  it('recombines branched mixer envelopes only at a common output band', () => {
+    const divider = {
+      excessLossDb: 0,
+      amplitudeImbalanceDb: 0,
+      phaseImbalanceDeg: 0,
+      isolationDb: 300,
+      referenceImpedanceOhm: 50,
+    }
+    const mixer = {
+      loFrequencyHz: 0.5e9,
+      mixerMode: 'downconvert',
+      conversionLossDb: 0,
+      noiseFigureDb: 0,
+      outputP1Dbm: 10,
+      outputIp3Dbm: 20,
+      referenceImpedanceOhm: 50,
+    }
+    const result = simulateLinearChain({
+      analysis: {
+        startHz: 1e9,
+        stopHz: 2e9,
+        points: 3,
+        referenceImpedanceOhm: 50,
+      },
+      nodes: [
+        node('src', 'source', { powerDbm: -10 }),
+        node('split', 'idealSplitter', divider),
+        node('mix-a', 'idealMixer', mixer),
+        node('mix-b', 'idealMixer', mixer),
+        node('combine', 'idealCombiner', divider),
+        node('load', 'load', { referenceImpedanceOhm: 50 }),
+      ],
+      edges: [
+        { id: 'a', source: 'src', target: 'split', targetHandle: 'input' },
+        { id: 'b', source: 'split', sourceHandle: 'output-1', target: 'mix-a' },
+        { id: 'c', source: 'split', sourceHandle: 'output-2', target: 'mix-b' },
+        {
+          id: 'd',
+          source: 'mix-a',
+          target: 'combine',
+          targetHandle: 'input-1',
+        },
+        {
+          id: 'e',
+          source: 'mix-b',
+          target: 'combine',
+          targetHandle: 'input-2',
+        },
+        { id: 'f', source: 'combine', sourceHandle: 'output', target: 'load' },
+      ],
+    })
+    expect(result.curves.s21Db[1]).toBeCloseTo(0, 10)
+    expect(result.frequencyPlan.output.centerHz).toBe(1e9)
+    expect(result.nonlinear.available).toBe(true)
+    expect(result.nonlinear.inputP1Dbm).toBeGreaterThan(13)
+  })
+
+  it('reports internal probe waves in a branched graph', () => {
+    const divider = {
+      excessLossDb: 0,
+      amplitudeImbalanceDb: 0,
+      phaseImbalanceDeg: 0,
+      isolationDb: 300,
+      referenceImpedanceOhm: 50,
+    }
+    const result = simulateLinearChain({
+      analysis: {
+        startHz: 1e9,
+        stopHz: 2e9,
+        points: 3,
+        referenceImpedanceOhm: 50,
+      },
+      nodes: [
+        node('src', 'source', {}),
+        node('split', 'idealSplitter', divider),
+        node('probe', 'probe', {}),
+        node('combine', 'idealCombiner', divider),
+        node('load', 'load', { referenceImpedanceOhm: 50 }),
+      ],
+      edges: [
+        { id: 'a', source: 'src', target: 'split', targetHandle: 'input' },
+        {
+          id: 'b',
+          source: 'split',
+          sourceHandle: 'output-1',
+          target: 'probe',
+        },
+        {
+          id: 'c',
+          source: 'probe',
+          target: 'combine',
+          targetHandle: 'input-1',
+        },
+        {
+          id: 'd',
+          source: 'split',
+          sourceHandle: 'output-2',
+          target: 'combine',
+          targetHandle: 'input-2',
+        },
+        { id: 'e', source: 'combine', sourceHandle: 'output', target: 'load' },
+      ],
+    })
+    expect(result.curves.s21Db[1]).toBeCloseTo(0, 10)
+    expect(result.probeResults[0]?.s21Db[1]).toBeCloseTo(-3.01029995664, 8)
+  })
+
+  it('de-embeds independent input and output fixtures before cascading', () => {
+    const fixture =
+      '# GHz S RI R 50\n1 0 0 0.5 0 0.5 0 0 0\n2 0 0 0.5 0 0.5 0 0 0'
+    const measured =
+      '# GHz S RI R 50\n1 0 0 0.125 0 0.125 0 0 0\n2 0 0 0.125 0 0.125 0 0 0'
+    const result = simulateLinearChain({
+      analysis: {
+        startHz: 1e9,
+        stopHz: 2e9,
+        points: 3,
+        referenceImpedanceOhm: 50,
+      },
+      nodes: [
+        node('src', 'source', { powerDbm: -10, sourceImpedanceOhm: 50 }),
+        node('dut', 'touchstone2Port', {
+          content: measured,
+          fileName: 'measured.s2p',
+          leftFixtureContent: fixture,
+          leftFixtureFileName: 'left.s2p',
+          rightFixtureContent: fixture,
+          rightFixtureFileName: 'right.s2p',
+        }),
+        node('load', 'load', {
+          referenceImpedanceOhm: 50,
+          loadImpedanceOhm: 50,
+        }),
+      ],
+      edges: [
+        { id: 'a', source: 'src', target: 'dut' },
+        { id: 'b', source: 'dut', target: 'load' },
+      ],
+    })
+
+    expect(result.total.s21.re[1]).toBeCloseTo(0.5, 10)
+  })
+
+  it('runs reproducible Gaussian tolerance analysis', () => {
+    const input = {
+      analysis: {
+        startHz: 1e9,
+        stopHz: 2e9,
+        points: 3,
+        referenceImpedanceOhm: 50,
+        monteCarloRuns: 20,
+        monteCarloSeed: 1234,
+      },
+      nodes: [
+        node('src', 'source', {
+          powerDbm: -20,
+          twoToneSpacingHz: 10e6,
+          sourceImpedanceOhm: 50,
+        }),
+        node('amp', 'idealAmplifier', {
+          gainDb: 10,
+          gainToleranceDb: 1,
+          phaseDeg: 0,
+          noiseFigureDb: 2,
+          outputP1Dbm: 20,
+          outputIp3Dbm: 35,
+          referenceImpedanceOhm: 50,
+        }),
+        node('load', 'load', {
+          referenceImpedanceOhm: 50,
+          loadImpedanceOhm: 50,
+        }),
+      ],
+      edges: [
+        { id: 'a', source: 'src', target: 'amp' },
+        { id: 'b', source: 'amp', target: 'load' },
+      ],
+    }
+    const first = simulateLinearChain(input)
+    const second = simulateLinearChain(input)
+    expect(first.monteCarlo).toEqual(second.monteCarlo)
+    expect(first.monteCarlo.runs).toBe(20)
+    expect(
+      first.monteCarlo.metrics.find((metric) => metric.key === 's21Db')
+        ?.standardDeviation,
+    ).toBeGreaterThan(0)
+    expect(
+      first.monteCarlo.sensitivities.find((item) => item.metricKey === 's21Db')
+        ?.correlation,
+    ).toBeCloseTo(1, 10)
+
+    const sweep = simulateLinearChain({
+      ...input,
+      analysis: {
+        ...input.analysis,
+        monteCarloRuns: 0,
+        sweepNodeId: 'amp',
+        sweepParameter: 'gainDb',
+        sweepStart: 8,
+        sweepStop: 12,
+        sweepPoints: 3,
+        sweepMetric: 's21Db',
+        sweepObjective: 'maximize',
+      },
+    }).parametricSweep
+    expect(sweep.metricValues).toEqual(new Float64Array([8, 10, 12]))
+    expect(sweep.bestParameterValue).toBe(12)
+
+    expect(() =>
+      simulateLinearChain({
+        ...input,
+        nodes: input.nodes.map((candidate) =>
+          candidate.id === 'amp'
+            ? {
+                ...candidate,
+                data: {
+                  ...candidate.data,
+                  parameters: {
+                    ...candidate.data.parameters,
+                    deviceTableContent: 'frequency_ghz,gain_db\n1,19\n2,19',
+                  },
+                },
+              }
+            : candidate,
+        ),
+        analysis: {
+          ...input.analysis,
+          monteCarloRuns: 0,
+          sweepNodeId: 'amp',
+          sweepParameter: 'gainDb',
+          sweepStart: 8,
+          sweepStop: 12,
+          sweepPoints: 3,
+          sweepMetric: 's21Db',
+          sweepObjective: 'maximize',
+        },
+      }),
+    ).toThrow('imported measured data overrides that fallback parameter')
+
+    const constrained = simulateLinearChain({
+      ...input,
+      analysis: {
+        ...input.analysis,
+        monteCarloRuns: 0,
+        sweepNodeId: 'amp',
+        sweepParameter: 'gainDb',
+        sweepStart: 8,
+        sweepStop: 12,
+        sweepPoints: 3,
+        sweepSecondNodeId: 'src',
+        sweepSecondParameter: 'powerDbm',
+        sweepSecondStart: -30,
+        sweepSecondStop: -10,
+        sweepSecondPoints: 3,
+        sweepMetric: 'loadPowerDbm',
+        sweepObjective: 'maximize',
+        sweepConstraintMetric: 'noiseFigureDb',
+        sweepConstraintDirection: 'maximum',
+        sweepConstraintValue: 2.1,
+      },
+    }).parametricSweep
+    expect(constrained.samples).toHaveLength(9)
+    expect(constrained.bestParameterValues).toEqual([12, -10])
+    expect(constrained.bestMetricValue).toBeCloseTo(2)
+
+    const yieldResult = simulateLinearChain({
+      ...input,
+      analysis: {
+        ...input.analysis,
+        sweepConstraintMetric: 'noiseFigureDb',
+        sweepConstraintDirection: 'maximum',
+        sweepConstraintValue: 2.1,
+      },
+    }).monteCarlo
+    expect(yieldResult.yieldPercent).toBe(100)
+    expect(yieldResult.passingRuns).toBe(20)
+  })
+
+  it('uses source-dependent Touchstone noise parameters and mismatch gain', () => {
+    const content = `[Version] 2.0
+# GHz S RI R 50
+[Number of Ports] 2
+[Number of Frequencies] 2
+[Number of Noise Frequencies] 2
+[Two-Port Data Order] 21_12
+[Network Data]
+1 0 0 1 0 1 0 0 0
+2 0 0 1 0 1 0 0 0
+[Noise Data]
+1 1 0.3333333333333333 0 10
+2 1 0.3333333333333333 0 10
+[End]`
+    const result = simulateLinearChain({
+      analysis: {
+        startHz: 1e9,
+        stopHz: 2e9,
+        points: 3,
+        referenceImpedanceOhm: 50,
+      },
+      nodes: [
+        node('src', 'source', { powerDbm: 0, sourceImpedanceOhm: 100 }),
+        node('dut', 'touchstone2Port', {
+          content,
+          fileName: 'noise.s2p',
+        }),
+        node('load', 'load', {
+          referenceImpedanceOhm: 50,
+          loadImpedanceOhm: 50,
+        }),
+      ],
+      edges: [
+        { id: 'a', source: 'src', target: 'dut' },
+        { id: 'b', source: 'dut', target: 'load' },
+      ],
+    })
+    expect(result.budget.stages[0]?.cumulativeNoiseFigureDb).toBeCloseTo(1, 10)
+    expect(result.budget.cascadedNoiseFigureDb).toBeCloseTo(1, 9)
+    expect(result.budget.stages[0]?.cumulativeGainDb).toBeCloseTo(
+      10 * Math.log10(8 / 9),
+      10,
+    )
+    expect(result.budget.deliveredLoadPowerDbm).toBeCloseTo(
+      10 * Math.log10(8 / 9),
+      10,
+    )
+  })
+
+  it('applies opt-in passivity enforcement to imported data', () => {
+    const content = '# GHz S RI R 50\n1 0 0 2 0 0 0 0 0\n2 0 0 2 0 0 0 0 0'
+    const result = simulateLinearChain({
+      analysis: {
+        startHz: 1e9,
+        stopHz: 2e9,
+        points: 3,
+        referenceImpedanceOhm: 50,
+      },
+      nodes: [
+        node('src', 'source', {}),
+        node('dut', 'touchstone2Port', {
+          content,
+          fileName: 'active.s2p',
+          enforcePassivity: true,
+        }),
+        node('load', 'load', { referenceImpedanceOhm: 50 }),
+      ],
+      edges: [
+        { id: 'a', source: 'src', target: 'dut' },
+        { id: 'b', source: 'dut', target: 'load' },
+      ],
+    })
+    expect(result.curves.s21Db[1]).toBeCloseTo(0, 10)
+    expect(result.warnings).toContainEqual(
+      expect.objectContaining({ code: 'PASSIVITY_ENFORCED' }),
+    )
   })
 })

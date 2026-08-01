@@ -7,13 +7,15 @@ import {
 } from './projectFile'
 
 const project: RFProject = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   name: 'LNA chain',
   analysis: {
     startHz: 0.8e9,
     stopHz: 1.2e9,
     points: 1001,
     referenceImpedanceOhm: 50,
+    monteCarloRuns: 0,
+    monteCarloSeed: 1,
   },
   nodes: [
     {
@@ -42,7 +44,7 @@ describe('versioned RF project files', () => {
 
   it('rejects unsupported versions and invalid references', () => {
     expect(() =>
-      parseProjectJson(JSON.stringify({ ...project, schemaVersion: 3 })),
+      parseProjectJson(JSON.stringify({ ...project, schemaVersion: 4 })),
     ).toThrow(ProjectFileError)
     expect(() =>
       parseProjectJson(
@@ -54,15 +56,53 @@ describe('versioned RF project files', () => {
     ).toThrow(/missing/u)
   })
 
-  it('migrates schema 1 projects to schema 2', () => {
+  it('migrates schema 1 projects to schema 3', () => {
     const restored = parseProjectJson(
       JSON.stringify({ ...project, schemaVersion: 1 }),
     )
-    expect(restored.schemaVersion).toBe(2)
+    expect(restored.schemaVersion).toBe(3)
   })
 
   it('rejects unsafe parameter keys', () => {
     const text = serializeProject(project).replace('"content"', '"__proto__"')
     expect(() => parseProjectJson(text)).toThrow(/unsafe key/u)
+  })
+
+  it('round-trips constrained two-variable optimization settings', () => {
+    const configured: RFProject = {
+      ...project,
+      nodes: [
+        {
+          ...project.nodes[0]!,
+          data: {
+            ...project.nodes[0]!.data,
+            parameters: {
+              ...project.nodes[0]!.data.parameters,
+              gainDb: 10,
+              noiseFigureDb: 2,
+            },
+          },
+        },
+      ],
+      analysis: {
+        ...project.analysis,
+        sweepNodeId: 's2p',
+        sweepParameter: 'gainDb',
+        sweepStart: 8,
+        sweepStop: 12,
+        sweepPoints: 3,
+        sweepSecondNodeId: 's2p',
+        sweepSecondParameter: 'noiseFigureDb',
+        sweepSecondStart: 1,
+        sweepSecondStop: 3,
+        sweepSecondPoints: 3,
+        sweepMetric: 's21Db',
+        sweepObjective: 'maximize',
+        sweepConstraintMetric: 'noiseFigureDb',
+        sweepConstraintDirection: 'maximum',
+        sweepConstraintValue: 2.5,
+      },
+    }
+    expect(parseProjectJson(serializeProject(configured))).toEqual(configured)
   })
 })

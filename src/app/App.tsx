@@ -57,7 +57,7 @@ export default function App() {
 
   const project = useMemo<RFProject>(
     () => ({
-      schemaVersion: 2,
+      schemaVersion: 3,
       name: projectName.trim() || 'Untitled RF chain',
       analysis,
       nodes: nodes.map((node) => ({
@@ -69,6 +69,8 @@ export default function App() {
         id: edge.id,
         source: edge.source,
         target: edge.target,
+        ...(edge.sourceHandle ? { sourceHandle: edge.sourceHandle } : {}),
+        ...(edge.targetHandle ? { targetHandle: edge.targetHandle } : {}),
       })),
       assets: {},
     }),
@@ -255,6 +257,7 @@ export default function App() {
 
           <SimulationPanel
             analysis={analysis}
+            nodes={nodes}
             error={status === 'error' ? error : null}
             onAnalysisChange={updateAnalysis}
             onRun={runSimulation}

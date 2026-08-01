@@ -1,5 +1,6 @@
 import type {
   ComplexArray,
+  NPortNetwork,
   RFAnalysisSettings,
   SimulationWarning,
   TwoPortNetwork,
@@ -12,7 +13,7 @@ export interface CommonFrequencyGrid {
 
 export function buildCommonFrequencyGrid(
   networks: Array<{
-    network: TwoPortNetwork
+    network: Pick<TwoPortNetwork, 'frequencyHz'>
     inputFrequencyOffsetHz: number
   }>,
   analysis: RFAnalysisSettings,
@@ -55,6 +56,30 @@ export function buildCommonFrequencyGrid(
   frequencyHz[analysis.points - 1] = stopHz
 
   return { frequencyHz, warnings }
+}
+
+export function interpolateNPortNetwork(
+  network: NPortNetwork,
+  targetFrequencyHz: Float64Array,
+): NPortNetwork {
+  validateNetworkGrid(network)
+  validateTargetGrid(targetFrequencyHz)
+  const sourceFrequencyHz = network.frequencyHz
+  if (
+    targetFrequencyHz[0]! < sourceFrequencyHz[0]! ||
+    targetFrequencyHz.at(-1)! > sourceFrequencyHz.at(-1)!
+  ) {
+    throw new RangeError(
+      'Interpolation target exceeds the source frequency range.',
+    )
+  }
+  return {
+    ...network,
+    frequencyHz: targetFrequencyHz,
+    s: network.s.map((value) =>
+      interpolateComplexArray(sourceFrequencyHz, value, targetFrequencyHz),
+    ),
+  }
 }
 
 export function interpolateNetwork(
@@ -175,7 +200,7 @@ function validateAnalysis(analysis: RFAnalysisSettings): void {
   }
 }
 
-function validateNetworkGrid(network: TwoPortNetwork): void {
+function validateNetworkGrid(network: { frequencyHz: Float64Array }): void {
   if (network.frequencyHz.length < 2) {
     throw new RangeError(
       'A network needs at least two frequency points for interpolation.',

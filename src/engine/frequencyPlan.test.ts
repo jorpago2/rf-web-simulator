@@ -11,9 +11,18 @@ describe('ideal mixer frequency plan', () => {
           label: 'RF to IF',
           mode: 'downconvert',
           loFrequencyHz: 0.9e9,
+          conversionLossDb: 7,
           loPowerDbm: 10,
           imageRejectionDb: 40,
           loToOutputIsolationDb: 30,
+          productModels: [
+            {
+              inputCoefficient: 2,
+              loCoefficient: -1,
+              relativeLevelDb: -38,
+              phaseDeg: -12,
+            },
+          ],
         },
         {
           nodeId: 'up',
@@ -22,6 +31,7 @@ describe('ideal mixer frequency plan', () => {
           loFrequencyHz: 2e9,
         },
       ],
+      -10,
     )
 
     expect(result.stages[0]?.output).toEqual({
@@ -42,12 +52,25 @@ describe('ideal mixer frequency plan', () => {
         frequencyHz: 0.2e9,
         order: 2,
         kind: 'desired',
+        relativeLevelDb: -7,
       }),
     )
+    expect(
+      result.stages[0]?.products.find(
+        (product) =>
+          product.inputCoefficient === 2 && product.loCoefficient === -1,
+      ),
+    ).toEqual(expect.objectContaining({ relativeLevelDb: -38, phaseDeg: -12 }))
     expect(result.stages[1]?.imageFrequencyHz).toBe(1.8e9)
     expect(result.stages[1]?.imageLocation).toBe('output')
     expect(result.outputFrequencyHz).toEqual(
       new Float64Array([2.1e9, 2.2e9, 2.3e9]),
+    )
+    expect(result.spectralLines).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ frequencyHz: 2.2e9, powerDbm: -17 }),
+        expect.objectContaining({ frequencyHz: 3.3e9, powerDbm: -48 }),
+      ]),
     )
   })
 

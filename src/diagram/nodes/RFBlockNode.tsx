@@ -1,11 +1,13 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { getBlockDescriptor } from '../nodeRegistry'
 import type { RFCanvasNode } from '../../app/store'
+import { portsForData } from '../../engine/ports'
 
 export function RFBlockNode({ data, selected }: NodeProps<RFCanvasNode>) {
   const descriptor = getBlockDescriptor(data.type)
-  const hasInput = data.type !== 'source'
-  const hasOutput = data.type !== 'load'
+  const ports = portsForData(data)
+  const inputs = ports.filter((port) => port.role === 'input')
+  const outputs = ports.filter((port) => port.role === 'output')
 
   return (
     <div
@@ -14,13 +16,29 @@ export function RFBlockNode({ data, selected }: NodeProps<RFCanvasNode>) {
       role="group"
       aria-label={`${data.label} RF block`}
     >
-      {hasInput && <Handle type="target" position={Position.Left} id="input" />}
+      {inputs.map((port, index) => (
+        <Handle
+          key={port.id}
+          type="target"
+          position={Position.Left}
+          id={port.id}
+          title={port.label}
+          style={{ top: `${((index + 1) * 100) / (inputs.length + 1)}%` }}
+        />
+      ))}
       <span className="rf-node__symbol">{descriptor.symbol}</span>
       <span className="rf-node__label">{data.label}</span>
       <span className="rf-node__description">{descriptor.description}</span>
-      {hasOutput && (
-        <Handle type="source" position={Position.Right} id="output" />
-      )}
+      {outputs.map((port, index) => (
+        <Handle
+          key={port.id}
+          type="source"
+          position={Position.Right}
+          id={port.id}
+          title={port.label}
+          style={{ top: `${((index + 1) * 100) / (outputs.length + 1)}%` }}
+        />
+      ))}
     </div>
   )
 }

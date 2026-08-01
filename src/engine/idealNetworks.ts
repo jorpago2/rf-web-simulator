@@ -1,5 +1,6 @@
 import { fromPolar } from './complex'
-import type { ComplexArray, TwoPortNetwork } from './types'
+import { createNPortS } from './nport'
+import type { ComplexArray, NPortNetwork, TwoPortNetwork } from './types'
 
 export function createThroughNetwork(
   frequencyHz: Float64Array,
@@ -82,13 +83,91 @@ export function createIdealAttenuator(
       'Attenuation must be a finite value greater than or equal to 0 dB.',
     )
   }
-  return createMatchedUnilateralNetwork(
+  return createMatchedReciprocalNetwork(
     frequencyHz,
     -attenuationDb,
     phaseDeg,
     referenceImpedanceOhm,
     sourceName,
   )
+}
+
+function createMatchedReciprocalNetwork(
+  frequencyHz: Float64Array,
+  gainDb: number,
+  phaseDeg: number,
+  referenceImpedanceOhm: number,
+  sourceName: string,
+): TwoPortNetwork {
+  validateInputs(frequencyHz, referenceImpedanceOhm)
+  if (!Number.isFinite(gainDb) || !Number.isFinite(phaseDeg)) {
+    throw new RangeError('Gain and phase must be finite values.')
+  }
+  const transmission = fromPolar(10 ** (gainDb / 20), phaseDeg)
+  return {
+    frequencyHz,
+    referenceImpedanceOhm,
+    s11: constantComplexArray(frequencyHz.length, 0, 0),
+    s21: constantComplexArray(
+      frequencyHz.length,
+      transmission.re,
+      transmission.im,
+    ),
+    s12: constantComplexArray(
+      frequencyHz.length,
+      transmission.re,
+      transmission.im,
+    ),
+    s22: constantComplexArray(frequencyHz.length, 0, 0),
+    sourceName,
+  }
+}
+
+export function createIdealDivider(
+  frequencyHz: Float64Array,
+  commonPort: 0 | 2,
+  excessLossDb: number,
+  amplitudeImbalanceDb: number,
+  phaseImbalanceDeg: number,
+  isolationDb: number,
+  referenceImpedanceOhm: number,
+  sourceName: string,
+): NPortNetwork {
+  validateInputs(frequencyHz, referenceImpedanceOhm)
+  if (
+    !Number.isFinite(excessLossDb) ||
+    excessLossDb < 0 ||
+    !Number.isFinite(amplitudeImbalanceDb) ||
+    !Number.isFinite(phaseImbalanceDeg) ||
+    !Number.isFinite(isolationDb) ||
+    isolationDb < 0
+  ) {
+    throw new RangeError(
+      'Divider loss, imbalance, phase, and isolation are invalid.',
+    )
+  }
+  const branchPorts: [number, number] = commonPort === 0 ? [1, 2] : [0, 1]
+  const amplitudeRatio = 10 ** (amplitudeImbalanceDb / 20)
+  const lossScale = 10 ** (-excessLossDb / 20)
+  const first = lossScale / Math.sqrt(1 + amplitudeRatio * amplitudeRatio)
+  const second = first * amplitudeRatio
+  const firstValue = fromPolar(first, 0)
+  const secondValue = fromPolar(second, phaseImbalanceDeg)
+  const isolationValue = fromPolar(10 ** (-isolationDb / 20), 0)
+  const s = createNPortS(3, frequencyHz.length)
+  setConstantS(s, 3, commonPort, branchPorts[0], firstValue)
+  setConstantS(s, 3, branchPorts[0], commonPort, firstValue)
+  setConstantS(s, 3, commonPort, branchPorts[1], secondValue)
+  setConstantS(s, 3, branchPorts[1], commonPort, secondValue)
+  setConstantS(s, 3, branchPorts[0], branchPorts[1], isolationValue)
+  setConstantS(s, 3, branchPorts[1], branchPorts[0], isolationValue)
+  return {
+    frequencyHz,
+    portCount: 3,
+    referenceImpedancesOhm: new Float64Array(3).fill(referenceImpedanceOhm),
+    s,
+    sourceName,
+  }
 }
 
 function createMatchedUnilateralNetwork(
@@ -130,6 +209,17 @@ function constantComplexArray(
   values.re.fill(re)
   values.im.fill(im)
   return values
+}
+
+function setConstantS(
+  matrix: ComplexArray[],
+  portCount: number,
+  outputPort: number,
+  inputPort: number,
+  value: { re: number; im: number },
+): void {
+  matrix[outputPort * portCount + inputPort]!.re.fill(value.re)
+  matrix[outputPort * portCount + inputPort]!.im.fill(value.im)
 }
 
 function validateInputs(

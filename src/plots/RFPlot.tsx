@@ -3,7 +3,13 @@ import type { Config, Data, Layout } from 'plotly.js'
 import type { SimulationOutput } from '../engine/types'
 
 export type PlotView =
-  'sParameters' | 'phase' | 'groupDelay' | 'probes' | 'nonlinear'
+  | 'sParameters'
+  | 'smith'
+  | 'stability'
+  | 'phase'
+  | 'groupDelay'
+  | 'probes'
+  | 'nonlinear'
 export type FrequencyUnit = 'auto' | 'Hz' | 'kHz' | 'MHz' | 'GHz'
 
 const TRACE_STYLES = [
@@ -47,7 +53,9 @@ export function RFPlot({
     () => createFigure(result, view, resolvedUnit, frequency),
     [frequency, resolvedUnit, result, view],
   )
-  const frequencyConverting = result.frequencyPlan.stages.length > 0
+  const frequencyConverting =
+    result.frequencyPlan.stages.length > 0 ||
+    result.frequencyPlan.output.centerHz !== result.frequencyPlan.input.centerHz
 
   return (
     <PlotlyFigure
@@ -117,6 +125,7 @@ function createFigure(
   frequency: number[],
 ): { data: Data[]; layout: Partial<Layout> } {
   if (view === 'nonlinear') return createNonlinearFigure(result)
+  if (view === 'smith') return createSmithFigure(result)
 
   const commonLayout: Partial<Layout> = {
     autosize: true,
@@ -145,8 +154,53 @@ function createFigure(
     },
   }
 
+  if (view === 'stability') {
+    const traces = [
+      ['K', result.networkChecks.stabilityK],
+      ['μ source', result.networkChecks.stabilityMuSource],
+      ['μ load', result.networkChecks.stabilityMuLoad],
+      ['σmax(S)', result.networkChecks.passivityMaximumSingularValue],
+    ] as const
+    return {
+      data: traces.map(([name, values], index) => ({
+        type: 'scatter',
+        mode: 'lines',
+        name,
+        x: frequency,
+        y: Array.from(values, (value) =>
+          Number.isFinite(value) ? value : null,
+        ),
+        line: {
+          color: TRACE_STYLES[index]!.color,
+          dash: TRACE_STYLES[index]!.dash,
+          width: 2,
+        },
+        hovertemplate: `${name}: %{y:.4g}<extra></extra>`,
+      })),
+      layout: {
+        ...commonLayout,
+        yaxis: axis('Dimensionless metric'),
+        shapes: [
+          {
+            type: 'line',
+            xref: 'paper',
+            x0: 0,
+            x1: 1,
+            y0: 1,
+            y1: 1,
+            line: { color: '#64748b', dash: 'dot', width: 1 },
+          },
+        ],
+      },
+    }
+  }
+
   if (view === 'sParameters') {
-    if (result.frequencyPlan.stages.length > 0) {
+    if (
+      result.frequencyPlan.stages.length > 0 ||
+      result.frequencyPlan.output.centerHz !==
+        result.frequencyPlan.input.centerHz
+    ) {
       return {
         data: [
           {
@@ -194,7 +248,10 @@ function createFigure(
   }
 
   if (view === 'probes') {
-    const conversion = result.frequencyPlan.stages.length > 0
+    const conversion =
+      result.frequencyPlan.stages.length > 0 ||
+      result.frequencyPlan.output.centerHz !==
+        result.frequencyPlan.input.centerHz
     return {
       data: result.probeResults.map((probe, index) => ({
         type: 'scatter',
@@ -299,6 +356,22 @@ function createNonlinearFigure(result: SimulationOutput): {
     })
   }
   if (
+    Array.from(nonlinear.outputPhaseDeg).some(
+      (value) => Math.abs(value) > 1e-12,
+    )
+  ) {
+    data.push({
+      type: 'scatter',
+      mode: 'lines',
+      name: 'AM/PM phase',
+      x: inputPowerDbm,
+      y: Array.from(nonlinear.outputPhaseDeg),
+      yaxis: 'y2',
+      line: { color: TRACE_STYLES[2].color, dash: 'dashdot', width: 2 },
+      hovertemplate: 'Output phase: %{y:.3f}°<extra></extra>',
+    })
+  }
+  if (
     nonlinear.operatingInputPowerDbm !== null &&
     nonlinear.operatingOutputPowerDbm !== null
   ) {
@@ -319,7 +392,7 @@ function createNonlinearFigure(result: SimulationOutput): {
     layout: {
       autosize: true,
       height: 330,
-      margin: { l: 68, r: 22, t: 32, b: 56 },
+      margin: { l: 68, r: 68, t: 32, b: 56 },
       paper_bgcolor: 'rgba(0,0,0,0)',
       plot_bgcolor: '#ffffff',
       font: {
@@ -337,6 +410,13 @@ function createNonlinearFigure(result: SimulationOutput): {
         linecolor: '#aab5be',
       },
       yaxis: axis('Output power (dBm)'),
+      yaxis2: {
+        title: { text: 'AM/PM phase (deg)' },
+        overlaying: 'y',
+        side: 'right',
+        showgrid: false,
+        zerolinecolor: '#cbd5dc',
+      },
       legend: { orientation: 'h', x: 0, y: 1.14 },
     },
   }
@@ -361,6 +441,69 @@ function probeTraceStyle(index: number) {
   }
 }
 
+function createSmithFigure(result: SimulationOutput): {
+  data: Data[]
+  layout: Partial<Layout>
+} {
+  const circle = Array.from(
+    { length: 181 },
+    (_, index) => (2 * Math.PI * index) / 180,
+  )
+  return {
+    data: [
+      {
+        type: 'scatter',
+        mode: 'lines',
+        name: '|Γ| = 1',
+        x: circle.map(Math.cos),
+        y: circle.map(Math.sin),
+        hoverinfo: 'skip',
+        line: { color: '#94a3b8', dash: 'dot', width: 1 },
+      },
+      {
+        type: 'scatter',
+        mode: 'lines',
+        name: 'S11',
+        x: Array.from(result.total.s11.re),
+        y: Array.from(result.total.s11.im),
+        customdata: Array.from(result.total.frequencyHz),
+        line: { color: TRACE_STYLES[0].color, width: 2 },
+        hovertemplate:
+          'S11 = %{x:.4f} %{y:+.4f}j<br>f = %{customdata:.6g} Hz<extra></extra>',
+      },
+    ],
+    layout: {
+      autosize: true,
+      height: 330,
+      margin: { l: 58, r: 22, t: 32, b: 48 },
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: '#ffffff',
+      font: {
+        family: 'Inter, Arial, sans-serif',
+        size: 12,
+        color: '#334155',
+      },
+      hovermode: 'closest',
+      xaxis: {
+        title: { text: 'Re(Γ)' },
+        range: [-1.05, 1.05],
+        scaleanchor: 'y',
+        scaleratio: 1,
+        gridcolor: '#e8edf0',
+        zerolinecolor: '#cbd5e1',
+      },
+      yaxis: {
+        title: { text: 'Im(Γ)' },
+        range: [-1.05, 1.05],
+        gridcolor: '#e8edf0',
+        zerolinecolor: '#cbd5e1',
+      },
+      legend: { orientation: 'h', x: 0, y: 1.12 },
+      uirevision: 'smith',
+    },
+  }
+}
+
 function resolveFrequencyUnit(
   requested: FrequencyUnit,
   maximumFrequencyHz: number,
@@ -381,6 +524,8 @@ function plotTitle(view: PlotView, frequencyConverting = false): string {
     sParameters: frequencyConverting
       ? 'Conversion-path magnitude'
       : 'S-parameter magnitude',
+    smith: 'S11 Smith chart',
+    stability: 'Stability and passivity checks',
     phase: 'Unwrapped S21 phase',
     groupDelay: 'S21 group delay',
     probes: 'Cumulative S21 at probe planes',
