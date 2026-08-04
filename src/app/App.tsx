@@ -324,6 +324,7 @@ export default function App() {
             selectedProjectId={selectedProjectId}
             status={persistenceStatus}
           />
+          <a className="suite-link" href="https://jorpago2.github.io/" aria-label="Online Simulators & Tools">All tools</a>
           <p className="privacy-note">
             <span aria-hidden="true">●</span> {strings.localPrivacy}
           </p>

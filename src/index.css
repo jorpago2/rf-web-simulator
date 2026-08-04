@@ -252,6 +252,22 @@ h2 {
   font-size: 0.65rem;
 }
 
+.suite-link {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: white;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
 .workspace {
   min-height: calc(100vh - 70px);
   display: grid;
@@ -1276,6 +1292,10 @@ body.is-resizing-panels {
   .export-button,
   .danger-button,
   .file-reset-button {
+    min-height: 44px;
+  }
+
+  .suite-link {
     min-height: 44px;
   }
 
