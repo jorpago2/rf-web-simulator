@@ -120,21 +120,25 @@ export const useRFEditorStore = create<RFEditorState>((set, get) => ({
       modelRevision: state.modelRevision + 1,
     })),
   addNode: (type, position) =>
-    set((state) => ({
-      nodes: [
-        ...state.nodes,
-        {
-          id: crypto.randomUUID(),
-          type,
-          position: position ?? {
-            x: 140 + (state.nodes.length % 4) * 170,
-            y: 80 + Math.floor(state.nodes.length / 4) * 130,
+    set((state) => {
+      const id = crypto.randomUUID()
+      return {
+        nodes: [
+          ...state.nodes,
+          {
+            id,
+            type,
+            position: position ?? {
+              x: 140 + (state.nodes.length % 4) * 170,
+              y: 80 + Math.floor(state.nodes.length / 4) * 130,
+            },
+            data: createNodeData(type),
           },
-          data: createNodeData(type),
-        },
-      ],
-      modelRevision: state.modelRevision + 1,
-    })),
+        ],
+        selectedNodeId: id,
+        modelRevision: state.modelRevision + 1,
+      }
+    }),
   selectNode: (id) => set({ selectedNodeId: id }),
   setProjectName: (projectName) => set({ projectName }),
   updateAnalysis: (analysis) =>

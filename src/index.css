@@ -293,6 +293,11 @@ h2 {
   gap: 8px;
 }
 
+.block-library {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
 .block-card {
   width: 100%;
   min-height: 55px;
@@ -1136,6 +1141,19 @@ h2 {
   }
 }
 
+@media (max-width: 1650px) {
+  .app-header {
+    flex-wrap: wrap;
+  }
+
+  .project-toolbar {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
 @media (max-width: 980px) {
   .app-header {
     flex-wrap: wrap;
@@ -1246,10 +1264,14 @@ h2 {
 
   .block-library {
     overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-gutter: auto;
   }
 
   .block-list {
-    grid-template-columns: repeat(7, 150px);
+    grid-auto-flow: column;
+    grid-auto-columns: 150px;
+    grid-template-columns: none;
   }
 
   .canvas-panel {
