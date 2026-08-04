@@ -292,6 +292,7 @@ export default function App() {
   return (
     <ReactFlowProvider>
       <div className="app-shell">
+        <a className="skip-link" href="#rf-workspace">Skip to RF workspace</a>
         <header className="app-header">
           <div className="brand-mark" aria-hidden="true">
             RF
@@ -329,7 +330,9 @@ export default function App() {
         </header>
 
         <main
+          id="rf-workspace"
           className="workspace"
+          tabIndex={-1}
           style={
             {
               '--left-panel-width': `${sidePanelWidths.left}px`,
