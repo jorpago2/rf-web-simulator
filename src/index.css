@@ -242,10 +242,47 @@ h2 {
 .workspace {
   min-height: calc(100vh - 70px);
   display: grid;
-  grid-template-columns: 220px minmax(440px, 1fr) 250px;
+  grid-template-columns:
+    var(--left-panel-width, 220px) 12px minmax(440px, 1fr) 12px
+    var(--right-panel-width, 250px);
   grid-template-rows: minmax(460px, calc(100vh - 300px)) auto;
   gap: 12px;
+  column-gap: 0;
   padding: 12px;
+}
+
+.panel-resizer {
+  position: relative;
+  z-index: 2;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.panel-resizer::before {
+  position: absolute;
+  inset: 10px 5px;
+  border-radius: 999px;
+  background: #cbd5dc;
+  content: '';
+  transition:
+    inset 120ms ease,
+    background-color 120ms ease;
+}
+
+.panel-resizer:hover::before,
+.panel-resizer:focus-visible::before {
+  inset-inline: 4px;
+  background: var(--teal);
+}
+
+.panel-resizer:focus-visible {
+  outline: 3px solid rgb(20 125 120 / 34%);
+  outline-offset: -2px;
+}
+
+body.is-resizing-panels {
+  cursor: col-resize;
+  user-select: none;
 }
 
 .panel,
@@ -1141,6 +1178,17 @@ h2 {
   }
 }
 
+@media (max-width: 1100px) {
+  .workspace {
+    grid-template-columns: 200px minmax(440px, 1fr) 240px;
+    column-gap: 12px;
+  }
+
+  .panel-resizer {
+    display: none;
+  }
+}
+
 @media (max-width: 1650px) {
   .app-header {
     flex-wrap: wrap;
@@ -1169,6 +1217,11 @@ h2 {
   .workspace {
     grid-template-columns: 190px minmax(380px, 1fr);
     grid-template-rows: 540px auto auto;
+    column-gap: 12px;
+  }
+
+  .panel-resizer {
+    display: none;
   }
 
   .properties {

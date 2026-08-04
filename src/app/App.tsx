@@ -1,5 +1,12 @@
 import { ReactFlowProvider } from '@xyflow/react'
-import { useEffect, useMemo, useState } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import {
   BlockLibrary,
   PropertiesPanel,
@@ -30,6 +37,10 @@ import { useRFEditorStore } from './store'
 import { strings } from './strings'
 import { getRFTemplate } from '../templates'
 
+const SIDE_PANEL_MIN_WIDTH = 180
+const SIDE_PANEL_MAX_WIDTH = 360
+const CANVAS_MIN_WIDTH = 440
+
 export default function App() {
   const activeProjectId = useRFEditorStore((state) => state.activeProjectId)
   const projectName = useRFEditorStore((state) => state.projectName)
@@ -55,6 +66,79 @@ export default function App() {
     [],
   )
   const [selectedProjectId, setSelectedProjectId] = useState('')
+  const [sidePanelWidths, setSidePanelWidths] = useState({
+    left: 220,
+    right: 250,
+  })
+
+  const panelMaximumWidth = (side: 'left' | 'right') => {
+    const canvasWidth =
+      document.querySelector<HTMLElement>('.canvas-panel')?.offsetWidth ??
+      CANVAS_MIN_WIDTH
+    return Math.min(
+      SIDE_PANEL_MAX_WIDTH,
+      sidePanelWidths[side] + Math.max(0, canvasWidth - CANVAS_MIN_WIDTH),
+    )
+  }
+
+  const setSidePanelWidth = (side: 'left' | 'right', width: number) => {
+    const nextWidth = Math.min(
+      panelMaximumWidth(side),
+      Math.max(SIDE_PANEL_MIN_WIDTH, width),
+    )
+    setSidePanelWidths((current) => ({ ...current, [side]: nextWidth }))
+  }
+
+  const startSidePanelResize = (
+    side: 'left' | 'right',
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => {
+    if (event.button !== 0) return
+    event.preventDefault()
+    const target = event.currentTarget
+    target.setPointerCapture(event.pointerId)
+    const startX = event.clientX
+    const startWidth = sidePanelWidths[side]
+    const maximumWidth = panelMaximumWidth(side)
+    document.body.classList.add('is-resizing-panels')
+
+    const resize = (moveEvent: PointerEvent) => {
+      const movement = moveEvent.clientX - startX
+      const width = startWidth + (side === 'left' ? movement : -movement)
+      setSidePanelWidths((current) => ({
+        ...current,
+        [side]: Math.min(maximumWidth, Math.max(SIDE_PANEL_MIN_WIDTH, width)),
+      }))
+    }
+    const stop = () => {
+      document.body.classList.remove('is-resizing-panels')
+      if (target.hasPointerCapture(event.pointerId)) {
+        target.releasePointerCapture(event.pointerId)
+      }
+      window.removeEventListener('pointermove', resize)
+      window.removeEventListener('pointerup', stop)
+      window.removeEventListener('pointercancel', stop)
+    }
+    window.addEventListener('pointermove', resize)
+    window.addEventListener('pointerup', stop)
+    window.addEventListener('pointercancel', stop)
+  }
+
+  const resizeSidePanelWithKeyboard = (
+    side: 'left' | 'right',
+    event: ReactKeyboardEvent<HTMLDivElement>,
+  ) => {
+    const direction = side === 'left' ? 1 : -1
+    const nextWidth = {
+      ArrowLeft: sidePanelWidths[side] - 10 * direction,
+      ArrowRight: sidePanelWidths[side] + 10 * direction,
+      Home: SIDE_PANEL_MIN_WIDTH,
+      End: panelMaximumWidth(side),
+    }[event.key]
+    if (nextWidth === undefined) return
+    event.preventDefault()
+    setSidePanelWidth(side, nextWidth)
+  }
 
   const project = useMemo<RFProject>(
     () => ({
@@ -244,8 +328,28 @@ export default function App() {
           </p>
         </header>
 
-        <main className="workspace">
+        <main
+          className="workspace"
+          style={
+            {
+              '--left-panel-width': `${sidePanelWidths.left}px`,
+              '--right-panel-width': `${sidePanelWidths.right}px`,
+            } as CSSProperties
+          }
+        >
           <BlockLibrary />
+          <div
+            className="panel-resizer panel-resizer--left"
+            role="separator"
+            aria-label="Resize block library"
+            aria-orientation="vertical"
+            aria-valuemin={SIDE_PANEL_MIN_WIDTH}
+            aria-valuemax={SIDE_PANEL_MAX_WIDTH}
+            aria-valuenow={sidePanelWidths.left}
+            tabIndex={0}
+            onKeyDown={(event) => resizeSidePanelWithKeyboard('left', event)}
+            onPointerDown={(event) => startSidePanelResize('left', event)}
+          />
           <section className="canvas-panel" aria-labelledby="canvas-title">
             <div className="canvas-toolbar">
               <div>
@@ -260,6 +364,18 @@ export default function App() {
               <RFCanvas />
             </div>
           </section>
+          <div
+            className="panel-resizer panel-resizer--right"
+            role="separator"
+            aria-label="Resize properties panel"
+            aria-orientation="vertical"
+            aria-valuemin={SIDE_PANEL_MIN_WIDTH}
+            aria-valuemax={SIDE_PANEL_MAX_WIDTH}
+            aria-valuenow={sidePanelWidths.right}
+            tabIndex={0}
+            onKeyDown={(event) => resizeSidePanelWithKeyboard('right', event)}
+            onPointerDown={(event) => startSidePanelResize('right', event)}
+          />
           <PropertiesPanel />
 
           <SimulationPanel
