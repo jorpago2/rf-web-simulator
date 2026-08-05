@@ -96,7 +96,9 @@ export function RFCanvas() {
       aria-label="RF block diagram editor"
     >
       <Background variant={BackgroundVariant.Dots} gap={18} size={1} />
-      <MiniMap pannable zoomable aria-label="Diagram overview" />
+      {nodes.length > 0 && (
+        <MiniMap pannable zoomable aria-label="Diagram overview" />
+      )}
       <Controls showInteractive={false} />
     </ReactFlow>
   )

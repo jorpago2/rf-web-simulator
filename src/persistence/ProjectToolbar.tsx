@@ -55,67 +55,71 @@ export function ProjectToolbar({
       >
         {message ?? statusLabel(status)}
       </span>
-      <label className="recent-project-field">
-        <span className="sr-only">Recent local project</span>
-        <select
-          value={selectedProjectId}
-          onChange={(event) => onSelectedProjectChange(event.target.value)}
-          aria-label="Recent local project"
-        >
-          <option value="">Recent projects</option>
-          {recentProjects.map((project) => (
-            <option key={project.id} value={project.id}>
-              {project.name} · {new Date(project.updatedAt).toLocaleString()}
-            </option>
-          ))}
-        </select>
-      </label>
-      <button type="button" onClick={onOpen} disabled={!selectedProjectId}>
-        Open
-      </button>
-      <button type="button" onClick={onNew}>
-        New
-      </button>
-      <label className="template-field">
-        <span className="sr-only">RF system template</span>
-        <select
-          value={templateId}
-          onChange={(event) => setTemplateId(event.target.value)}
-          aria-label="RF system template"
-          title={
-            rfTemplates.find((template) => template.id === templateId)
-              ?.description
-          }
-        >
-          <option value="">Templates</option>
-          {rfTemplates.map((template) => (
-            <option key={template.id} value={template.id}>
-              {template.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <button
-        type="button"
-        disabled={!templateId}
-        onClick={() => {
-          onLoadTemplate(templateId)
-          setTemplateId('')
-        }}
-      >
-        Load template
-      </button>
-      <button type="button" onClick={onExport}>
-        Export JSON
-      </button>
-      <label className="project-file-button">
-        Import JSON
-        <input
-          type="file"
-          accept="application/json,.json"
-          onChange={importProject}
-        />
-      </label>
+      <details className="project-actions">
+        <summary>Project actions</summary>
+        <div className="project-actions__panel">
+          <label className="recent-project-field">
+            <span>Recent project</span>
+            <select
+              value={selectedProjectId}
+              onChange={(event) => onSelectedProjectChange(event.target.value)}
+            >
+              <option value="">Choose a saved project</option>
+              {recentProjects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name} ·{' '}
+                  {new Date(project.updatedAt).toLocaleString()}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="button" onClick={onOpen} disabled={!selectedProjectId}>
+            Open
+          </button>
+          <label className="template-field">
+            <span>Template</span>
+            <select
+              value={templateId}
+              onChange={(event) => setTemplateId(event.target.value)}
+              title={
+                rfTemplates.find((template) => template.id === templateId)
+                  ?.description
+              }
+            >
+              <option value="">Choose a template</option>
+              {rfTemplates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            disabled={!templateId}
+            onClick={() => {
+              onLoadTemplate(templateId)
+              setTemplateId('')
+            }}
+          >
+            Load template
+          </button>
+          <button type="button" onClick={onNew}>
+            New project
+          </button>
+          <button type="button" onClick={onExport}>
+            Export JSON
+          </button>
+          <label className="project-file-button">
+            Import JSON
+            <input
+              type="file"
+              accept="application/json,.json"
+              onChange={importProject}
+            />
+          </label>
+        </div>
+      </details>
     </div>
   )
 }

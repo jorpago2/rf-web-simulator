@@ -46,7 +46,6 @@ export function BlockLibrary() {
   return (
     <aside className="panel block-library" aria-labelledby="library-title">
       <div className="panel__heading">
-        <p className="eyebrow">Build</p>
         <h2 id="library-title">{strings.libraryTitle}</h2>
         <p>{strings.libraryHint}</p>
       </div>
@@ -124,7 +123,6 @@ export function PropertiesPanel() {
     return (
       <aside className="panel properties" aria-labelledby="properties-title">
         <div className="panel__heading">
-          <p className="eyebrow">Inspect</p>
           <h2 id="properties-title">{strings.propertiesTitle}</h2>
         </div>
         <p className="empty-state">{strings.emptyProperties}</p>
@@ -298,7 +296,6 @@ export function PropertiesPanel() {
   return (
     <aside className="panel properties" aria-labelledby="properties-title">
       <div className="panel__heading">
-        <p className="eyebrow">Inspect</p>
         <h2 id="properties-title">{strings.propertiesTitle}</h2>
       </div>
       <label className="field">

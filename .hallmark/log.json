@@ -1,0 +1,11 @@
+[
+  {
+    "date": "2026-08-05",
+    "macrostructure": "Workbench",
+    "theme": "custom",
+    "theme_axes": "light / mono-display / teal",
+    "vibe": "clean layered technical workbench",
+    "enrichment": "none",
+    "brief": "RF Web Simulator interface redesign"
+  }
+]

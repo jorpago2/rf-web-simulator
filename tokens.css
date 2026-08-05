@@ -1,0 +1,56 @@
+:root {
+  --color-ink: oklch(21% 0.018 170);
+  --color-ink-2: oklch(33% 0.018 170);
+  --color-muted: oklch(46% 0.014 170);
+  --color-rule: oklch(87% 0.012 170);
+  --color-rule-strong: oklch(76% 0.018 170);
+  --color-paper: oklch(98% 0.008 170);
+  --color-paper-2: oklch(96% 0.011 170);
+  --color-paper-3: oklch(93% 0.014 170);
+  --color-panel: oklch(99% 0.006 170);
+  --color-accent: oklch(47% 0.105 178);
+  --color-accent-strong: oklch(39% 0.09 178);
+  --color-accent-soft: oklch(94% 0.035 178);
+  --color-accent-ink: oklch(98% 0.008 170);
+  --color-focus: oklch(40% 0.13 178);
+  --color-warning: oklch(48% 0.09 68);
+  --color-warning-soft: oklch(95% 0.035 75);
+  --color-danger: oklch(45% 0.16 25);
+  --color-danger-soft: oklch(95% 0.035 25);
+  --color-success: oklch(43% 0.095 165);
+  --color-success-soft: oklch(95% 0.03 165);
+
+  --font-display: 'JetBrains Mono', ui-monospace, monospace;
+  --font-body: 'IBM Plex Sans', ui-sans-serif, sans-serif;
+
+  --space-3xs: 0.125rem;
+  --space-2xs: 0.25rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2.5rem;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.125rem;
+  --text-lg: 1.25rem;
+
+  --radius-control: 6px;
+  --radius-panel: 10px;
+  --radius-pill: 999px;
+  --rule-hairline: 1px solid var(--color-rule);
+  --shadow-whisper: 0 1px 2px oklch(20% 0.015 170 / 0.06);
+  --shadow-float: 0 12px 28px oklch(20% 0.02 170 / 0.12);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+
+  --z-base: 1;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+}

@@ -143,7 +143,7 @@ function createFigure(
     paper_bgcolor: 'rgba(0,0,0,0)',
     plot_bgcolor: '#ffffff',
     font: {
-      family: 'Inter, Arial, sans-serif',
+      family: 'IBM Plex Sans, sans-serif',
       size: 11,
       color: '#40555c',
     },
@@ -360,7 +360,7 @@ function createOscillatorFigure(result: SimulationOutput): {
       margin: { l: 78, r: 22, t: 32, b: 56 },
       paper_bgcolor: 'rgba(0,0,0,0)',
       plot_bgcolor: '#ffffff',
-      font: { family: 'Inter, Arial, sans-serif', size: 11, color: '#40555c' },
+      font: { family: 'IBM Plex Sans, sans-serif', size: 11, color: '#40555c' },
       hovermode: 'x unified',
       xaxis: {
         type: 'log',
@@ -395,7 +395,7 @@ function createAntennaFigure(result: SimulationOutput): {
       margin: { l: 68, r: 22, t: 32, b: 56 },
       paper_bgcolor: 'rgba(0,0,0,0)',
       plot_bgcolor: '#ffffff',
-      font: { family: 'Inter, Arial, sans-serif', size: 11, color: '#40555c' },
+      font: { family: 'IBM Plex Sans, sans-serif', size: 11, color: '#40555c' },
       showlegend: false,
       xaxis: {
         title: { text: 'Angle from boresight (°)' },
@@ -488,7 +488,7 @@ function createNonlinearFigure(result: SimulationOutput): {
       paper_bgcolor: 'rgba(0,0,0,0)',
       plot_bgcolor: '#ffffff',
       font: {
-        family: 'Inter, Arial, sans-serif',
+        family: 'IBM Plex Sans, sans-serif',
         size: 11,
         color: '#40555c',
       },
@@ -571,7 +571,7 @@ function createSmithFigure(result: SimulationOutput): {
       paper_bgcolor: 'rgba(0,0,0,0)',
       plot_bgcolor: '#ffffff',
       font: {
-        family: 'Inter, Arial, sans-serif',
+        family: 'IBM Plex Sans, sans-serif',
         size: 11,
         color: '#40555c',
       },
