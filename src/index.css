@@ -9,6 +9,10 @@
   --teal-soft: #e4f4f1;
   --orange: #d87345;
   --danger: #aa3a3a;
+  --good: #176d5b;
+  --good-soft: #e4f4ef;
+  --bad: #9d2942;
+  --bad-soft: #fbe7eb;
   --radius: 14px;
   --shadow: 0 12px 30px rgb(27 48 62 / 8%);
   color: var(--ink);
@@ -505,6 +509,7 @@ body.is-resizing-panels {
 
 .status-chip {
   padding: 6px 9px;
+  border: 1px solid #e1cda7;
   border-radius: 999px;
   color: #755333;
   background: #fff1dc;
@@ -513,16 +518,19 @@ body.is-resizing-panels {
 }
 
 .status-chip--running {
+  border-color: #b9d9e5;
   color: #1e5f76;
   background: #e4f3f8;
 }
 
 .status-chip--success {
+  border-color: #bcded7;
   color: #236861;
   background: var(--teal-soft);
 }
 
 .status-chip--error {
+  border-color: #ecc4c4;
   color: #883636;
   background: #fdeaea;
 }
@@ -811,19 +819,22 @@ body.is-resizing-panels {
 .message {
   margin: 10px 0;
   padding: 9px;
-  border-radius: 8px;
+  border-left: 3px solid;
+  border-radius: 0 8px 8px 0;
   font-size: 0.75rem;
   line-height: 1.4;
 }
 
 .message--success {
-  color: #1c665c;
-  background: var(--teal-soft);
+  border-color: var(--good);
+  color: var(--good);
+  background: var(--good-soft);
 }
 
 .message--error {
-  color: #883636;
-  background: #fdeaea;
+  border-color: var(--bad);
+  color: var(--bad);
+  background: var(--bad-soft);
 }
 
 .danger-button {
@@ -899,6 +910,10 @@ body.is-resizing-panels {
   display: flex;
   align-items: end;
   gap: 7px;
+  padding: 7px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--page);
 }
 
 .compact-field {
@@ -1041,7 +1056,9 @@ body.is-resizing-panels {
 .simulation-message {
   margin: 20px;
   padding: 13px 15px;
-  border-radius: 9px;
+  border-left: 3px solid var(--teal);
+  border-radius: 0 8px 8px 0;
+  background: var(--page);
   font-size: 0.75rem;
 }
 
@@ -1051,8 +1068,9 @@ body.is-resizing-panels {
 }
 
 .simulation-message--error {
-  color: #7f3030;
-  background: #fdeaea;
+  border-color: var(--bad);
+  color: var(--bad);
+  background: var(--bad-soft);
 }
 
 .simulation-summary {
@@ -1187,7 +1205,7 @@ body.is-resizing-panels {
   padding: 11px;
   border: 1px solid var(--line);
   border-top: 3px solid var(--teal);
-  border-radius: 9px;
+  border-radius: 10px;
   background: rgb(255 255 255 / 94%);
 }
 
