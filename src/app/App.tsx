@@ -267,11 +267,17 @@ export default function App() {
   }
 
   const exportProject = () => {
+    const fileName = safeFileName(project.name, 'json')
     downloadTextFile(
-      safeFileName(project.name, 'json'),
-      serializeProject(project),
+      fileName,
+      serializeProject(project, {
+        application: strings.appName,
+        version: strings.version,
+        exportedAt: new Date().toISOString(),
+      }),
       'application/json;charset=utf-8',
     )
+    setPersistenceMessage(`Exported ${fileName}`)
   }
 
   const resultIsCurrent = resultRevision === modelRevision
@@ -388,6 +394,9 @@ export default function App() {
             error={status === 'error' ? error : null}
             onAnalysisChange={updateAnalysis}
             onRun={runSimulation}
+            onExport={(fileName) =>
+              setPersistenceMessage(`Exported ${fileName}`)
+            }
             projectName={project.name}
             result={visibleResult}
             status={visibleStatus}

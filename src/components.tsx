@@ -1710,6 +1710,7 @@ export function SimulationPanel({
   error,
   onAnalysisChange,
   onRun,
+  onExport,
 }: {
   projectName: string
   analysis: RFAnalysisSettings
@@ -1719,6 +1720,7 @@ export function SimulationPanel({
   error: string | null
   onAnalysisChange: (analysis: RFAnalysisSettings) => void
   onRun: () => void
+  onExport: (fileName: string) => void
 }) {
   const [resultView, setResultView] = useState<ResultView>('sParameters')
   const [frequencyUnit, setFrequencyUnit] = useState<FrequencyUnit>('auto')
@@ -1782,6 +1784,21 @@ export function SimulationPanel({
       ?.scrollIntoView({ block: 'start' })
   const update = (values: Partial<RFAnalysisSettings>) =>
     onAnalysisChange({ ...analysis, ...values })
+  const exportResults = () => {
+    if (!result) return
+    const fileName = safeFileName(
+      `${projectName}-${visibleResultView === 'nonlinear' ? 'power-sweep' : 'results'}`,
+      'csv',
+    )
+    downloadTextFile(
+      fileName,
+      visibleResultView === 'nonlinear'
+        ? nonlinearSweepToCsv(result)
+        : simulationOutputToCsv(result),
+      'text/csv;charset=utf-8',
+    )
+    onExport(fileName)
+  }
   const sweepNode = nodes.find((node) => node.id === analysis.sweepNodeId)
   const sweepParameters = useMemo(
     () => (sweepNode ? sweepableParameters(sweepNode) : []),
@@ -2297,19 +2314,7 @@ export function SimulationPanel({
             className="export-button"
             type="button"
             disabled={!result}
-            onClick={() =>
-              result &&
-              downloadTextFile(
-                safeFileName(
-                  `${projectName}-${visibleResultView === 'nonlinear' ? 'power-sweep' : 'results'}`,
-                  'csv',
-                ),
-                visibleResultView === 'nonlinear'
-                  ? nonlinearSweepToCsv(result)
-                  : simulationOutputToCsv(result),
-                'text/csv;charset=utf-8',
-              )
-            }
+            onClick={exportResults}
           >
             {visibleResultView === 'nonlinear'
               ? 'Export power CSV'

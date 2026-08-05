@@ -43,8 +43,22 @@ export class ProjectFileError extends Error {
   }
 }
 
-export function serializeProject(project: RFProject): string {
-  return JSON.stringify(validateProject(project), null, 2)
+export interface ProjectExportMetadata {
+  application: string
+  version: string
+  exportedAt: string
+}
+
+export function serializeProject(
+  project: RFProject,
+  exportMetadata?: ProjectExportMetadata,
+): string {
+  const validated = validateProject(project)
+  return JSON.stringify(
+    exportMetadata ? { ...validated, exportMetadata } : validated,
+    null,
+    2,
+  )
 }
 
 export function parseProjectJson(text: string): RFProject {

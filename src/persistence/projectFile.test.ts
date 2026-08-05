@@ -42,6 +42,17 @@ describe('versioned RF project files', () => {
     expect(text).not.toContain('Float64Array')
   })
 
+  it('adds traceable export metadata without changing the imported project', () => {
+    const exportMetadata = {
+      application: 'RF Web Simulator',
+      version: 'MVP 1.3',
+      exportedAt: '2026-08-05T10:00:00.000Z',
+    }
+    const text = serializeProject(project, exportMetadata)
+    expect(JSON.parse(text).exportMetadata).toEqual(exportMetadata)
+    expect(parseProjectJson(text)).toEqual(project)
+  })
+
   it('rejects unsupported versions and invalid references', () => {
     expect(() =>
       parseProjectJson(JSON.stringify({ ...project, schemaVersion: 4 })),
