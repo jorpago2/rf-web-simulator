@@ -902,6 +902,11 @@ body.is-resizing-panels {
   background: #0e6965;
 }
 
+.run-button[data-action="cancel"],
+.mobile-run-button[data-action="cancel"] {
+  background: #a33a31;
+}
+
 .run-button:disabled {
   cursor: wait;
   opacity: 0.65;

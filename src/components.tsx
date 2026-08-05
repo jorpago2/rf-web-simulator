@@ -1709,6 +1709,7 @@ export function SimulationPanel({
   result,
   error,
   onAnalysisChange,
+  onCancel,
   onRun,
   onExport,
 }: {
@@ -1719,6 +1720,7 @@ export function SimulationPanel({
   result: SimulationOutput | null
   error: string | null
   onAnalysisChange: (analysis: RFAnalysisSettings) => void
+  onCancel: () => void
   onRun: () => void
   onExport: (fileName: string) => void
 }) {
@@ -1861,12 +1863,18 @@ export function SimulationPanel({
       </h2>
       <button
         className="mobile-run-button"
+        data-action={status === 'running' ? 'cancel' : undefined}
         type="button"
-        disabled={status === 'running'}
-        onClick={result || status === 'error' ? showResults : onRun}
+        onClick={
+          status === 'running'
+            ? onCancel
+            : result || status === 'error'
+              ? showResults
+              : onRun
+        }
       >
         {status === 'running'
-          ? 'Simulating…'
+          ? 'Cancel simulation'
           : status === 'error'
             ? 'View error'
             : result
@@ -2304,11 +2312,11 @@ export function SimulationPanel({
           </label>
           <button
             className="run-button"
+            data-action={status === 'running' ? 'cancel' : undefined}
             type="button"
-            disabled={status === 'running'}
-            onClick={onRun}
+            onClick={status === 'running' ? onCancel : onRun}
           >
-            {status === 'running' ? 'Simulating…' : 'Run simulation'}
+            {status === 'running' ? 'Cancel simulation' : 'Run simulation'}
           </button>
           <button
             className="export-button"

@@ -2,6 +2,7 @@ import { ReactFlowProvider } from '@xyflow/react'
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -56,6 +57,7 @@ export default function App() {
   const [result, setResult] = useState<SimulationOutput | null>(null)
   const [resultRevision, setResultRevision] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const simulationAbortRef = useRef<AbortController | null>(null)
   const [persistenceReady, setPersistenceReady] = useState(false)
   const [persistenceStatus, setPersistenceStatus] =
     useState<PersistenceStatus>('loading')
@@ -210,14 +212,19 @@ export default function App() {
 
   const runSimulation = async () => {
     const requestedRevision = modelRevision
+    const controller = new AbortController()
+    simulationAbortRef.current = controller
     setStatus('running')
     setError(null)
     try {
-      const output = await simulateInWorker({
-        analysis,
-        nodes: project.nodes,
-        edges: project.edges,
-      })
+      const output = await simulateInWorker(
+        {
+          analysis,
+          nodes: project.nodes,
+          edges: project.edges,
+        },
+        controller.signal,
+      )
       if (useRFEditorStore.getState().modelRevision !== requestedRevision) {
         setStatus('idle')
         return
@@ -226,12 +233,25 @@ export default function App() {
       setResultRevision(requestedRevision)
       setStatus('success')
     } catch (simulationError) {
+      if (
+        simulationError instanceof DOMException &&
+        simulationError.name === 'AbortError'
+      ) {
+        setStatus(resultRevision === requestedRevision ? 'success' : 'idle')
+        return
+      }
       setResult(null)
       setResultRevision(null)
       setError(errorText(simulationError))
       setStatus('error')
+    } finally {
+      if (simulationAbortRef.current === controller) {
+        simulationAbortRef.current = null
+      }
     }
   }
+
+  const cancelSimulation = () => simulationAbortRef.current?.abort()
 
   const openSelectedProject = async () => {
     if (!selectedProjectId) return
@@ -393,6 +413,7 @@ export default function App() {
             nodes={nodes}
             error={status === 'error' ? error : null}
             onAnalysisChange={updateAnalysis}
+            onCancel={cancelSimulation}
             onRun={runSimulation}
             onExport={(fileName) =>
               setPersistenceMessage(`Exported ${fileName}`)
