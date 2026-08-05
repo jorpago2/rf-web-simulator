@@ -360,7 +360,7 @@ export default function App() {
                 <p className="eyebrow">Workspace</p>
                 <h2 id="canvas-title">{strings.canvasTitle}</h2>
               </div>
-              <span className={`status-chip status-chip--${visibleStatus}`}>
+              <span className={`status-chip status-chip--${visibleStatus}`} role="status" aria-live="polite">
                 {statusText}
               </span>
             </div>
