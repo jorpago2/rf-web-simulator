@@ -58,6 +58,7 @@ export default function App() {
   const [resultRevision, setResultRevision] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const simulationAbortRef = useRef<AbortController | null>(null)
+  const helpRef = useRef<HTMLDetailsElement>(null)
   const [persistenceReady, setPersistenceReady] = useState(false)
   const [persistenceStatus, setPersistenceStatus] =
     useState<PersistenceStatus>('loading')
@@ -253,6 +254,26 @@ export default function App() {
 
   const cancelSimulation = () => simulationAbortRef.current?.abort()
 
+  useEffect(() => {
+    const handleShortcut = (event: globalThis.KeyboardEvent) => {
+      if (event.repeat) return
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault()
+        if (status !== 'running') {
+          document.querySelector<HTMLButtonElement>('.run-button')?.click()
+        }
+      } else if (event.key === 'Escape') {
+        if (helpRef.current) helpRef.current.open = false
+        if (status === 'running') simulationAbortRef.current?.abort()
+      } else if (event.key === '?' && !isEditableTarget(event.target)) {
+        event.preventDefault()
+        if (helpRef.current) helpRef.current.open = !helpRef.current.open
+      }
+    }
+    document.addEventListener('keydown', handleShortcut)
+    return () => document.removeEventListener('keydown', handleShortcut)
+  }, [status])
+
   const openSelectedProject = async () => {
     if (!selectedProjectId) return
     setPersistenceStatus('loading')
@@ -350,6 +371,10 @@ export default function App() {
             selectedProjectId={selectedProjectId}
             status={persistenceStatus}
           />
+          <details className="app-help" ref={helpRef}>
+            <summary aria-keyshortcuts="?">Help</summary>
+            <div className="app-help-panel"><strong>Quick workflow</strong><p>Build a connected source-to-load chain, set the analysis, simulate, then inspect and export current results.</p><dl><div><dt><kbd>Ctrl/⌘</kbd> + <kbd>Enter</kbd></dt><dd>Run simulation</dd></div><div><dt><kbd>Esc</kbd></dt><dd>Cancel simulation</dd></div><div><dt><kbd>?</kbd></dt><dd>Toggle this help</dd></div></dl></div>
+          </details>
           <a className="suite-link" href="https://jorpago2.github.io/" aria-label="Online Simulators & Tools">All tools</a>
           <p className="privacy-note">
             <span aria-hidden="true">●</span> {strings.localPrivacy}
@@ -430,4 +455,11 @@ export default function App() {
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : 'Unknown error.'
+}
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.matches('input, select, textarea') || target.isContentEditable)
+  )
 }

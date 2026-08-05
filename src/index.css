@@ -105,6 +105,72 @@ h2 {
   background: rgb(255 255 255 / 94%);
 }
 
+.app-help {
+  position: relative;
+}
+
+.app-help > summary {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--teal);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 750;
+  list-style: none;
+}
+
+.app-help > summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-help-panel {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  left: 0;
+  width: min(22rem, calc(100vw - 24px));
+  padding: 14px;
+  border: 1px solid #cfd8de;
+  border-radius: 9px;
+  color: var(--ink);
+  background: white;
+  box-shadow: 0 10px 28px rgb(18 56 64 / 18%);
+}
+
+.app-help-panel p {
+  margin: 5px 0 12px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.app-help-panel dl,
+.app-help-panel dl div {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+
+.app-help-panel dl div {
+  grid-template-columns: minmax(120px, auto) 1fr;
+  align-items: center;
+}
+
+.app-help-panel dt,
+.app-help-panel dd {
+  margin: 0;
+  font-size: 0.7rem;
+}
+
+.app-help-panel kbd {
+  padding: 2px 5px;
+  border: 1px solid #cfd8de;
+  border-radius: 4px;
+  background: #f6f8f9;
+  font: 700 0.66rem ui-monospace, monospace;
+}
+
 .app-identity p {
   margin-top: 2px;
   color: var(--muted);
@@ -1283,6 +1349,14 @@ body.is-resizing-panels {
 }
 
 @media (max-width: 680px) {
+  .app-help-panel {
+    position: fixed;
+    top: 64px;
+    right: 14px;
+    left: 14px;
+    width: auto;
+  }
+
   .project-name-field input,
   .recent-project-field select,
   .template-field select,
