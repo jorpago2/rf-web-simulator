@@ -9,7 +9,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b --pretty false",
-    "test": "vitest run",
+    "test": "vitest run && node --test tests/metadata-check.mjs",
     "test:watch": "vitest",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
