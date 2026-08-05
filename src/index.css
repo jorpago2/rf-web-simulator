@@ -1299,6 +1299,11 @@ body.is-resizing-panels {
     min-height: 44px;
   }
 
+  .react-flow__controls-button {
+    width: 44px;
+    height: 44px;
+  }
+
   .app-header {
     align-items: flex-start;
     flex-wrap: wrap;
