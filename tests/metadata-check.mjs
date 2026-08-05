@@ -9,3 +9,13 @@ test("publishes complete social and browser metadata", async () => {
     assert.match(html, new RegExp(metadata));
   }
 });
+
+test("starts with an empty RF workbench and reveals advanced analysis on demand", async () => {
+  const store = await readFile(new globalThis.URL("../src/app/store.ts", import.meta.url), "utf8");
+  const app = await readFile(new globalThis.URL("../src/app/App.tsx", import.meta.url), "utf8");
+  const components = await readFile(new globalThis.URL("../src/components.tsx", import.meta.url), "utf8");
+  assert.match(store, /nodes: \[\],[\s\S]*edges: \[\],/);
+  assert.match(app, /Start with a block/);
+  assert.match(components, /<summary>Advanced analysis<\/summary>/);
+  assert.match(components, /\{result && <div[\s\S]*className="results-tabs"/);
+});

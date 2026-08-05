@@ -330,7 +330,7 @@ export default function App() {
         ? status
         : 'idle'
   const statusText = {
-    idle: 'Linear chain · draft',
+    idle: nodes.length ? 'Linear chain · draft' : 'Empty chain · add blocks',
     running: 'Simulating in worker…',
     success: 'Validated · complete',
     error: 'Diagram needs attention',
@@ -417,6 +417,7 @@ export default function App() {
             </div>
             <div className="canvas-wrap">
               <RFCanvas />
+              {nodes.length === 0 && <div className="canvas-empty"><strong>Start with a block</strong><p>Add components from the library or load a template.</p></div>}
             </div>
           </section>
           <div

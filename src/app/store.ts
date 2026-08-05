@@ -30,36 +30,6 @@ export const INITIAL_ANALYSIS: RFAnalysisSettings = {
   monteCarloSeed: 1,
 }
 
-function initialNodes(): RFCanvasNode[] {
-  return [
-    {
-      id: 'source-1',
-      type: 'source',
-      position: { x: 80, y: 130 },
-      data: createNodeData('source'),
-    },
-    {
-      id: 'amplifier-1',
-      type: 'idealAmplifier',
-      position: { x: 340, y: 130 },
-      data: createNodeData('idealAmplifier'),
-    },
-    {
-      id: 'load-1',
-      type: 'load',
-      position: { x: 610, y: 130 },
-      data: createNodeData('load'),
-    },
-  ]
-}
-
-function initialEdges(): RFCanvasEdge[] {
-  return [
-    { id: 'edge-source-amplifier', source: 'source-1', target: 'amplifier-1' },
-    { id: 'edge-amplifier-load', source: 'amplifier-1', target: 'load-1' },
-  ]
-}
-
 interface RFEditorState {
   activeProjectId: string
   projectName: string
@@ -89,8 +59,8 @@ export const useRFEditorStore = create<RFEditorState>((set, get) => ({
   activeProjectId: crypto.randomUUID(),
   projectName: 'Untitled RF chain',
   analysis: INITIAL_ANALYSIS,
-  nodes: initialNodes(),
-  edges: initialEdges(),
+  nodes: [],
+  edges: [],
   selectedNodeId: null,
   modelRevision: 0,
   onNodesChange: (changes) =>
@@ -169,8 +139,8 @@ export const useRFEditorStore = create<RFEditorState>((set, get) => ({
       activeProjectId: crypto.randomUUID(),
       projectName: 'Untitled RF chain',
       analysis: INITIAL_ANALYSIS,
-      nodes: initialNodes(),
-      edges: initialEdges(),
+      nodes: [],
+      edges: [],
       selectedNodeId: null,
       modelRevision: state.modelRevision + 1,
     })),

@@ -1,3 +1,4 @@
+/* Hallmark · P5 H5 E4 S5 R5 V4 · modern-minimal · technical-austere · teal · scientific workbench */
 :root {
   --ink: #141713;
   --muted: #697068;
@@ -39,6 +40,7 @@ body,
   min-width: 320px;
   min-height: 100%;
   margin: 0;
+  overflow-x: clip;
 }
 
 body {
@@ -59,6 +61,7 @@ input[type='file'] {
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
+summary:focus-visible,
 .react-flow__node:focus-visible {
   outline: 3px solid rgb(20 125 120 / 34%);
   outline-offset: 2px;
@@ -536,10 +539,26 @@ body.is-resizing-panels {
 }
 
 .canvas-wrap {
+  position: relative;
   min-height: 0;
   flex: 1;
   background: var(--canvas);
 }
+
+.canvas-empty {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  padding: 24px;
+  color: var(--muted);
+  text-align: center;
+  pointer-events: none;
+}
+
+.canvas-empty strong { color: var(--ink); font-size: 0.95rem; }
+.canvas-empty p { margin-top: 7px; font-size: 0.75rem; line-height: 1.5; }
 
 .react-flow__renderer {
   background: radial-gradient(circle at 50% 0%, #ffffff 0, transparent 44%);
@@ -915,6 +934,26 @@ body.is-resizing-panels {
   border-radius: 10px;
   background: var(--page);
 }
+
+.analysis-advanced { align-self: end; }
+.analysis-advanced > summary {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--teal);
+  background: #fbfcfd;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 750;
+  list-style: none;
+  white-space: nowrap;
+}
+.analysis-advanced > summary::-webkit-details-marker { display: none; }
+.analysis-advanced[open] { flex: 1 0 100%; }
+.analysis-advanced-grid { margin-top: 7px; padding-top: 7px; display: flex; align-items: end; flex-wrap: wrap; gap: 7px; border-top: 1px solid var(--line); }
 
 .compact-field {
   display: grid;

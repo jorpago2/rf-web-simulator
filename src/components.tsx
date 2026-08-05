@@ -1865,6 +1865,7 @@ export function SimulationPanel({
         className="mobile-run-button"
         data-action={status === 'running' ? 'cancel' : undefined}
         type="button"
+        disabled={status !== 'running' && nodes.length === 0}
         onClick={
           status === 'running'
             ? onCancel
@@ -1882,7 +1883,7 @@ export function SimulationPanel({
               : 'Run simulation'}
       </button>
       <div className="results-header">
-        <div
+        {result && <div
           className="results-tabs"
           role="tablist"
           aria-label="Analysis views"
@@ -2007,7 +2008,7 @@ export function SimulationPanel({
           >
             Frequency plan
           </button>
-        </div>
+        </div>}
         <div
           className="analysis-controls"
           aria-label="Frequency analysis settings"
@@ -2044,6 +2045,9 @@ export function SimulationPanel({
             value={analysis.referenceImpedanceOhm}
             onChange={(value) => update({ referenceImpedanceOhm: value })}
           />
+          <details className="analysis-advanced">
+            <summary>Advanced analysis</summary>
+            <div className="analysis-advanced-grid">
           <CompactNumberField
             label="MC runs"
             min={0}
@@ -2288,7 +2292,9 @@ export function SimulationPanel({
               onChange={(value) => update({ sweepConstraintValue: value })}
             />
           )}
-          <label className="compact-field compact-select">
+            </div>
+          </details>
+          {result && <label className="compact-field compact-select">
             <span>Display</span>
             <select
               value={frequencyUnit}
@@ -2309,11 +2315,12 @@ export function SimulationPanel({
               <option value="MHz">MHz</option>
               <option value="GHz">GHz</option>
             </select>
-          </label>
+          </label>}
           <button
             className="run-button"
             data-action={status === 'running' ? 'cancel' : undefined}
             type="button"
+            disabled={status !== 'running' && nodes.length === 0}
             onClick={status === 'running' ? onCancel : onRun}
           >
             {status === 'running' ? 'Cancel simulation' : 'Run simulation'}
