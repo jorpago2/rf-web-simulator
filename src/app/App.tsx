@@ -1,4 +1,5 @@
 import { ReactFlowProvider } from '@xyflow/react'
+import { Column, Grid } from '@carbon/react'
 import {
   useEffect,
   useMemo,
@@ -338,9 +339,10 @@ export default function App() {
 
   return (
     <ReactFlowProvider>
-      <div className="app-shell min-h-screen bg-ui-canvas font-ui-body text-ui-ink">
+      <Grid fullWidth condensed className="app-shell">
+        <Column sm={4} md={8} lg={16} className="app-shell-column">
         <a className="skip-link" href="#rf-workspace">Skip to RF workspace</a>
-        <header className="app-header grid min-h-[70px] grid-cols-[auto_minmax(12rem,auto)_minmax(0,1fr)_auto_auto_auto] items-center gap-3 bg-ui-surface px-6 py-3">
+        <header className="app-header">
           <div className="brand-mark" aria-hidden="true">
             RF
           </div>
@@ -383,7 +385,7 @@ export default function App() {
 
         <main
           id="rf-workspace"
-          className="workspace grid min-h-[calc(100vh-70px)] gap-3 p-3"
+          className="workspace"
           tabIndex={-1}
           style={
             {
@@ -405,7 +407,7 @@ export default function App() {
             onKeyDown={(event) => resizeSidePanelWithKeyboard('left', event)}
             onPointerDown={(event) => startSidePanelResize('left', event)}
           />
-          <section className="canvas-panel min-w-0 overflow-hidden rounded-ui-panel bg-ui-surface" aria-labelledby="canvas-title">
+          <section className="canvas-panel" aria-labelledby="canvas-title">
             <div className="canvas-toolbar">
               <div>
                 <h2 id="canvas-title">{strings.canvasTitle}</h2>
@@ -448,7 +450,8 @@ export default function App() {
             status={visibleStatus}
           />
         </main>
-      </div>
+        </Column>
+      </Grid>
     </ReactFlowProvider>
   )
 }

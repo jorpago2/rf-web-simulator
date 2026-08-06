@@ -1,28 +1,5 @@
 /* Hallmark · macrostructure: Workbench · tone: technical-austere · anchor hue: teal */
 @import url('../tokens.css');
-@layer theme, base, components, utilities;
-@import "tailwindcss/theme.css" layer(theme);
-@import "tailwindcss/utilities.css" layer(utilities);
-
-@theme inline {
-  --color-ui-canvas: var(--color-paper);
-  --color-ui-canvas-muted: var(--color-paper-2);
-  --color-ui-surface: var(--color-panel);
-  --color-ui-surface-raised: var(--color-paper);
-  --color-ui-ink: var(--color-ink);
-  --color-ui-muted: var(--color-muted);
-  --color-ui-border: var(--color-rule);
-  --color-ui-border-strong: var(--color-rule-strong);
-  --color-ui-accent: var(--color-accent);
-  --color-ui-focus: var(--color-focus);
-  --color-ui-danger: var(--color-danger);
-  --color-ui-success: var(--color-success);
-  --font-ui-body: var(--font-body);
-  --font-ui-display: var(--font-display);
-  --radius-ui-control: var(--radius-control);
-  --radius-ui-panel: var(--radius-panel);
-  --shadow-ui-raised: var(--shadow-float);
-}
 
 :root {
   --ink: var(--color-ink);
@@ -51,6 +28,12 @@
 * {
   box-sizing: border-box;
 }
+.app-shell.cds--grid { min-height: 100vh; max-width: none; padding: 0; color: var(--color-ink); background: var(--color-paper); font-family: var(--font-body); }
+.app-shell-column { min-width: 0; max-width: none; padding: 0; }
+.app-header { min-height: 70px; display: grid; grid-template-columns: auto minmax(12rem, auto) minmax(0, 1fr) auto auto auto; align-items: center; gap: .75rem; padding: .75rem 1.5rem; background: var(--color-panel); }
+.workspace { min-height: calc(100vh - 70px); display: grid; gap: .75rem; padding: .75rem; }
+.panel, .canvas-panel, .results-panel { min-width: 0; overflow: hidden; border-radius: 0; background: var(--color-panel); }
+.block-library, .properties { padding: 1rem; }
 
 html,
 body,

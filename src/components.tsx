@@ -44,7 +44,7 @@ export function BlockLibrary() {
   }
 
   return (
-    <aside className="panel block-library min-w-0 overflow-hidden rounded-ui-panel bg-ui-surface p-4" aria-labelledby="library-title">
+    <aside className="panel block-library" aria-labelledby="library-title">
       <div className="panel__heading">
         <h2 id="library-title">{strings.libraryTitle}</h2>
         <p>{strings.libraryHint}</p>
@@ -121,7 +121,7 @@ export function PropertiesPanel() {
 
   if (!node || !selectedNodeId) {
     return (
-      <aside className="panel properties min-w-0 overflow-hidden rounded-ui-panel bg-ui-surface p-4" aria-labelledby="properties-title">
+      <aside className="panel properties" aria-labelledby="properties-title">
         <div className="panel__heading">
           <h2 id="properties-title">{strings.propertiesTitle}</h2>
         </div>
@@ -294,7 +294,7 @@ export function PropertiesPanel() {
   }
 
   return (
-    <aside className="panel properties min-w-0 overflow-hidden rounded-ui-panel bg-ui-surface p-4" aria-labelledby="properties-title">
+    <aside className="panel properties" aria-labelledby="properties-title">
       <div className="panel__heading">
         <h2 id="properties-title">{strings.propertiesTitle}</h2>
       </div>
@@ -1854,7 +1854,7 @@ export function SimulationPanel({
   ])
 
   return (
-    <section className="results-panel min-w-0 overflow-hidden rounded-ui-panel bg-ui-surface" aria-labelledby="results-title">
+    <section className="results-panel" aria-labelledby="results-title">
       <h2 id="results-title" className="sr-only">
         {strings.resultsTitle}
       </h2>

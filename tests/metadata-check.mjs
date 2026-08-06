@@ -20,12 +20,11 @@ test("starts with an empty RF workbench and reveals advanced analysis on demand"
   assert.match(components, /\{result && <div[\s\S]*className="results-tabs"/);
 });
 
-test("uses semantic Tailwind utilities without Preflight", async () => {
+test("uses the Carbon UI contract", async () => {
   const styles = await readFile(new globalThis.URL("../src/index.css", import.meta.url), "utf8");
   const app = await readFile(new globalThis.URL("../src/app/App.tsx", import.meta.url), "utf8");
-  assert.match(styles, /tailwindcss\/theme\.css/);
-  assert.match(styles, /tailwindcss\/utilities\.css/);
-  assert.match(styles, /@theme inline/);
-  assert.doesNotMatch(styles, /tailwindcss\/preflight|@import\s+["']tailwindcss["']/);
-  assert.match(app, /bg-ui-surface/);
+  const carbon = await readFile(new globalThis.URL("../src/carbon.scss", import.meta.url), "utf8");
+  assert.match(carbon, /@use ["']@carbon\/react["']/);
+  assert.doesNotMatch(styles, /tailwindcss|@theme inline/);
+  assert.match(app, /<Grid fullWidth/);
 });
