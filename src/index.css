@@ -655,6 +655,11 @@ body.is-resizing-panels {
   box-shadow: none;
 }
 
+.react-flow__controls-button {
+  width: 44px;
+  height: 44px;
+}
+
 .react-flow__minimap {
   background: var(--color-panel);
 }
@@ -829,6 +834,7 @@ body.is-resizing-panels {
 }
 
 .file-field input {
+  min-height: 44px;
   height: auto;
   padding: 8px;
 }
