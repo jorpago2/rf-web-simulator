@@ -20,7 +20,7 @@
   --color-success: oklch(43% 0.095 165);
   --color-success-soft: oklch(95% 0.03 165);
 
-  --font-display: 'JetBrains Mono', ui-monospace, monospace;
+  --font-display: 'Space Grotesk', ui-sans-serif, sans-serif;
   --font-body: 'IBM Plex Sans', ui-sans-serif, sans-serif;
 
   --space-3xs: 0.125rem;
@@ -37,8 +37,8 @@
   --text-md: 1.125rem;
   --text-lg: 1.25rem;
 
-  --radius-control: 6px;
-  --radius-panel: 10px;
+  --radius-control: 0.5rem;
+  --radius-panel: 0.875rem;
   --radius-pill: 999px;
   --rule-hairline: 1px solid var(--color-rule);
   --shadow-whisper: 0 1px 2px oklch(20% 0.015 170 / 0.06);
