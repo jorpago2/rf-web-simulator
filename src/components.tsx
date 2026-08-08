@@ -6,6 +6,7 @@ import {
   type ChangeEvent,
   type DragEvent,
 } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Accordion,
   AccordionItem,
@@ -13,6 +14,7 @@ import {
   Checkbox,
   FileUploaderButton,
   InlineNotification,
+  Link,
   NumberInput,
   Select,
   Tab,
@@ -51,7 +53,13 @@ import { downloadTextFile, safeFileName } from './persistence/download'
 import { useRFEditorStore } from './app/store'
 import { strings } from './app/strings'
 
-export function BlockLibrary({ open }: { open: boolean }) {
+export function BlockLibrary({
+  open,
+  onClose,
+}: {
+  open: boolean
+  onClose: () => void
+}) {
   const addNode = useRFEditorStore((state) => state.addNode)
 
   const startDrag = (event: DragEvent, type: RFNodeType) => {
@@ -61,15 +69,21 @@ export function BlockLibrary({ open }: { open: boolean }) {
 
   return (
     <aside
+      id="workflow-panel"
       className={`panel block-library${open ? '' : ' block-library--closed'}`}
       aria-hidden={!open}
       aria-labelledby={open ? 'library-title' : undefined}
     >
       {open && (
         <>
-          <div className="panel__heading">
-            <h2 id="library-title">{strings.libraryTitle}</h2>
-            <p>{strings.libraryHint}</p>
+          <div className="workflow-panel__header">
+            <div className="panel__heading">
+              <h2 id="library-title">{strings.libraryTitle}</h2>
+              <p>{strings.libraryHint}</p>
+            </div>
+            <Button kind="ghost" size="sm" type="button" onClick={onClose}>
+              Close
+            </Button>
           </div>
           <div className="block-list">
             {blockDescriptors.map((block) => (
@@ -121,6 +135,7 @@ export function PropertiesPanel() {
   const removeSelectedNode = useRFEditorStore(
     (state) => state.removeSelectedNode,
   )
+  const selectNode = useRFEditorStore((state) => state.selectNode)
   const [fileStatus, setFileStatus] = useState<FileStatus | null>(null)
   const nodeType = node?.data.type
   const nodeLabel = node?.data.label
@@ -324,8 +339,19 @@ export function PropertiesPanel() {
       className="panel properties"
       aria-labelledby="properties-title"
     >
-      <div className="panel__heading">
-        <h2 id="properties-title">{strings.propertiesTitle}</h2>
+      <div className="workflow-panel__header">
+        <div className="panel__heading">
+          <h2 id="properties-title">{strings.propertiesTitle}</h2>
+          <p>{node.data.label}</p>
+        </div>
+        <Button
+          kind="ghost"
+          size="sm"
+          type="button"
+          onClick={() => selectNode(null)}
+        >
+          Close
+        </Button>
       </div>
       <TextInput
         className="field"
@@ -658,12 +684,12 @@ export function PropertiesPanel() {
             <small id={`device-table-help-${node.id}`}>
               CSV: frequency plus gain, NF, OP1dB, OIP3, or Pin/Pout columns.
             </small>
-            <a
+            <Link
               href={`${import.meta.env.BASE_URL}examples/device-performance-template.csv`}
               download
             >
               Download CSV template
-            </a>
+            </Link>
           </div>
           {typeof node.data.parameters.deviceTableFileName === 'string' && (
             <>
@@ -1763,6 +1789,7 @@ type ResultView =
 export function SimulationPanel({
   projectName,
   analysis,
+  analysisControlsHost,
   nodes,
   status,
   result,
@@ -1774,6 +1801,7 @@ export function SimulationPanel({
 }: {
   projectName: string
   analysis: RFAnalysisSettings
+  analysisControlsHost: HTMLElement | null
   nodes: RFProjectNode[]
   status: SimulationStatus
   result: SimulationOutput | null
@@ -1999,155 +2027,69 @@ export function SimulationPanel({
               ))}
             </TabList>
           )}
-          <div
-            className="analysis-controls"
-            aria-label="Frequency analysis settings"
-          >
-            <CompactNumberField
-              label="Start"
-              unit="GHz"
-              min={0}
-              step={0.01}
-              value={analysis.startHz / 1e9}
-              onChange={(value) => update({ startHz: value * 1e9 })}
-            />
-            <CompactNumberField
-              label="Stop"
-              unit="GHz"
-              min={0}
-              step={0.01}
-              value={analysis.stopHz / 1e9}
-              onChange={(value) => update({ stopHz: value * 1e9 })}
-            />
-            <CompactNumberField
-              label="Points"
-              min={2}
-              max={10_001}
-              step={1}
-              value={analysis.points}
-              onChange={(value) => update({ points: value })}
-            />
-            <CompactNumberField
-              label="Z₀"
-              unit="Ω"
-              min={0.01}
-              step={1}
-              value={analysis.referenceImpedanceOhm}
-              onChange={(value) => update({ referenceImpedanceOhm: value })}
-            />
-            <Accordion className="analysis-advanced" size="sm">
-              <AccordionItem title="Advanced analysis">
-                <div className="analysis-advanced-grid">
-                  <CompactNumberField
-                    label="MC runs"
-                    min={0}
-                    max={500}
-                    step={1}
-                    value={analysis.monteCarloRuns ?? 0}
-                    onChange={(value) => update({ monteCarloRuns: value })}
-                  />
-                  <CompactNumberField
-                    label="MC seed"
-                    min={0}
-                    max={0xffffffff}
-                    step={1}
-                    value={analysis.monteCarloSeed ?? 1}
-                    onChange={(value) => update({ monteCarloSeed: value })}
-                  />
-                  <Select
-                    className="compact-field compact-select"
-                    id="sweep-block"
-                    labelText="Sweep block"
-                    size="sm"
-                    value={analysis.sweepNodeId ?? ''}
-                    onChange={(event) => {
-                      const selected = nodes.find(
-                        (node) => node.id === event.target.value,
-                      )
-                      const first = selected
-                        ? sweepableParameters(selected)[0]
-                        : undefined
-                      if (!selected || !first) {
-                        update({ sweepNodeId: null, sweepParameter: null })
-                        return
-                      }
-                      const [start, stop] = defaultSweepRange(
-                        first[0],
-                        first[1],
-                      )
-                      update({
-                        sweepNodeId: selected.id,
-                        sweepParameter: first[0],
-                        sweepStart: start,
-                        sweepStop: stop,
-                        sweepPoints: analysis.sweepPoints ?? 11,
-                      })
-                    }}
-                  >
-                    <option value="">Off</option>
-                    {nodes
-                      .filter((node) => sweepableParameters(node).length > 0)
-                      .map((node) => (
-                        <option key={node.id} value={node.id}>
-                          {node.data.label}
-                        </option>
-                      ))}
-                  </Select>
-                  {sweepNode && sweepParameters.length > 0 && (
-                    <>
-                      <Select
-                        className="compact-field compact-select"
-                        id="sweep-parameter"
-                        labelText="Parameter"
-                        size="sm"
-                        value={analysis.sweepParameter ?? ''}
-                        onChange={(event) => {
-                          const nominal =
-                            sweepNode.data.parameters[event.target.value]
-                          if (typeof nominal !== 'number') return
-                          const [start, stop] = defaultSweepRange(
-                            event.target.value,
-                            nominal,
-                          )
-                          update({
-                            sweepParameter: event.target.value,
-                            sweepStart: start,
-                            sweepStop: stop,
-                          })
-                        }}
-                      >
-                        {sweepParameters.map(([key]) => (
-                          <option key={key} value={key}>
-                            {key}
-                          </option>
-                        ))}
-                      </Select>
+          {analysisControlsHost &&
+            createPortal(
+              <div
+                className="analysis-controls"
+                aria-label="Frequency analysis settings"
+              >
+                <CompactNumberField
+                  label="Start"
+                  unit="GHz"
+                  min={0}
+                  step={0.01}
+                  value={analysis.startHz / 1e9}
+                  onChange={(value) => update({ startHz: value * 1e9 })}
+                />
+                <CompactNumberField
+                  label="Stop"
+                  unit="GHz"
+                  min={0}
+                  step={0.01}
+                  value={analysis.stopHz / 1e9}
+                  onChange={(value) => update({ stopHz: value * 1e9 })}
+                />
+                <CompactNumberField
+                  label="Points"
+                  min={2}
+                  max={10_001}
+                  step={1}
+                  value={analysis.points}
+                  onChange={(value) => update({ points: value })}
+                />
+                <CompactNumberField
+                  label="Z₀"
+                  unit="Ω"
+                  min={0.01}
+                  step={1}
+                  value={analysis.referenceImpedanceOhm}
+                  onChange={(value) => update({ referenceImpedanceOhm: value })}
+                />
+                <Accordion className="analysis-advanced" size="sm">
+                  <AccordionItem title="Advanced analysis">
+                    <div className="analysis-advanced-grid">
                       <CompactNumberField
-                        label="Sweep start"
-                        step={0.1}
-                        value={analysis.sweepStart ?? 0}
-                        onChange={(value) => update({ sweepStart: value })}
-                      />
-                      <CompactNumberField
-                        label="Sweep stop"
-                        step={0.1}
-                        value={analysis.sweepStop ?? 1}
-                        onChange={(value) => update({ sweepStop: value })}
-                      />
-                      <CompactNumberField
-                        label="Sweep points"
-                        min={2}
-                        max={101}
+                        label="MC runs"
+                        min={0}
+                        max={500}
                         step={1}
-                        value={analysis.sweepPoints ?? 11}
-                        onChange={(value) => update({ sweepPoints: value })}
+                        value={analysis.monteCarloRuns ?? 0}
+                        onChange={(value) => update({ monteCarloRuns: value })}
+                      />
+                      <CompactNumberField
+                        label="MC seed"
+                        min={0}
+                        max={0xffffffff}
+                        step={1}
+                        value={analysis.monteCarloSeed ?? 1}
+                        onChange={(value) => update({ monteCarloSeed: value })}
                       />
                       <Select
                         className="compact-field compact-select"
-                        id="second-sweep-block"
-                        labelText="Second block"
+                        id="sweep-block"
+                        labelText="Sweep block"
                         size="sm"
-                        value={analysis.sweepSecondNodeId ?? ''}
+                        value={analysis.sweepNodeId ?? ''}
                         onChange={(event) => {
                           const selected = nodes.find(
                             (node) => node.id === event.target.value,
@@ -2156,10 +2098,7 @@ export function SimulationPanel({
                             ? sweepableParameters(selected)[0]
                             : undefined
                           if (!selected || !first) {
-                            update({
-                              sweepSecondNodeId: null,
-                              sweepSecondParameter: null,
-                            })
+                            update({ sweepNodeId: null, sweepParameter: null })
                             return
                           }
                           const [start, stop] = defaultSweepRange(
@@ -2167,15 +2106,15 @@ export function SimulationPanel({
                             first[1],
                           )
                           update({
-                            sweepSecondNodeId: selected.id,
-                            sweepSecondParameter: first[0],
-                            sweepSecondStart: start,
-                            sweepSecondStop: stop,
-                            sweepSecondPoints: analysis.sweepSecondPoints ?? 5,
+                            sweepNodeId: selected.id,
+                            sweepParameter: first[0],
+                            sweepStart: start,
+                            sweepStop: stop,
+                            sweepPoints: analysis.sweepPoints ?? 11,
                           })
                         }}
                       >
-                        <option value="">Off (1-D)</option>
+                        <option value="">Off</option>
                         {nodes
                           .filter(
                             (node) => sweepableParameters(node).length > 0,
@@ -2186,180 +2125,283 @@ export function SimulationPanel({
                             </option>
                           ))}
                       </Select>
-                      {secondSweepNode && secondSweepParameters.length > 0 && (
+                      {sweepNode && sweepParameters.length > 0 && (
                         <>
                           <Select
                             className="compact-field compact-select"
-                            id="second-sweep-parameter"
-                            labelText="Second parameter"
+                            id="sweep-parameter"
+                            labelText="Parameter"
                             size="sm"
-                            value={analysis.sweepSecondParameter ?? ''}
+                            value={analysis.sweepParameter ?? ''}
                             onChange={(event) => {
                               const nominal =
-                                secondSweepNode.data.parameters[
-                                  event.target.value
-                                ]
+                                sweepNode.data.parameters[event.target.value]
                               if (typeof nominal !== 'number') return
                               const [start, stop] = defaultSweepRange(
                                 event.target.value,
                                 nominal,
                               )
                               update({
-                                sweepSecondParameter: event.target.value,
-                                sweepSecondStart: start,
-                                sweepSecondStop: stop,
+                                sweepParameter: event.target.value,
+                                sweepStart: start,
+                                sweepStop: stop,
                               })
                             }}
                           >
-                            {secondSweepParameters.map(([key]) => (
+                            {sweepParameters.map(([key]) => (
                               <option key={key} value={key}>
                                 {key}
                               </option>
                             ))}
                           </Select>
                           <CompactNumberField
-                            label="Second start"
+                            label="Sweep start"
                             step={0.1}
-                            value={analysis.sweepSecondStart ?? 0}
-                            onChange={(value) =>
-                              update({ sweepSecondStart: value })
-                            }
+                            value={analysis.sweepStart ?? 0}
+                            onChange={(value) => update({ sweepStart: value })}
                           />
                           <CompactNumberField
-                            label="Second stop"
+                            label="Sweep stop"
                             step={0.1}
-                            value={analysis.sweepSecondStop ?? 1}
-                            onChange={(value) =>
-                              update({ sweepSecondStop: value })
-                            }
+                            value={analysis.sweepStop ?? 1}
+                            onChange={(value) => update({ sweepStop: value })}
                           />
                           <CompactNumberField
-                            label="Second points"
+                            label="Sweep points"
                             min={2}
-                            max={51}
+                            max={101}
                             step={1}
-                            value={analysis.sweepSecondPoints ?? 5}
-                            onChange={(value) =>
-                              update({ sweepSecondPoints: value })
-                            }
+                            value={analysis.sweepPoints ?? 11}
+                            onChange={(value) => update({ sweepPoints: value })}
                           />
+                          <Select
+                            className="compact-field compact-select"
+                            id="second-sweep-block"
+                            labelText="Second block"
+                            size="sm"
+                            value={analysis.sweepSecondNodeId ?? ''}
+                            onChange={(event) => {
+                              const selected = nodes.find(
+                                (node) => node.id === event.target.value,
+                              )
+                              const first = selected
+                                ? sweepableParameters(selected)[0]
+                                : undefined
+                              if (!selected || !first) {
+                                update({
+                                  sweepSecondNodeId: null,
+                                  sweepSecondParameter: null,
+                                })
+                                return
+                              }
+                              const [start, stop] = defaultSweepRange(
+                                first[0],
+                                first[1],
+                              )
+                              update({
+                                sweepSecondNodeId: selected.id,
+                                sweepSecondParameter: first[0],
+                                sweepSecondStart: start,
+                                sweepSecondStop: stop,
+                                sweepSecondPoints:
+                                  analysis.sweepSecondPoints ?? 5,
+                              })
+                            }}
+                          >
+                            <option value="">Off (1-D)</option>
+                            {nodes
+                              .filter(
+                                (node) => sweepableParameters(node).length > 0,
+                              )
+                              .map((node) => (
+                                <option key={node.id} value={node.id}>
+                                  {node.data.label}
+                                </option>
+                              ))}
+                          </Select>
+                          {secondSweepNode &&
+                            secondSweepParameters.length > 0 && (
+                              <>
+                                <Select
+                                  className="compact-field compact-select"
+                                  id="second-sweep-parameter"
+                                  labelText="Second parameter"
+                                  size="sm"
+                                  value={analysis.sweepSecondParameter ?? ''}
+                                  onChange={(event) => {
+                                    const nominal =
+                                      secondSweepNode.data.parameters[
+                                        event.target.value
+                                      ]
+                                    if (typeof nominal !== 'number') return
+                                    const [start, stop] = defaultSweepRange(
+                                      event.target.value,
+                                      nominal,
+                                    )
+                                    update({
+                                      sweepSecondParameter: event.target.value,
+                                      sweepSecondStart: start,
+                                      sweepSecondStop: stop,
+                                    })
+                                  }}
+                                >
+                                  {secondSweepParameters.map(([key]) => (
+                                    <option key={key} value={key}>
+                                      {key}
+                                    </option>
+                                  ))}
+                                </Select>
+                                <CompactNumberField
+                                  label="Second start"
+                                  step={0.1}
+                                  value={analysis.sweepSecondStart ?? 0}
+                                  onChange={(value) =>
+                                    update({ sweepSecondStart: value })
+                                  }
+                                />
+                                <CompactNumberField
+                                  label="Second stop"
+                                  step={0.1}
+                                  value={analysis.sweepSecondStop ?? 1}
+                                  onChange={(value) =>
+                                    update({ sweepSecondStop: value })
+                                  }
+                                />
+                                <CompactNumberField
+                                  label="Second points"
+                                  min={2}
+                                  max={51}
+                                  step={1}
+                                  value={analysis.sweepSecondPoints ?? 5}
+                                  onChange={(value) =>
+                                    update({ sweepSecondPoints: value })
+                                  }
+                                />
+                              </>
+                            )}
+                          <Select
+                            className="compact-field compact-select"
+                            id="sweep-objective"
+                            labelText="Objective"
+                            size="sm"
+                            value={`${analysis.sweepMetric ?? 's21Db'}:${analysis.sweepObjective ?? 'maximize'}`}
+                            onChange={(event) => {
+                              const [metric, objective] =
+                                event.target.value.split(':')
+                              update({
+                                sweepMetric:
+                                  metric as RFAnalysisSettings['sweepMetric'],
+                                sweepObjective:
+                                  objective as RFAnalysisSettings['sweepObjective'],
+                              })
+                            }}
+                          >
+                            <option value="s21Db:maximize">Maximize S21</option>
+                            <option value="loadPowerDbm:maximize">
+                              Maximize load power
+                            </option>
+                            <option value="inputP1Dbm:maximize">
+                              Maximize input P1dB
+                            </option>
+                            <option value="noiseFigureDb:minimize">
+                              Minimize noise figure
+                            </option>
+                          </Select>
                         </>
                       )}
                       <Select
                         className="compact-field compact-select"
-                        id="sweep-objective"
-                        labelText="Objective"
+                        id="yield-constraint"
+                        labelText="Yield constraint"
                         size="sm"
-                        value={`${analysis.sweepMetric ?? 's21Db'}:${analysis.sweepObjective ?? 'maximize'}`}
+                        value={analysis.sweepConstraintMetric ?? ''}
                         onChange={(event) => {
-                          const [metric, objective] =
-                            event.target.value.split(':')
+                          const metric = event.target.value || null
                           update({
-                            sweepMetric:
-                              metric as RFAnalysisSettings['sweepMetric'],
-                            sweepObjective:
-                              objective as RFAnalysisSettings['sweepObjective'],
+                            sweepConstraintMetric:
+                              metric as RFAnalysisSettings['sweepConstraintMetric'],
+                            sweepConstraintDirection:
+                              metric === 'noiseFigureDb'
+                                ? 'maximum'
+                                : 'minimum',
+                            sweepConstraintValue:
+                              analysis.sweepConstraintValue ?? 0,
                           })
                         }}
                       >
-                        <option value="s21Db:maximize">Maximize S21</option>
-                        <option value="loadPowerDbm:maximize">
-                          Maximize load power
-                        </option>
-                        <option value="inputP1Dbm:maximize">
-                          Maximize input P1dB
-                        </option>
-                        <option value="noiseFigureDb:minimize">
-                          Minimize noise figure
+                        <option value="">None</option>
+                        <option value="s21Db">Minimum S21</option>
+                        <option value="loadPowerDbm">Minimum load power</option>
+                        <option value="inputP1Dbm">Minimum input P1dB</option>
+                        <option value="noiseFigureDb">
+                          Maximum noise figure
                         </option>
                       </Select>
-                    </>
-                  )}
+                      {analysis.sweepConstraintMetric && (
+                        <CompactNumberField
+                          label="Constraint value"
+                          step={0.1}
+                          value={analysis.sweepConstraintValue ?? 0}
+                          onChange={(value) =>
+                            update({ sweepConstraintValue: value })
+                          }
+                        />
+                      )}
+                    </div>
+                  </AccordionItem>
+                </Accordion>
+                {result && (
                   <Select
                     className="compact-field compact-select"
-                    id="yield-constraint"
-                    labelText="Yield constraint"
+                    id="plot-frequency-unit"
+                    labelText="Display"
                     size="sm"
-                    value={analysis.sweepConstraintMetric ?? ''}
-                    onChange={(event) => {
-                      const metric = event.target.value || null
-                      update({
-                        sweepConstraintMetric:
-                          metric as RFAnalysisSettings['sweepConstraintMetric'],
-                        sweepConstraintDirection:
-                          metric === 'noiseFigureDb' ? 'maximum' : 'minimum',
-                        sweepConstraintValue:
-                          analysis.sweepConstraintValue ?? 0,
-                      })
-                    }}
+                    value={frequencyUnit}
+                    disabled={
+                      visibleResultView === 'nonlinear' ||
+                      visibleResultView === 'smith' ||
+                      visibleResultView === 'oscillator' ||
+                      visibleResultView === 'antenna'
+                    }
+                    onChange={(event) =>
+                      setFrequencyUnit(event.target.value as FrequencyUnit)
+                    }
                   >
-                    <option value="">None</option>
-                    <option value="s21Db">Minimum S21</option>
-                    <option value="loadPowerDbm">Minimum load power</option>
-                    <option value="inputP1Dbm">Minimum input P1dB</option>
-                    <option value="noiseFigureDb">Maximum noise figure</option>
+                    <option value="auto">Auto</option>
+                    <option value="Hz">Hz</option>
+                    <option value="kHz">kHz</option>
+                    <option value="MHz">MHz</option>
+                    <option value="GHz">GHz</option>
                   </Select>
-                  {analysis.sweepConstraintMetric && (
-                    <CompactNumberField
-                      label="Constraint value"
-                      step={0.1}
-                      value={analysis.sweepConstraintValue ?? 0}
-                      onChange={(value) =>
-                        update({ sweepConstraintValue: value })
-                      }
-                    />
-                  )}
-                </div>
-              </AccordionItem>
-            </Accordion>
-            {result && (
-              <Select
-                className="compact-field compact-select"
-                id="plot-frequency-unit"
-                labelText="Display"
-                size="sm"
-                value={frequencyUnit}
-                disabled={
-                  visibleResultView === 'nonlinear' ||
-                  visibleResultView === 'smith' ||
-                  visibleResultView === 'oscillator' ||
-                  visibleResultView === 'antenna'
-                }
-                onChange={(event) =>
-                  setFrequencyUnit(event.target.value as FrequencyUnit)
-                }
-              >
-                <option value="auto">Auto</option>
-                <option value="Hz">Hz</option>
-                <option value="kHz">kHz</option>
-                <option value="MHz">MHz</option>
-                <option value="GHz">GHz</option>
-              </Select>
+                )}
+                <Button
+                  className="run-button"
+                  data-action={status === 'running' ? 'cancel' : undefined}
+                  kind={status === 'running' ? 'danger' : 'primary'}
+                  size="sm"
+                  type="button"
+                  disabled={status !== 'running' && nodes.length === 0}
+                  onClick={status === 'running' ? onCancel : onRun}
+                >
+                  {status === 'running'
+                    ? 'Cancel simulation'
+                    : 'Run simulation'}
+                </Button>
+                <Button
+                  className="export-button"
+                  kind="secondary"
+                  size="sm"
+                  type="button"
+                  disabled={!result}
+                  onClick={exportResults}
+                >
+                  {visibleResultView === 'nonlinear'
+                    ? 'Export power CSV'
+                    : 'Export sweep CSV'}
+                </Button>
+              </div>,
+              analysisControlsHost,
             )}
-            <Button
-              className="run-button"
-              data-action={status === 'running' ? 'cancel' : undefined}
-              kind={status === 'running' ? 'danger' : 'primary'}
-              size="sm"
-              type="button"
-              disabled={status !== 'running' && nodes.length === 0}
-              onClick={status === 'running' ? onCancel : onRun}
-            >
-              {status === 'running' ? 'Cancel simulation' : 'Run simulation'}
-            </Button>
-            <Button
-              className="export-button"
-              kind="secondary"
-              size="sm"
-              type="button"
-              disabled={!result}
-              onClick={exportResults}
-            >
-              {visibleResultView === 'nonlinear'
-                ? 'Export power CSV'
-                : 'Export sweep CSV'}
-            </Button>
-          </div>
         </div>
 
         {result ? (
@@ -3140,11 +3182,10 @@ function CompactNumberField({
   return (
     <NumberInput
       className="compact-field"
-      decorator={unit ? <span className="field-unit">{unit}</span> : undefined}
       hideSteppers
       iconDescription={`Adjust ${label}`}
       id={id}
-      label={label}
+      label={`${label}${unit ? ` (${unit})` : ''}`}
       max={max}
       min={min}
       size="sm"

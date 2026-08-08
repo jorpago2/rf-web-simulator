@@ -7,5 +7,17 @@
     "vibe": "clean layered technical workbench",
     "enrichment": "none",
     "brief": "RF Web Simulator interface redesign"
+  },
+  {
+    "date": "2026-08-08",
+    "scope": "app",
+    "genre": "modern-minimal",
+    "macrostructure": "Workbench",
+    "theme": "Carbon g10",
+    "theme_axes": "light / IBM Plex / blue signal accent",
+    "vibe": "result-first scientific workbench",
+    "variation_knobs": "four-task rail / mutually exclusive left sheet / contextual right inspector / mobile bottom navigation",
+    "enrichment": "none",
+    "brief": "Radical Carbon redesign from Scientific Tool Visual Architecture"
   }
 ]

@@ -1,0 +1,16 @@
+{
+  "date": "2026-08-08",
+  "scope": "app",
+  "audience": "RF engineers, university researchers, and advanced students",
+  "primary_use": "Build an RF chain, configure an experiment, simulate it, and inspect peer scientific results without losing the diagram context",
+  "tone": "technical-austere",
+  "installed_system": "Carbon React 1.113.0 with g10 and IBM Plex",
+  "macrostructure": "Workbench",
+  "responsive_matrix": [
+    "1440x900",
+    "1280x800",
+    "1024x768",
+    "768x1024",
+    "390x844"
+  ]
+}

@@ -15,6 +15,7 @@ import {
 import {
   lazy,
   Suspense,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -22,6 +23,7 @@ import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from 'react'
 import type { SimulationStatus } from '../components'
 import { RFCanvas } from '../diagram/RFCanvas'
@@ -53,6 +55,13 @@ const STATUS_INDICATOR_KIND = {
   success: 'succeeded',
   error: 'failed',
 } as const
+type WorkflowTool = 'components' | 'canvas' | 'experiment' | 'review'
+const WORKFLOW_TOOLS: { id: WorkflowTool; label: string }[] = [
+  { id: 'components', label: 'Components' },
+  { id: 'canvas', label: 'Canvas' },
+  { id: 'experiment', label: 'Experiment' },
+  { id: 'review', label: 'Review' },
+]
 const loadWorkbenchComponents = () => import('../components')
 const BlockLibrary = lazy(() =>
   loadWorkbenchComponents().then((module) => ({
@@ -92,8 +101,13 @@ export default function App() {
   const [resultRevision, setResultRevision] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const simulationAbortRef = useRef<AbortController | null>(null)
-  const libraryTriggerRef = useRef<HTMLButtonElement>(null)
-  const [libraryOpen, setLibraryOpen] = useState(false)
+  const selectNode = useRFEditorStore((state) => state.selectNode)
+  const workflowTriggerRefs = useRef<
+    Partial<Record<WorkflowTool, HTMLButtonElement>>
+  >({})
+  const [activeTool, setActiveTool] = useState<WorkflowTool | null>(null)
+  const [analysisControlsHost, setAnalysisControlsHost] =
+    useState<HTMLDivElement | null>(null)
   const [persistenceReady, setPersistenceReady] = useState(false)
   const [persistenceStatus, setPersistenceStatus] =
     useState<PersistenceStatus>('loading')
@@ -105,9 +119,24 @@ export default function App() {
   )
   const [selectedProjectId, setSelectedProjectId] = useState('')
   const [sidePanelWidths, setSidePanelWidths] = useState({
-    left: 220,
+    left: 304,
     right: 250,
   })
+
+  const closeActiveTool = useCallback(() => {
+    if (!activeTool) return
+    const trigger = workflowTriggerRefs.current[activeTool]
+    setActiveTool(null)
+    window.requestAnimationFrame(() => trigger?.focus())
+  }, [activeTool])
+
+  const toggleTool = (tool: WorkflowTool) => {
+    if (activeTool === tool) {
+      closeActiveTool()
+      return
+    }
+    setActiveTool(tool)
+  }
 
   const panelMaximumWidth = (side: 'left' | 'right') => {
     const canvasWidth =
@@ -303,10 +332,7 @@ export default function App() {
         if (helpContent?.offsetParent) {
           document.querySelector<HTMLButtonElement>('.app-help button')?.click()
         }
-        if (libraryOpen) {
-          setLibraryOpen(false)
-          libraryTriggerRef.current?.focus()
-        }
+        if (activeTool) closeActiveTool()
         if (status === 'running') simulationAbortRef.current?.abort()
       } else if (event.key === '?' && !isEditableTarget(event.target)) {
         event.preventDefault()
@@ -315,7 +341,7 @@ export default function App() {
     }
     document.addEventListener('keydown', handleShortcut, true)
     return () => document.removeEventListener('keydown', handleShortcut, true)
-  }, [libraryOpen, status])
+  }, [activeTool, closeActiveTool, status])
 
   const openSelectedProject = async () => {
     if (!selectedProjectId) return
@@ -479,10 +505,10 @@ export default function App() {
             tabIndex={-1}
             style={
               {
-                '--left-panel-width': libraryOpen
+                '--left-panel-width': activeTool
                   ? `${sidePanelWidths.left}px`
                   : '0px',
-                '--left-resizer-width': libraryOpen ? '12px' : '0px',
+                '--left-resizer-width': activeTool ? '12px' : '0px',
                 '--right-panel-width': selectedNodeId
                   ? `${sidePanelWidths.right}px`
                   : '0px',
@@ -491,77 +517,126 @@ export default function App() {
             }
           >
             <nav className="tool-rail" aria-label="RF workbench tools">
-              <Button
-                aria-controls="block-library"
-                aria-expanded={libraryOpen}
-                className="tool-rail__button"
-                isSelected={libraryOpen}
-                kind="ghost"
-                ref={libraryTriggerRef}
-                size="sm"
-                onClick={() => setLibraryOpen((open) => !open)}
-              >
-                Blocks
-              </Button>
-              <Button
-                className="tool-rail__mobile-button"
-                kind="ghost"
-                size="sm"
-                type="button"
-                onClick={() =>
-                  document
-                    .getElementById('rf-canvas')
-                    ?.scrollIntoView({ behavior: 'smooth' })
-                }
-              >
-                Canvas
-              </Button>
-              <Button
-                className="tool-rail__mobile-button"
-                disabled={!selectedNodeId}
-                kind="ghost"
-                size="sm"
-                type="button"
-                onClick={() =>
-                  document
-                    .getElementById('rf-properties')
-                    ?.scrollIntoView({ behavior: 'smooth' })
-                }
-              >
-                Inspect
-              </Button>
-              <Button
-                className="tool-rail__mobile-button"
-                kind="ghost"
-                size="sm"
-                type="button"
-                onClick={() =>
-                  document
-                    .getElementById('rf-results')
-                    ?.scrollIntoView({ behavior: 'smooth' })
-                }
-              >
-                Results
-              </Button>
+              {WORKFLOW_TOOLS.map((tool) => (
+                <Button
+                  aria-controls="workflow-panel"
+                  aria-expanded={activeTool === tool.id}
+                  className="tool-rail__button"
+                  isSelected={activeTool === tool.id}
+                  kind="ghost"
+                  key={tool.id}
+                  ref={(node: HTMLButtonElement | null) => {
+                    workflowTriggerRefs.current[tool.id] = node ?? undefined
+                  }}
+                  size="sm"
+                  type="button"
+                  onClick={() => toggleTool(tool.id)}
+                >
+                  {tool.label}
+                </Button>
+              ))}
             </nav>
             <div
-              id="block-library"
-              className={`block-library-slot${libraryOpen ? '' : ' block-library-slot--closed'}`}
+              className={`tool-panel-slot${activeTool ? '' : ' tool-panel-slot--closed'}`}
             >
-              <Suspense fallback={null}>
-                <BlockLibrary open={libraryOpen} />
-              </Suspense>
+              {activeTool === 'components' && (
+                <Suspense fallback={null}>
+                  <BlockLibrary open onClose={closeActiveTool} />
+                </Suspense>
+              )}
+              {activeTool === 'canvas' && (
+                <WorkflowPanel
+                  description="Viewport and diagram-level controls. Object parameters remain in the contextual inspector."
+                  title="Canvas"
+                  onClose={closeActiveTool}
+                >
+                  <dl className="workflow-summary">
+                    <div>
+                      <dt>Blocks</dt>
+                      <dd>{nodes.length}</dd>
+                    </div>
+                    <div>
+                      <dt>Connections</dt>
+                      <dd>{edges.length}</dd>
+                    </div>
+                    <div>
+                      <dt>Selection</dt>
+                      <dd>{selectedNodeId ? '1 block' : 'None'}</dd>
+                    </div>
+                  </dl>
+                  <Button
+                    disabled={!selectedNodeId}
+                    kind="secondary"
+                    size="sm"
+                    type="button"
+                    onClick={() => selectNode(null)}
+                  >
+                    Clear selection
+                  </Button>
+                  <p className="workflow-note">
+                    Use the viewport controls to zoom or fit the network. Drag
+                    blocks to position them; Delete removes the selected block.
+                  </p>
+                </WorkflowPanel>
+              )}
+              {activeTool === 'experiment' && (
+                <WorkflowPanel
+                  description="Configure the sweep, uncertainty study, and solver before running the RF chain."
+                  title="Experiment"
+                  onClose={closeActiveTool}
+                >
+                  <div ref={setAnalysisControlsHost} />
+                </WorkflowPanel>
+              )}
+              {activeTool === 'review' && (
+                <WorkflowPanel
+                  description="Current solver and validation state. Detailed scientific views remain in Results."
+                  title="Review"
+                  onClose={closeActiveTool}
+                >
+                  <IconIndicator
+                    kind={STATUS_INDICATOR_KIND[visibleStatus]}
+                    label={statusText}
+                  />
+                  <dl className="workflow-summary">
+                    <div>
+                      <dt>Model revision</dt>
+                      <dd>{modelRevision}</dd>
+                    </div>
+                    <div>
+                      <dt>Warnings</dt>
+                      <dd>{visibleResult?.warnings.length ?? 0}</dd>
+                    </div>
+                    <div>
+                      <dt>Result</dt>
+                      <dd>{visibleResult ? 'Current' : 'Not solved'}</dd>
+                    </div>
+                  </dl>
+                  {error && <p className="workflow-error">{error}</p>}
+                  {(visibleResult?.warnings.length ?? 0) > 0 && (
+                    <ul className="workflow-warning-list">
+                      {visibleResult!.warnings.map((warning, index) => (
+                        <li
+                          key={`${warning.code}-${warning.frequencyHz ?? index}`}
+                        >
+                          {warning.message}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </WorkflowPanel>
+              )}
             </div>
             <div
               className="panel-resizer panel-resizer--left"
-              aria-hidden={!libraryOpen}
+              aria-hidden={!activeTool}
               role="separator"
-              aria-label="Resize block library"
+              aria-label="Resize workflow panel"
               aria-orientation="vertical"
               aria-valuemin={SIDE_PANEL_MIN_WIDTH}
               aria-valuemax={SIDE_PANEL_MAX_WIDTH}
               aria-valuenow={sidePanelWidths.left}
-              tabIndex={libraryOpen ? 0 : -1}
+              tabIndex={activeTool ? 0 : -1}
               onKeyDown={(event) => resizeSidePanelWithKeyboard('left', event)}
               onPointerDown={(event) => startSidePanelResize('left', event)}
             />
@@ -610,6 +685,7 @@ export default function App() {
             <Suspense fallback={null}>
               <SimulationPanel
                 analysis={analysis}
+                analysisControlsHost={analysisControlsHost}
                 nodes={nodes}
                 error={status === 'error' ? error : null}
                 onAnalysisChange={updateAnalysis}
@@ -634,6 +710,37 @@ export default function App() {
         </Column>
       </Grid>
     </ReactFlowProvider>
+  )
+}
+
+function WorkflowPanel({
+  title,
+  description,
+  onClose,
+  children,
+}: {
+  title: string
+  description: string
+  onClose: () => void
+  children: ReactNode
+}) {
+  return (
+    <aside
+      id="workflow-panel"
+      className="panel workflow-panel"
+      aria-labelledby="workflow-panel-title"
+    >
+      <div className="workflow-panel__header">
+        <div className="panel__heading">
+          <h2 id="workflow-panel-title">{title}</h2>
+          <p>{description}</p>
+        </div>
+        <Button kind="ghost" size="sm" type="button" onClick={onClose}>
+          Close
+        </Button>
+      </div>
+      <div className="workflow-panel__body">{children}</div>
+    </aside>
   )
 }
 

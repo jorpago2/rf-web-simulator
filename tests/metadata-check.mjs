@@ -93,3 +93,23 @@ test('uses the Carbon UI contract', async () => {
     assert.match(components, new RegExp(`<${component}`))
   }
 })
+
+test('implements the result-first scientific workbench contract', async () => {
+  const app = await readFile(
+    new globalThis.URL('../src/app/App.tsx', import.meta.url),
+    'utf8',
+  )
+  const components = await readFile(
+    new globalThis.URL('../src/components.tsx', import.meta.url),
+    'utf8',
+  )
+  for (const task of ['components', 'canvas', 'experiment', 'review']) {
+    assert.match(app, new RegExp(`id: '${task}'`))
+  }
+  assert.match(app, /activeTool === tool\.id/)
+  assert.match(app, /if \(activeTool === tool\)/)
+  assert.match(app, /workflowTriggerRefs\.current\[activeTool\]/)
+  assert.match(app, /<RFCanvas \/>/)
+  assert.match(app, /selectedNodeId[\s\S]*<PropertiesPanel \/>/)
+  assert.match(components, /createPortal\([\s\S]*analysisControlsHost/)
+})
