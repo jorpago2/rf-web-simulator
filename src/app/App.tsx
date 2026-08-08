@@ -217,7 +217,7 @@ export default function App() {
     }
   }, [activeProjectId, persistenceReady, project])
 
-  const runSimulation = async () => {
+  const runSimulation = useCallback(async () => {
     const requestedRevision = modelRevision
     const controller = new AbortController()
     simulationAbortRef.current = controller
@@ -258,7 +258,7 @@ export default function App() {
         simulationAbortRef.current = null
       }
     }
-  }
+  }, [analysis, modelRevision, project.edges, project.nodes, resultRevision])
 
   const cancelSimulation = () => simulationAbortRef.current?.abort()
 
@@ -268,7 +268,7 @@ export default function App() {
       if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
         event.preventDefault()
         if (status !== 'running') {
-          document.querySelector<HTMLButtonElement>('.run-button')?.click()
+          void runSimulation()
         }
       } else if (event.key === 'Escape') {
         const helpContent =
@@ -285,7 +285,7 @@ export default function App() {
     }
     document.addEventListener('keydown', handleShortcut, true)
     return () => document.removeEventListener('keydown', handleShortcut, true)
-  }, [activeTool, closeActiveTool, status])
+  }, [activeTool, closeActiveTool, runSimulation, status])
 
   const openSelectedProject = async () => {
     if (!selectedProjectId) return
@@ -372,6 +372,7 @@ export default function App() {
                 onLoadTemplate={async (templateId) => {
                   const { getRFTemplate } = await import('../templates')
                   loadProject(getRFTemplate(templateId))
+                  setActiveWorkspaceTab(0)
                   setSelectedProjectId('')
                   setPersistenceStatus('saving')
                   setPersistenceMessage('Editable template loaded')

@@ -16,6 +16,7 @@ export function RFBlockNode({ data, selected }: NodeProps<RFCanvasNode>) {
       style={{ '--node-accent': descriptor.accent } as React.CSSProperties}
       role="group"
       aria-label={`${data.label} RF block`}
+      title={`${data.label}\n${descriptor.description}`}
     >
       {inputs.map((port, index) => (
         <Handle

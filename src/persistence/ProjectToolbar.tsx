@@ -74,6 +74,7 @@ export function ProjectToolbar({
         />
       </span>
       <Button
+        aria-label="Project actions"
         className="project-actions-button"
         kind="ghost"
         size="sm"

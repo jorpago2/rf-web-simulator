@@ -63,37 +63,37 @@ export const rfTemplates: readonly RFTemplate[] = [
       name: 'Template · 2.4 GHz RF transmitter',
       analysis: analysis(2.35e9, 2.45e9),
       nodes: [
-        node('tx-vco', 'vcoSource', 20, '2.4 GHz VCO / PLL', {
+        node('tx-vco', 'vcoSource', 20, '2.4 GHz VCO', {
           freeRunningFrequencyHz: 2.3e9,
           tuningSensitivityHzPerV: 100e6,
           controlVoltageV: 1,
           powerDbm: -10,
           pllEnabled: true,
         }),
-        node('tx-switch', 'idealRFSwitch', 210, 'TX enable switch', {
+        node('tx-switch', 'idealRFSwitch', 210, 'TX switch', {
           insertionLossDb: 0.8,
           isolationDb: 50,
         }),
-        node('tx-driver', 'idealAmplifier', 400, 'RF driver', {
+        node('tx-driver', 'idealAmplifier', 400, 'Driver', {
           gainDb: 12,
           noiseFigureDb: 4,
           outputP1Dbm: 18,
           outputIp3Dbm: 30,
         }),
-        node('tx-filter', 'idealFilter', 590, '2.4 GHz band-pass filter', {
+        node('tx-filter', 'idealFilter', 590, '2.4 GHz BPF', {
           filterType: 'bandpass',
           centerFrequencyHz: 2.4e9,
           bandwidthHz: 100e6,
           order: 4,
           insertionLossDb: 1,
         }),
-        node('tx-pa', 'idealAmplifier', 780, 'Power amplifier', {
+        node('tx-pa', 'idealAmplifier', 780, 'Power amp', {
           gainDb: 20,
           noiseFigureDb: 5,
           outputP1Dbm: 30,
           outputIp3Dbm: 42,
         }),
-        node('tx-isolator', 'idealIsolator', 970, 'Output isolator', {
+        node('tx-isolator', 'idealIsolator', 970, 'Isolator', {
           forwardLossDb: 0.8,
           reverseIsolationDb: 30,
         }),
@@ -125,24 +125,24 @@ export const rfTemplates: readonly RFTemplate[] = [
       name: 'Template · 915 MHz superheterodyne receiver',
       analysis: analysis(907e6, 923e6),
       nodes: [
-        node('sh-antenna', 'rxAntenna', 20, '915 MHz RX antenna', {
+        node('sh-antenna', 'rxAntenna', 20, '915 MHz antenna', {
           centerFrequencyHz: 915e6,
           powerDbm: -95,
         }),
-        node('sh-preselector', 'idealFilter', 220, '915 MHz preselector', {
+        node('sh-preselector', 'idealFilter', 220, '915 MHz BPF', {
           filterType: 'bandpass',
           centerFrequencyHz: 915e6,
           bandwidthHz: 26e6,
           order: 4,
           insertionLossDb: 1.5,
         }),
-        node('sh-lna', 'idealAmplifier', 420, 'Low-noise amplifier', {
+        node('sh-lna', 'idealAmplifier', 420, 'LNA', {
           gainDb: 18,
           noiseFigureDb: 1.2,
           outputP1Dbm: 12,
           outputIp3Dbm: 28,
         }),
-        node('sh-mixer', 'idealMixer', 620, '915 to 70 MHz mixer', {
+        node('sh-mixer', 'idealMixer', 620, 'RF mixer', {
           loFrequencyHz: 845e6,
           mixerMode: 'downconvert',
           conversionLossDb: 7,
@@ -150,14 +150,14 @@ export const rfTemplates: readonly RFTemplate[] = [
           outputP1Dbm: 5,
           outputIp3Dbm: 15,
         }),
-        node('sh-if-filter', 'idealFilter', 820, '70 MHz IF filter', {
+        node('sh-if-filter', 'idealFilter', 820, '70 MHz BPF', {
           filterType: 'bandpass',
           centerFrequencyHz: 70e6,
           bandwidthHz: 10e6,
           order: 4,
           insertionLossDb: 2,
         }),
-        node('sh-if-amp', 'idealAmplifier', 1020, 'IF amplifier', {
+        node('sh-if-amp', 'idealAmplifier', 1020, 'IF amp', {
           gainDb: 25,
           noiseFigureDb: 3,
           outputP1Dbm: 18,
@@ -186,18 +186,18 @@ export const rfTemplates: readonly RFTemplate[] = [
       name: 'Template · 2.45 GHz low-IF receiver',
       analysis: analysis(2.44e9, 2.46e9),
       nodes: [
-        node('lif-antenna', 'rxAntenna', 20, '2.45 GHz RX antenna', {
+        node('lif-antenna', 'rxAntenna', 20, '2.45 GHz antenna', {
           centerFrequencyHz: 2.45e9,
           powerDbm: -85,
         }),
-        node('lif-filter', 'idealFilter', 220, '2.45 GHz RF filter', {
+        node('lif-filter', 'idealFilter', 220, '2.45 GHz BPF', {
           filterType: 'bandpass',
           centerFrequencyHz: 2.45e9,
           bandwidthHz: 100e6,
           order: 3,
           insertionLossDb: 1.5,
         }),
-        node('lif-lna', 'idealAmplifier', 420, 'Low-noise amplifier', {
+        node('lif-lna', 'idealAmplifier', 420, 'LNA', {
           gainDb: 15,
           noiseFigureDb: 1.5,
           outputP1Dbm: 10,
@@ -211,13 +211,13 @@ export const rfTemplates: readonly RFTemplate[] = [
           outputP1Dbm: 5,
           outputIp3Dbm: 15,
         }),
-        node('lif-lpf', 'idealFilter', 820, '30 MHz low-pass filter', {
+        node('lif-lpf', 'idealFilter', 820, '30 MHz LPF', {
           filterType: 'lowpass',
           cutoffFrequencyHz: 30e6,
           order: 4,
           insertionLossDb: 1,
         }),
-        node('lif-amp', 'idealAmplifier', 1020, 'Low-IF amplifier', {
+        node('lif-amp', 'idealAmplifier', 1020, 'IF amp', {
           gainDb: 25,
           noiseFigureDb: 4,
           outputP1Dbm: 18,

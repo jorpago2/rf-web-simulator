@@ -5,6 +5,7 @@ import {
   Controls,
   MiniMap,
   ReactFlow,
+  useNodesInitialized,
   useReactFlow,
   type NodeTypes,
 } from '@xyflow/react'
@@ -48,15 +49,114 @@ export function RFCanvas() {
   const onEdgesChange = useRFEditorStore((state) => state.onEdgesChange)
   const onConnect = useRFEditorStore((state) => state.onConnect)
   const addNode = useRFEditorStore((state) => state.addNode)
+  const selectedNodeId = useRFEditorStore((state) => state.selectedNodeId)
   const selectNode = useRFEditorStore((state) => state.selectNode)
-  const { fitView, screenToFlowPosition } = useReactFlow()
+  const nodesInitialized = useNodesInitialized()
+  const topologyKey = nodes.map((node) => node.id).join('\u0000')
+  const {
+    fitView,
+    flowToScreenPosition,
+    getNode,
+    getZoom,
+    screenToFlowPosition,
+    setCenter,
+  } = useReactFlow()
 
   useEffect(() => {
+    if (!nodesInitialized || nodes.length === 0) return
     const frame = window.requestAnimationFrame(() => {
-      void fitView({ padding: 0.12 })
+      const compactViewport = window.matchMedia('(max-width: 48rem)').matches
+      const narrowViewport = window.matchMedia('(max-width: 68.75rem)').matches
+      const currentNodes = useRFEditorStore.getState().nodes
+      const focusedNodeCount = compactViewport ? 2 : narrowViewport ? 4 : 0
+      void fitView(
+        focusedNodeCount > 0
+          ? {
+              nodes: currentNodes
+                .slice(0, focusedNodeCount)
+                .map(({ id }) => ({ id })),
+              padding: 0.18,
+              maxZoom: compactViewport ? 0.85 : 0.9,
+            }
+          : { padding: 0.12, maxZoom: 1 },
+      )
     })
     return () => window.cancelAnimationFrame(frame)
-  }, [activeProjectId, fitView])
+  }, [activeProjectId, fitView, nodes.length, nodesInitialized, topologyKey])
+
+  const ensureSelectedNodeVisible = useCallback(() => {
+    if (!selectedNodeId || !nodesInitialized) return
+    if (window.matchMedia('(max-width: 48rem)').matches) return
+
+    const selectedNode = getNode(selectedNodeId)
+    const canvasBounds = document
+      .querySelector('.canvas-wrap')
+      ?.getBoundingClientRect()
+    if (!selectedNode || !canvasBounds) return
+
+    const inspectorBounds = document
+      .querySelector('.properties')
+      ?.getBoundingClientRect()
+    const visibleRight =
+      inspectorBounds &&
+      inspectorBounds.left > canvasBounds.left &&
+      inspectorBounds.left < canvasBounds.right
+        ? inspectorBounds.left
+        : canvasBounds.right
+
+    const width = selectedNode.measured?.width ?? 166
+    const height = selectedNode.measured?.height ?? 78
+    const topLeft = flowToScreenPosition(selectedNode.position)
+    const bottomRight = flowToScreenPosition({
+      x: selectedNode.position.x + width,
+      y: selectedNode.position.y + height,
+    })
+    const safeInset = 16
+    const isVisible =
+      topLeft.x >= canvasBounds.left + safeInset &&
+      topLeft.y >= canvasBounds.top + safeInset &&
+      bottomRight.x <= visibleRight - safeInset &&
+      bottomRight.y <= canvasBounds.bottom - safeInset
+
+    if (!isVisible) {
+      const zoom = getZoom()
+      const obscuredWidth = canvasBounds.right - visibleRight
+      void setCenter(
+        selectedNode.position.x + width / 2 + obscuredWidth / (2 * zoom),
+        selectedNode.position.y + height / 2,
+        { zoom, duration: 0 },
+      )
+    }
+  }, [
+    flowToScreenPosition,
+    getNode,
+    getZoom,
+    nodesInitialized,
+    selectedNodeId,
+    setCenter,
+  ])
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(ensureSelectedNodeVisible)
+    return () => window.cancelAnimationFrame(frame)
+  }, [ensureSelectedNodeVisible])
+
+  useEffect(() => {
+    if (!selectedNodeId) return
+    const canvas = document.querySelector('.canvas-wrap')
+    if (!canvas) return
+
+    let frame = 0
+    const observer = new ResizeObserver(() => {
+      window.cancelAnimationFrame(frame)
+      frame = window.requestAnimationFrame(ensureSelectedNodeVisible)
+    })
+    observer.observe(canvas)
+    return () => {
+      observer.disconnect()
+      window.cancelAnimationFrame(frame)
+    }
+  }, [ensureSelectedNodeVisible, selectedNodeId])
 
   const onDragOver = useCallback((event: DragEvent) => {
     event.preventDefault()
@@ -89,8 +189,6 @@ export function RFCanvas() {
       onDragOver={onDragOver}
       onDrop={onDrop}
       deleteKeyCode={['Backspace', 'Delete']}
-      fitView
-      fitViewOptions={{ padding: 0.12 }}
       minZoom={0.35}
       maxZoom={1.8}
       aria-label="RF block diagram editor"

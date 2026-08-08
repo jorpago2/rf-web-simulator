@@ -64,16 +64,25 @@ export const useRFEditorStore = create<RFEditorState>((set, get) => ({
   selectedNodeId: null,
   modelRevision: 0,
   onNodesChange: (changes) =>
-    set((state) => ({
-      nodes: applyNodeChanges(changes, state.nodes),
-      modelRevision:
-        state.modelRevision +
-        (changes.some((change) =>
-          ['add', 'remove', 'replace'].includes(change.type),
-        )
-          ? 1
-          : 0),
-    })),
+    set((state) => {
+      const nodes = applyNodeChanges(changes, state.nodes)
+      const selectedNodeId = nodes.some(
+        (node) => node.id === state.selectedNodeId,
+      )
+        ? state.selectedNodeId
+        : null
+      return {
+        nodes,
+        selectedNodeId,
+        modelRevision:
+          state.modelRevision +
+          (changes.some((change) =>
+            ['add', 'remove', 'replace'].includes(change.type),
+          )
+            ? 1
+            : 0),
+      }
+    }),
   onEdgesChange: (changes) =>
     set((state) => ({
       edges: applyEdgeChanges(changes, state.edges),

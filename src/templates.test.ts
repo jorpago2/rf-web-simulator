@@ -15,5 +15,22 @@ it.each(rfTemplates)(
 
     expect(result.total.frequencyHz.length).toBe(project.analysis.points)
     expect(result.budget.deliveredLoadPowerDbm).not.toBeNull()
+    expect(new Set(project.nodes.map((node) => node.id)).size).toBe(
+      project.nodes.length,
+    )
+    expect(new Set(project.edges.map((edge) => edge.id)).size).toBe(
+      project.edges.length,
+    )
+    expect(
+      project.edges.map(({ source, target }) => ({ source, target })),
+    ).toEqual(
+      project.nodes.slice(1).map((node, index) => ({
+        source: project.nodes[index]!.id,
+        target: node.id,
+      })),
+    )
+    expect(project.nodes.every((node) => node.data.label.length <= 20)).toBe(
+      true,
+    )
   },
 )
