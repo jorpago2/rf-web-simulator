@@ -633,9 +633,15 @@ export default function App() {
             </Suspense>
             <footer className="status-strip" aria-label="Scientific status">
               <span>{nodes.length} blocks</span>
-              <span>{edges.length} connections</span>
-              <span>{analysis.points} frequency points</span>
-              <span>Z₀ {analysis.referenceImpedanceOhm} Ω</span>
+              <span className="status-strip__connection">
+                {edges.length} connections
+              </span>
+              <span className="status-strip__detail">
+                {analysis.points} frequency points
+              </span>
+              <span className="status-strip__detail">
+                Z₀ {analysis.referenceImpedanceOhm} Ω
+              </span>
               <span className="status-strip__state">{statusText}</span>
             </footer>
           </Content>

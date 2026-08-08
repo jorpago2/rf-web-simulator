@@ -4,6 +4,18 @@
     "scope": "app",
     "genre": "modern-minimal",
     "macrostructure": "Workbench",
+    "theme": "Carbon g10",
+    "theme_axes": "light / IBM Plex / blue signal accent",
+    "vibe": "compact responsive RF workbench",
+    "variation_knobs": "single-row shell / equal workspace tabs / persistent mobile status",
+    "enrichment": "none",
+    "brief": "Integral responsive correction of the Carbon RF workbench"
+  },
+  {
+    "date": "2026-08-08",
+    "scope": "app",
+    "genre": "modern-minimal",
+    "macrostructure": "Workbench",
     "theme": "studied-DNA (source: https://jorpago2.github.io/setupsketch/)",
     "theme_axes": "Carbon g10 / 64px shell / IBM Plex / blue signal accent",
     "vibe": "full-viewport RF engineering workbench",

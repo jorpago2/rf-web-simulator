@@ -444,6 +444,15 @@ h2 {
   min-width: 0;
 }
 
+.workbench-view-tabs > [role='tablist'] {
+  inline-size: 100%;
+}
+
+.workbench-view-tabs [role='tab'] {
+  min-inline-size: 0;
+  flex: 1 1 0;
+}
+
 .workbench-tab-panel {
   grid-row: 2;
   min-width: 0;
@@ -1253,15 +1262,44 @@ h2 {
 
 @media (max-width: 980px) {
   .app-header {
-    height: 128px;
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
-    grid-template-rows: 64px 64px;
+    height: 64px;
+    grid-template-columns: 40px minmax(0, 1fr) 40px 40px;
+    grid-template-rows: 64px;
+    gap: var(--space-2xs);
+  }
+
+  .app-identity,
+  .save-state {
+    display: none;
   }
 
   .project-toolbar {
-    position: relative;
-    grid-column: 1 / -1;
-    justify-content: flex-start;
+    position: static;
+    grid-column: 2;
+    justify-content: stretch;
+  }
+
+  .project-name-field {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .app-help button,
+  .suite-link {
+    width: 40px;
+    min-width: 40px;
+    padding: 0;
+    justify-content: center;
+    font-size: 0;
+  }
+
+  .app-help button .cds--btn__icon {
+    position: static;
+    margin: 0;
+  }
+
+  .suite-link svg {
+    margin: 0;
   }
 
   .privacy-note {
@@ -1269,7 +1307,7 @@ h2 {
   }
 
   .workspace {
-    height: calc(100svh - 128px);
+    height: calc(100svh - 64px);
     grid-template-columns: 96px var(--left-panel-width) var(--space-sm) minmax(
         380px,
         1fr
@@ -1277,7 +1315,7 @@ h2 {
   }
 
   .properties {
-    top: 128px;
+    top: 64px;
   }
 
   .metric-grid {
@@ -1480,6 +1518,18 @@ h2 {
   .status-strip {
     order: 2;
     min-height: 32px;
+    gap: var(--space-sm);
+    overflow: hidden;
+  }
+
+  .status-strip__detail {
+    display: none;
+  }
+
+  .status-strip__state {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .mobile-run-button {
@@ -1505,6 +1555,12 @@ h2 {
 
   .stage-list {
     width: 100%;
+  }
+}
+
+@media (max-width: 22.5rem) {
+  .status-strip__connection {
+    display: none;
   }
 }
 
