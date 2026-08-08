@@ -127,10 +127,17 @@ export default function App() {
   const [persistenceMessage, setPersistenceMessage] = useState<string | null>(
     null,
   )
+  const [workspaceNotice, setWorkspaceNotice] = useState<string | null>(null)
   const [recentProjects, setRecentProjects] = useState<LocalProjectSummary[]>(
     [],
   )
   const [selectedProjectId, setSelectedProjectId] = useState('')
+
+  useEffect(() => {
+    if (!workspaceNotice) return
+    const timeout = window.setTimeout(() => setWorkspaceNotice(null), 4000)
+    return () => window.clearTimeout(timeout)
+  }, [workspaceNotice])
 
   const closeActiveTool = useCallback(() => {
     if (!activeTool) return
@@ -371,11 +378,25 @@ export default function App() {
                 onImport={importProject}
                 onLoadTemplate={async (templateId) => {
                   const { getRFTemplate } = await import('../templates')
-                  loadProject(getRFTemplate(templateId))
+                  const template = getRFTemplate(templateId)
+                  loadProject(template)
                   setActiveWorkspaceTab(0)
+                  setActiveTool(null)
                   setSelectedProjectId('')
                   setPersistenceStatus('saving')
                   setPersistenceMessage('Editable template loaded')
+                  setWorkspaceNotice(
+                    `${template.name} loaded. Diagram fitted to the canvas.`,
+                  )
+                  window.requestAnimationFrame(() =>
+                    window.requestAnimationFrame(() =>
+                      document
+                        .querySelector<HTMLElement>(
+                          '[aria-label="RF block diagram editor"]',
+                        )
+                        ?.focus(),
+                    ),
+                  )
                 }}
                 onNew={() => {
                   newProject()
@@ -448,6 +469,16 @@ export default function App() {
             }`}
             tabIndex={-1}
           >
+            {workspaceNotice && (
+              <InlineNotification
+                className="workspace-notice"
+                hideCloseButton
+                kind="success"
+                lowContrast
+                title="Template ready"
+                subtitle={workspaceNotice}
+              />
+            )}
             <nav className="tool-rail" aria-label="RF workbench tools">
               {WORKFLOW_TOOLS.map((tool) => {
                 const ToolIcon = tool.icon

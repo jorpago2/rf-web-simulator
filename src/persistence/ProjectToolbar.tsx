@@ -60,6 +60,7 @@ export function ProjectToolbar({
         labelText="Project"
         maxLength={200}
         size="sm"
+        title={projectName}
         value={projectName}
         onChange={(event) => onProjectNameChange(event.target.value)}
       />

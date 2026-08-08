@@ -62,7 +62,7 @@ export const rfTemplates: readonly RFTemplate[] = [
     description: 'VCO/PLL carrier chain with driver, PA, filtering and antenna',
     project: {
       schemaVersion: 3,
-      name: 'Template · 2.4 GHz RF transmitter',
+      name: '2.4 GHz TX',
       analysis: analysis(2.35e9, 2.45e9),
       nodes: [
         node('tx-vco', 'vcoSource', 20, '2.4 GHz VCO', {
@@ -124,7 +124,7 @@ export const rfTemplates: readonly RFTemplate[] = [
     description: 'Preselector and LNA followed by 70 MHz IF conversion',
     project: {
       schemaVersion: 3,
-      name: 'Template · 915 MHz superheterodyne receiver',
+      name: '915 MHz RX',
       analysis: analysis(907e6, 923e6),
       nodes: [
         node('sh-antenna', 'rxAntenna', 20, '915 MHz antenna', {
@@ -185,7 +185,7 @@ export const rfTemplates: readonly RFTemplate[] = [
     description: '2.45 GHz front end converted to a 20 MHz low IF',
     project: {
       schemaVersion: 3,
-      name: 'Template · 2.45 GHz low-IF receiver',
+      name: '2.45 GHz RX',
       analysis: analysis(2.44e9, 2.46e9),
       nodes: [
         node('lif-antenna', 'rxAntenna', 20, '2.45 GHz antenna', {

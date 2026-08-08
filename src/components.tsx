@@ -62,6 +62,73 @@ export function BlockLibrary({
   onClose: () => void
 }) {
   const addNode = useRFEditorStore((state) => state.addNode)
+  const [query, setQuery] = useState('')
+  const [category, setCategory] = useState('all')
+
+  const blockCategories = useMemo(
+    () => [
+      {
+        id: 'sources',
+        label: 'Sources',
+        types: ['source', 'vcoSource'] as RFNodeType[],
+      },
+      {
+        id: 'passive',
+        label: 'Passive 2-port',
+        types: [
+          'touchstone2Port',
+          'idealAttenuator',
+          'idealFilter',
+          'idealPhaseShifter',
+          'idealIsolator',
+          'idealRFSwitch',
+          'transmissionLine',
+          'matchingNetwork',
+        ] as RFNodeType[],
+      },
+      {
+        id: 'multiport',
+        label: 'Multi-port',
+        types: [
+          'idealDirectionalCoupler',
+          'idealDiplexer',
+          'idealBalun',
+          'idealSplitter',
+          'idealCombiner',
+        ] as RFNodeType[],
+      },
+      {
+        id: 'active',
+        label: 'Active',
+        types: ['idealAmplifier'] as RFNodeType[],
+      },
+      {
+        id: 'conversion',
+        label: 'Frequency conversion',
+        types: ['idealMixer'] as RFNodeType[],
+      },
+      {
+        id: 'terminals',
+        label: 'Antennas and terminations',
+        types: ['rxAntenna', 'txAntenna', 'load', 'probe'] as RFNodeType[],
+      },
+    ],
+    [],
+  )
+  const normalizedQuery = query.trim().toLocaleLowerCase()
+  const visibleBlocks = blockDescriptors.filter((block) => {
+    const inCategory =
+      category === 'all' ||
+      blockCategories
+        .find((candidate) => candidate.id === category)
+        ?.types.includes(block.type)
+    const matchesQuery =
+      !normalizedQuery ||
+      `${block.label} ${block.description}`
+        .toLocaleLowerCase()
+        .includes(normalizedQuery)
+    return inCategory && matchesQuery
+  })
 
   const startDrag = (event: DragEvent, type: RFNodeType) => {
     event.dataTransfer.setData('application/rf-node-type', type)
@@ -92,8 +159,36 @@ export function BlockLibrary({
               Close
             </Button>
           </div>
+          <div className="block-library__filters">
+            <TextInput
+              id="component-search"
+              labelText="Search components"
+              placeholder="Name or function"
+              size="sm"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            <Select
+              id="component-category"
+              labelText="Category"
+              size="sm"
+              value={category}
+              onChange={(event) => setCategory(event.target.value)}
+            >
+              <option value="all">All categories</option>
+              {blockCategories.map((candidate) => (
+                <option key={candidate.id} value={candidate.id}>
+                  {candidate.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <p className="block-library__count" aria-live="polite">
+            {visibleBlocks.length}{' '}
+            {visibleBlocks.length === 1 ? 'component' : 'components'}
+          </p>
           <div className="block-list">
-            {blockDescriptors.map((block) => (
+            {visibleBlocks.map((block) => (
               <button
                 className="block-card"
                 draggable
@@ -117,6 +212,11 @@ export function BlockLibrary({
                 </span>
               </button>
             ))}
+            {visibleBlocks.length === 0 && (
+              <p className="block-library__empty">
+                No components match this search.
+              </p>
+            )}
           </div>
         </>
       )}
@@ -1794,6 +1894,8 @@ type ResultView =
   | 'monteCarlo'
   | 'parametricSweep'
 
+type ResultCategory = 'performance' | 'network' | 'studies' | 'planning'
+
 export function SimulationPanel({
   projectName,
   analysis,
@@ -1820,6 +1922,8 @@ export function SimulationPanel({
   onExport: (fileName: string) => void
 }) {
   const [resultView, setResultView] = useState<ResultView>('sParameters')
+  const [resultCategory, setResultCategory] =
+    useState<ResultCategory>('network')
   const [frequencyUnit, setFrequencyUnit] = useState<FrequencyUnit>('auto')
   const probeViewAvailable = (result?.probeResults.length ?? 0) > 0
   const frequencyPlanAvailable = result
@@ -1845,67 +1949,116 @@ export function SimulationPanel({
       frequencyPlanAvailable)
       ? 'sParameters'
       : resultView
-  const resultTabs: {
+  const resultViews: {
     view: ResultView
     label: string
+    category: ResultCategory
     disabled?: boolean
-    title?: string
+    prerequisite?: string
   }[] = [
     {
       view: 'nonlinear',
       label: 'Nonlinear',
+      category: 'performance',
       disabled: !nonlinearAvailable,
-      title: 'Chain-level P1dB compression and two-tone IM3 estimate',
+      prerequisite:
+        'Requires an active or nonlinear stage with compression data.',
     },
-    { view: 'oscillator', label: 'Oscillator', disabled: !oscillatorAvailable },
-    { view: 'antenna', label: 'Antenna', disabled: !antennaAvailable },
-    { view: 'sParameters', label: 'S-parameters' },
-    { view: 'smith', label: 'Smith' },
-    { view: 'stability', label: 'Stability' },
-    { view: 'parameters', label: 'Z/Y/ABCD' },
+    {
+      view: 'oscillator',
+      label: 'Oscillator',
+      category: 'performance',
+      disabled: !oscillatorAvailable,
+      prerequisite: 'Add an Oscillator / VCO block.',
+    },
+    {
+      view: 'antenna',
+      label: 'Antenna',
+      category: 'performance',
+      disabled: !antennaAvailable,
+      prerequisite: 'Add an RX or TX antenna block.',
+    },
+    { view: 'sParameters', label: 'S-parameters', category: 'network' },
+    { view: 'smith', label: 'Smith', category: 'network' },
+    { view: 'stability', label: 'Stability', category: 'network' },
+    { view: 'parameters', label: 'Z/Y/ABCD', category: 'network' },
     {
       view: 'monteCarlo',
       label: 'Monte Carlo',
+      category: 'studies',
       disabled: !monteCarloAvailable,
+      prerequisite: 'Set Monte Carlo runs above 0 in Advanced analysis.',
     },
     {
       view: 'parametricSweep',
       label: 'Sweep',
+      category: 'studies',
       disabled: !parametricSweepAvailable,
+      prerequisite: 'Enable a parameter sweep in Advanced analysis.',
     },
     {
       view: 'phase',
       label: 'Phase',
+      category: 'network',
       disabled: frequencyPlanAvailable,
-      title: frequencyPlanAvailable
-        ? 'Conversion phase is not defined by the ideal mixer model'
-        : undefined,
+      prerequisite:
+        'Unavailable across ideal frequency conversion; remove frequency-changing stages.',
     },
     {
       view: 'groupDelay',
       label: 'Group delay',
+      category: 'network',
       disabled: frequencyPlanAvailable,
-      title: frequencyPlanAvailable
-        ? 'Group delay is not defined across ideal frequency conversion'
-        : undefined,
+      prerequisite:
+        'Unavailable across ideal frequency conversion; remove frequency-changing stages.',
     },
     {
       view: 'probes',
       label: `Probes (${result?.probeResults.length ?? 0})`,
+      category: 'studies',
       disabled: !probeViewAvailable,
-      title: 'Cumulative S21 to each probe reference plane, terminated in Z0',
+      prerequisite: 'Add at least one Probe block.',
     },
-    { view: 'budget', label: 'RF budget', disabled: !result },
+    { view: 'budget', label: 'RF budget', category: 'planning' },
     {
       view: 'frequencyPlan',
       label: 'Frequency plan',
+      category: 'planning',
       disabled: !frequencyPlanAvailable,
+      prerequisite: 'Add a mixer or another frequency-conversion stage.',
     },
   ]
-  const selectedResultTab = Math.max(
+  const resultCategories: {
+    id: ResultCategory
+    label: string
+    compactLabel: string
+  }[] = [
+    { id: 'performance', label: 'Performance', compactLabel: 'Perf.' },
+    { id: 'network', label: 'Network', compactLabel: 'Net.' },
+    { id: 'studies', label: 'Studies', compactLabel: 'Study' },
+    { id: 'planning', label: 'Planning', compactLabel: 'Plan' },
+  ]
+  const selectedResultCategory = Math.max(
     0,
-    resultTabs.findIndex(({ view }) => view === visibleResultView),
+    resultCategories.findIndex(({ id }) => id === resultCategory),
   )
+  const categoryViews = resultViews.filter(
+    ({ category }) => category === resultCategory,
+  )
+  const categoryResultView = categoryViews.some(
+    ({ view, disabled }) => view === visibleResultView && !disabled,
+  )
+    ? visibleResultView
+    : ''
+  const selectResultCategory = (selectedIndex: number) => {
+    const nextCategory = resultCategories[selectedIndex]
+    if (!nextCategory) return
+    setResultCategory(nextCategory.id)
+    const firstAvailable = resultViews.find(
+      ({ category, disabled }) => category === nextCategory.id && !disabled,
+    )
+    if (firstAvailable) setResultView(firstAvailable.view)
+  }
   const showResults = () =>
     document
       .getElementById('analysis-tabpanel')
@@ -2015,10 +2168,8 @@ export function SimulationPanel({
               : 'Run simulation'}
       </Button>
       <Tabs
-        selectedIndex={selectedResultTab}
-        onChange={({ selectedIndex }) =>
-          setResultView(resultTabs[selectedIndex]!.view)
-        }
+        selectedIndex={selectedResultCategory}
+        onChange={({ selectedIndex }) => selectResultCategory(selectedIndex)}
       >
         <div className="results-header">
           {result && (
@@ -2026,11 +2177,21 @@ export function SimulationPanel({
               activation="automatic"
               aria-label="Analysis views"
               className="results-tabs"
+              contained
+              fullWidth
               size="sm"
             >
-              {resultTabs.map((tab) => (
-                <Tab key={tab.view} disabled={tab.disabled} title={tab.title}>
-                  {tab.label}
+              {resultCategories.map((category) => (
+                <Tab aria-label={category.label} key={category.id}>
+                  <span className="result-tab-label result-tab-label--full">
+                    {category.label}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className="result-tab-label result-tab-label--compact"
+                  >
+                    {category.compactLabel}
+                  </span>
                 </Tab>
               ))}
             </TabList>
@@ -2400,7 +2561,7 @@ export function SimulationPanel({
                   kind="secondary"
                   size="sm"
                   type="button"
-                  disabled={!result}
+                  disabled={!result || !categoryResultView}
                   onClick={exportResults}
                 >
                   {visibleResultView === 'nonlinear'
@@ -2414,14 +2575,71 @@ export function SimulationPanel({
 
         {result ? (
           <TabPanels>
-            {resultTabs.map(({ view }) => (
-              <TabPanel key={view}>
-                {visibleResultView === view && (
-                  <SimulationSummary
-                    frequencyUnit={frequencyUnit}
-                    resultView={view}
-                    result={result}
-                  />
+            {resultCategories.map((category) => (
+              <TabPanel key={category.id}>
+                {resultCategory === category.id && (
+                  <div id="analysis-tabpanel" className="result-category">
+                    <div className="result-view-picker">
+                      <Select
+                        id={`result-view-${category.id}`}
+                        labelText="Analysis view"
+                        size="sm"
+                        value={categoryResultView}
+                        onChange={(event) =>
+                          setResultView(event.target.value as ResultView)
+                        }
+                      >
+                        {!categoryResultView && (
+                          <option value="">Choose an available view</option>
+                        )}
+                        {categoryViews.map((view) => (
+                          <option
+                            disabled={view.disabled}
+                            key={view.view}
+                            value={view.view}
+                          >
+                            {view.label}
+                          </option>
+                        ))}
+                      </Select>
+                      {categoryViews.some(({ disabled }) => disabled) && (
+                        <div
+                          className="result-prerequisites"
+                          aria-label="Unavailable view requirements"
+                        >
+                          <strong>Unavailable views</strong>
+                          <ul>
+                            {categoryViews
+                              .filter(({ disabled }) => disabled)
+                              .map((view) => (
+                                <li key={view.view}>
+                                  <span>{view.label}:</span> {view.prerequisite}
+                                </li>
+                              ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                    {categoryResultView ? (
+                      <SimulationSummary
+                        frequencyUnit={frequencyUnit}
+                        resultView={categoryResultView}
+                        result={result}
+                      />
+                    ) : (
+                      <div className="results-empty results-empty--category">
+                        <div>
+                          <strong className="results-empty__title">
+                            No analysis available in this group
+                          </strong>
+                          <p>
+                            Complete one of the listed prerequisites to enable a
+                            view.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </TabPanel>
             ))}
@@ -3046,10 +3264,16 @@ function FrequencyPlanTable({ plan }: { plan: FrequencyPlanResult }) {
             {plan.stages.map((stage) => (
               <tr key={stage.nodeId}>
                 <th scope="row">{stage.label}</th>
-                <td>{stage.mode === 'upconvert' ? 'Sum' : 'Difference'}</td>
-                <td>{formatFrequencyRange(stage.input)}</td>
-                <td>{formatFrequency(stage.loFrequencyHz)}</td>
-                <td>{formatFrequencyRange(stage.output)}</td>
+                <td data-label="Mode">
+                  {stage.mode === 'upconvert' ? 'Sum' : 'Difference'}
+                </td>
+                <td data-label="Input range">
+                  {formatFrequencyRange(stage.input)}
+                </td>
+                <td data-label="LO">{formatFrequency(stage.loFrequencyHz)}</td>
+                <td data-label="Output range">
+                  {formatFrequencyRange(stage.output)}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -3080,17 +3304,27 @@ function FrequencyPlanTable({ plan }: { plan: FrequencyPlanResult }) {
             {plan.stages.map((stage) => (
               <tr key={stage.nodeId}>
                 <th scope="row">{stage.label}</th>
-                <td>{stage.imageLocation === 'input' ? 'Input' : 'Output'}</td>
-                <td>
+                <td data-label="Image location">
+                  {stage.imageLocation === 'input' ? 'Input' : 'Output'}
+                </td>
+                <td data-label="Image frequency">
                   {stage.imageFrequencyHz === null
                     ? 'No positive image'
                     : formatFrequency(stage.imageFrequencyHz)}
                 </td>
-                <td>{formatBudgetValue(stage.imageRejectionDb, 'dB')}</td>
-                <td>{formatFrequency(stage.loFrequencyHz)}</td>
-                <td>{formatBudgetValue(stage.loPowerDbm, 'dBm')}</td>
-                <td>{formatBudgetValue(stage.loToOutputIsolationDb, 'dB')}</td>
-                <td>
+                <td data-label="Image rejection">
+                  {formatBudgetValue(stage.imageRejectionDb, 'dB')}
+                </td>
+                <td data-label="LO frequency">
+                  {formatFrequency(stage.loFrequencyHz)}
+                </td>
+                <td data-label="LO power">
+                  {formatBudgetValue(stage.loPowerDbm, 'dBm')}
+                </td>
+                <td data-label="LO isolation">
+                  {formatBudgetValue(stage.loToOutputIsolationDb, 'dB')}
+                </td>
+                <td data-label="Estimated leakage">
                   {formatBudgetValue(stage.estimatedLoLeakagePowerDbm, 'dBm')}
                 </td>
               </tr>
@@ -3122,19 +3356,23 @@ function FrequencyPlanTable({ plan }: { plan: FrequencyPlanResult }) {
                   stage.products.map((product) => (
                     <tr key={`${stage.nodeId}-${product.formula}`}>
                       <th scope="row">{stage.label}</th>
-                      <td>{product.label}</td>
-                      <td>{product.formula}</td>
-                      <td>{product.order}</td>
-                      <td>{formatFrequency(product.frequencyHz)}</td>
-                      <td>
+                      <td data-label="Product">{product.label}</td>
+                      <td data-label="Formula">{product.formula}</td>
+                      <td data-label="Order">{product.order}</td>
+                      <td data-label="Frequency">
+                        {formatFrequency(product.frequencyHz)}
+                      </td>
+                      <td data-label="Relative level">
                         {formatBudgetValue(product.relativeLevelDb, 'dB')}
                       </td>
-                      <td>
+                      <td data-label="Phase">
                         {product.phaseDeg === null
                           ? 'Unavailable'
                           : `${product.phaseDeg.toFixed(2)}°`}
                       </td>
-                      <td>{productKindLabel(product.kind)}</td>
+                      <td data-label="Role">
+                        {productKindLabel(product.kind)}
+                      </td>
                     </tr>
                   )),
                 )}
@@ -3161,14 +3399,18 @@ function FrequencyPlanTable({ plan }: { plan: FrequencyPlanResult }) {
               <tbody>
                 {plan.spectralLines.map((line, index) => (
                   <tr key={`${line.frequencyHz}-${index}`}>
-                    <td>{formatFrequency(line.frequencyHz)}</td>
-                    <td>{formatBudgetValue(line.powerDbm, 'dBm')}</td>
-                    <td>
+                    <td data-label="Frequency">
+                      {formatFrequency(line.frequencyHz)}
+                    </td>
+                    <td data-label="Power">
+                      {formatBudgetValue(line.powerDbm, 'dBm')}
+                    </td>
+                    <td data-label="Phase">
                       {line.phaseDeg === null
                         ? 'Unavailable'
                         : `${line.phaseDeg.toFixed(2)}°`}
                     </td>
-                    <td>{line.path}</td>
+                    <td data-label="Conversion path">{line.path}</td>
                   </tr>
                 ))}
               </tbody>

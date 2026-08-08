@@ -197,6 +197,7 @@ export function RFCanvas() {
       minZoom={0.35}
       maxZoom={1.8}
       aria-label="RF block diagram editor"
+      tabIndex={0}
     >
       <Background variant={BackgroundVariant.Dots} gap={18} size={1} />
       {nodes.length > 0 && (
