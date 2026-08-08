@@ -74,12 +74,16 @@ export function ProjectToolbar({
         />
       </span>
       <Button
+        className="project-actions-button"
         kind="ghost"
-        renderIcon={FolderOpen}
         size="sm"
         onClick={() => setActionsOpen(true)}
       >
-        Project actions
+        <FolderOpen
+          className="project-actions-button__icon"
+          aria-hidden="true"
+        />
+        <span className="project-actions-button__label">Project actions</span>
       </Button>
       <ComposedModal
         open={actionsOpen}

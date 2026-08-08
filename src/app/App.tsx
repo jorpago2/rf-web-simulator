@@ -5,6 +5,7 @@ import {
   Content,
   Grid,
   Header,
+  InlineNotification,
   Link,
   SkipToContent,
   Tab,
@@ -395,10 +396,10 @@ export default function App() {
                 aria-keyshortcuts="?"
                 kind="ghost"
                 label="Help"
-                renderIcon={Help}
                 size="sm"
               >
-                Help
+                <Help className="app-help__icon" aria-hidden="true" />
+                <span className="app-help__label">Help</span>
               </ToggletipButton>
               <ToggletipContent className="app-help-panel">
                 <strong>Quick workflow</strong>
@@ -434,7 +435,8 @@ export default function App() {
               aria-label="Online Simulators & Tools"
               size="sm"
             >
-              All tools <Launch aria-hidden="true" />
+              <span className="suite-link__label">All tools</span>
+              <Launch className="suite-link__icon" aria-hidden="true" />
             </Link>
           </Header>
 
@@ -446,25 +448,28 @@ export default function App() {
             tabIndex={-1}
           >
             <nav className="tool-rail" aria-label="RF workbench tools">
-              {WORKFLOW_TOOLS.map((tool) => (
-                <Button
-                  aria-controls="workflow-panel"
-                  aria-expanded={activeTool === tool.id}
-                  className="tool-rail__button"
-                  isSelected={activeTool === tool.id}
-                  kind="ghost"
-                  key={tool.id}
-                  renderIcon={tool.icon}
-                  ref={(node: HTMLButtonElement | null) => {
-                    workflowTriggerRefs.current[tool.id] = node ?? undefined
-                  }}
-                  size="sm"
-                  type="button"
-                  onClick={() => toggleTool(tool.id)}
-                >
-                  {tool.label}
-                </Button>
-              ))}
+              {WORKFLOW_TOOLS.map((tool) => {
+                const ToolIcon = tool.icon
+                return (
+                  <Button
+                    aria-controls="workflow-panel"
+                    aria-expanded={activeTool === tool.id}
+                    className="tool-rail__button"
+                    isSelected={activeTool === tool.id}
+                    kind="ghost"
+                    key={tool.id}
+                    ref={(node: HTMLButtonElement | null) => {
+                      workflowTriggerRefs.current[tool.id] = node ?? undefined
+                    }}
+                    size="sm"
+                    type="button"
+                    onClick={() => toggleTool(tool.id)}
+                  >
+                    <ToolIcon className="tool-rail__icon" aria-hidden="true" />
+                    <span>{tool.label}</span>
+                  </Button>
+                )
+              })}
             </nav>
             <div
               className={`tool-panel-slot${activeTool ? '' : ' tool-panel-slot--closed'}`}
@@ -542,17 +547,34 @@ export default function App() {
                       <dd>{visibleResult ? 'Current' : 'Not solved'}</dd>
                     </div>
                   </dl>
-                  {error && <p className="workflow-error">{error}</p>}
+                  {error && (
+                    <InlineNotification
+                      className="workflow-notification"
+                      hideCloseButton
+                      kind="error"
+                      lowContrast
+                      title="Simulation stopped"
+                      subtitle={error}
+                    />
+                  )}
                   {(visibleResult?.warnings.length ?? 0) > 0 && (
-                    <ul className="workflow-warning-list">
-                      {visibleResult!.warnings.map((warning, index) => (
-                        <li
-                          key={`${warning.code}-${warning.frequencyHz ?? index}`}
-                        >
-                          {warning.message}
-                        </li>
-                      ))}
-                    </ul>
+                    <InlineNotification
+                      className="workflow-notification"
+                      hideCloseButton
+                      kind="warning"
+                      lowContrast
+                      title={`${visibleResult!.warnings.length} simulation ${visibleResult!.warnings.length === 1 ? 'warning' : 'warnings'}`}
+                    >
+                      <ul className="scientific-warning-list">
+                        {visibleResult!.warnings.map((warning, index) => (
+                          <li
+                            key={`${warning.code}-${warning.frequencyHz ?? index}`}
+                          >
+                            {warning.message}
+                          </li>
+                        ))}
+                      </ul>
+                    </InlineNotification>
                   )}
                 </WorkflowPanel>
               )}
@@ -673,7 +695,13 @@ function WorkflowPanel({
           <h2 id="workflow-panel-title">{title}</h2>
           <p>{description}</p>
         </div>
-        <Button kind="ghost" size="sm" type="button" onClick={onClose}>
+        <Button
+          className="panel-close-button"
+          kind="ghost"
+          size="sm"
+          type="button"
+          onClick={onClose}
+        >
           Close
         </Button>
       </div>

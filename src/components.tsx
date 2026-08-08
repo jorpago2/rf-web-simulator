@@ -23,6 +23,7 @@ import {
   TabPanels,
   Tabs,
   TextInput,
+  Tile,
 } from '@carbon/react'
 import { blockDescriptors } from './diagram/nodeRegistry'
 import { RFBlockSymbol } from './diagram/RFBlockSymbol'
@@ -81,7 +82,13 @@ export function BlockLibrary({
               <h2 id="library-title">{strings.libraryTitle}</h2>
               <p>{strings.libraryHint}</p>
             </div>
-            <Button kind="ghost" size="sm" type="button" onClick={onClose}>
+            <Button
+              className="panel-close-button"
+              kind="ghost"
+              size="sm"
+              type="button"
+              onClick={onClose}
+            >
               Close
             </Button>
           </div>
@@ -345,6 +352,7 @@ export function PropertiesPanel() {
           <p>{node.data.label}</p>
         </div>
         <Button
+          className="panel-close-button"
           kind="ghost"
           size="sm"
           type="button"
@@ -2431,7 +2439,6 @@ export function SimulationPanel({
               />
             ) : (
               <div className="results-empty">
-                <span className="results-empty__trace" aria-hidden="true" />
                 <div>
                   <strong className="results-empty__title">
                     {strings.resultsTitle}
@@ -2506,7 +2513,7 @@ function SimulationSummary({
               im: values.im[centerIndex]!,
             }
             return (
-              <div className="metric-card" key={label}>
+              <Tile className="metric-card" key={label}>
                 <span>{label}</span>
                 <strong>{formatDb(magnitudeDb(complex))}</strong>
                 <small>
@@ -2514,10 +2521,10 @@ function SimulationSummary({
                     ? 'Ideal envelope model'
                     : formatDegrees(phaseDegrees(complex))}
                 </small>
-              </div>
+              </Tile>
             )
           })}
-          <div className="metric-card metric-card--range">
+          <Tile className="metric-card metric-card--range">
             <span>
               {frequencyConverting ? 'Input / output' : 'Center / points'}
             </span>
@@ -2527,9 +2534,9 @@ function SimulationSummary({
                 ? `→ ${formatFrequency(result.frequencyPlan.output.centerHz)}`
                 : `${network.frequencyHz.length.toLocaleString('en-US')} points`}
             </small>
-          </div>
+          </Tile>
           {resultView === 'stability' && (
-            <div className="metric-card">
+            <Tile className="metric-card">
               <span>Band-limited causality</span>
               <strong>
                 {result.networkChecks.causalityPreEchoEnergyDb === null
@@ -2542,7 +2549,7 @@ function SimulationSummary({
                   ? 'unavailable'
                   : `${(result.networkChecks.causalityTimeResolutionS * 1e9).toFixed(3)} ns`}
               </small>
-            </div>
+            </Tile>
           )}
         </div>
       )}
@@ -2559,13 +2566,21 @@ function SimulationSummary({
       )}
 
       {result.warnings.length > 0 && (
-        <ul className="warning-list">
-          {result.warnings.map((warning, index) => (
-            <li key={`${warning.code}-${warning.frequencyHz ?? index}`}>
-              {warning.message}
-            </li>
-          ))}
-        </ul>
+        <InlineNotification
+          className="simulation-warning"
+          hideCloseButton
+          kind="warning"
+          lowContrast
+          title={`${result.warnings.length} simulation ${result.warnings.length === 1 ? 'warning' : 'warnings'}`}
+        >
+          <ul className="scientific-warning-list">
+            {result.warnings.map((warning, index) => (
+              <li key={`${warning.code}-${warning.frequencyHz ?? index}`}>
+                {warning.message}
+              </li>
+            ))}
+          </ul>
+        </InlineNotification>
       )}
     </div>
   )
@@ -2575,21 +2590,21 @@ function OscillatorMetrics({ result }: { result: SimulationOutput }) {
   const noise = result.oscillatorNoise
   return (
     <div className="metric-grid" aria-label="Oscillator noise metrics">
-      <div className="metric-card">
+      <Tile className="metric-card">
         <span>Carrier</span>
         <strong>{formatFrequency(noise.carrierFrequencyHz!)}</strong>
         <small>{noise.pllEnabled ? 'PLL closed' : 'Free-running VCO'}</small>
-      </div>
-      <div className="metric-card">
+      </Tile>
+      <Tile className="metric-card">
         <span>Integrated phase error</span>
         <strong>{noise.integratedPhaseErrorDeg!.toPrecision(4)}° RMS</strong>
         <small>SSB integration limits from VCO settings</small>
-      </div>
-      <div className="metric-card">
+      </Tile>
+      <Tile className="metric-card">
         <span>RMS time jitter</span>
         <strong>{(noise.rmsJitterS! * 1e12).toPrecision(4)} ps</strong>
         <small>Derived from carrier frequency</small>
-      </div>
+      </Tile>
     </div>
   )
 }
@@ -2598,32 +2613,32 @@ function AntennaMetrics({ result }: { result: SimulationOutput }) {
   const antenna = result.antenna
   return (
     <div className="metric-grid" aria-label="Antenna radiation metrics">
-      <div className="metric-card">
+      <Tile className="metric-card">
         <span>Directivity / realized gain</span>
         <strong>{antenna.directivityDbi!.toFixed(2)} dBi</strong>
         <small>{antenna.realizedGainDbi!.toFixed(2)} dBi realized</small>
-      </div>
-      <div className="metric-card">
+      </Tile>
+      <Tile className="metric-card">
         <span>Efficiency / aperture</span>
         <strong>{antenna.efficiencyPercent!.toFixed(1)}%</strong>
         <small>
           {antenna.effectiveApertureM2!.toPrecision(4)} m² effective
         </small>
-      </div>
+      </Tile>
       {antenna.mode === 'tx' && (
         <>
-          <div className="metric-card">
+          <Tile className="metric-card">
             <span>Radiated power</span>
             <strong>
               {formatBudgetValue(antenna.radiatedPowerDbm, 'dBm')}
             </strong>
             <small>Accepted power × radiation efficiency</small>
-          </div>
-          <div className="metric-card">
+          </Tile>
+          <Tile className="metric-card">
             <span>EIRP</span>
             <strong>{formatBudgetValue(antenna.eirpDbm, 'dBm')}</strong>
             <small>Accepted power + realized gain</small>
-          </div>
+          </Tile>
         </>
       )}
     </div>
@@ -2842,24 +2857,24 @@ function NonlinearMetrics({ nonlinear }: { nonlinear: NonlinearSweepResult }) {
   return (
     <>
       <div className="metric-grid" aria-label="Nonlinear chain metrics">
-        <div className="metric-card">
+        <Tile className="metric-card">
           <span>Small-signal gain</span>
           <strong>
             {formatBudgetValue(nonlinear.smallSignalGainDb, 'dB')}
           </strong>
           <small>Termination-aware behavioral estimate</small>
-        </div>
-        <div className="metric-card">
+        </Tile>
+        <Tile className="metric-card">
           <span>Input / output P1dB</span>
           <strong>{formatBudgetValue(nonlinear.inputP1Dbm, 'dBm')}</strong>
           <small>→ {formatBudgetValue(nonlinear.outputP1Dbm, 'dBm')}</small>
-        </div>
-        <div className="metric-card">
+        </Tile>
+        <Tile className="metric-card">
           <span>Output IP3</span>
           <strong>{formatBudgetValue(nonlinear.outputIp3Dbm, 'dBm')}</strong>
           <small>Two-tone extrapolation</small>
-        </div>
-        <div className="metric-card">
+        </Tile>
+        <Tile className="metric-card">
           <span>Configured operating point</span>
           <strong>
             {formatBudgetValue(nonlinear.operatingOutputPowerDbm, 'dBm')}
@@ -2867,15 +2882,15 @@ function NonlinearMetrics({ nonlinear }: { nonlinear: NonlinearSweepResult }) {
           <small>
             Input {formatBudgetValue(nonlinear.operatingInputPowerDbm, 'dBm')}
           </small>
-        </div>
-        <div className="metric-card">
+        </Tile>
+        <Tile className="metric-card">
           <span>Output tones</span>
           <strong>
             {nonlinear.toneFrequenciesHz.map(formatFrequency).join(' / ')}
           </strong>
           <small>Spacing {formatFrequency(nonlinear.toneSpacingHz)}</small>
-        </div>
-        <div className="metric-card">
+        </Tile>
+        <Tile className="metric-card">
           <span>Output IM3 products</span>
           <strong>
             {nonlinear.im3FrequenciesHz.map(formatFrequency).join(' / ')}
@@ -2883,7 +2898,7 @@ function NonlinearMetrics({ nonlinear }: { nonlinear: NonlinearSweepResult }) {
           <small>
             Limiting stage: {nonlinear.limitingStageLabel ?? 'unavailable'}
           </small>
-        </div>
+        </Tile>
       </div>
       {nonlinear.envelopeSpectrum.length > 0 && (
         <section
@@ -2991,11 +3006,19 @@ function RFBudgetTable({ budget }: { budget: RFBudgetResult }) {
         at 290 K.
       </p>
       {budget.warnings.length > 0 && (
-        <ul className="budget-warnings">
-          {budget.warnings.map((warning) => (
-            <li key={warning}>{warning}</li>
-          ))}
-        </ul>
+        <InlineNotification
+          className="budget-notification"
+          hideCloseButton
+          kind="warning"
+          lowContrast
+          title={`${budget.warnings.length} budget ${budget.warnings.length === 1 ? 'warning' : 'warnings'}`}
+        >
+          <ul className="scientific-warning-list">
+            {budget.warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </InlineNotification>
       )}
     </section>
   )

@@ -6,6 +6,18 @@
     "macrostructure": "Workbench",
     "theme": "Carbon g10",
     "theme_axes": "light / IBM Plex / blue signal accent",
+    "vibe": "strict Carbon RF workbench",
+    "variation_knobs": "Carbon-only tokens / native component states / square scientific results / no inherited decoration",
+    "enrichment": "none",
+    "brief": "Remove all inherited interface styling from the RF simulator"
+  },
+  {
+    "date": "2026-08-08",
+    "scope": "app",
+    "genre": "modern-minimal",
+    "macrostructure": "Workbench",
+    "theme": "Carbon g10",
+    "theme_axes": "light / IBM Plex / blue signal accent",
     "vibe": "compact responsive RF workbench",
     "variation_knobs": "single-row shell / equal workspace tabs / persistent mobile status",
     "enrichment": "none",
