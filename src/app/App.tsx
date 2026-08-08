@@ -13,6 +13,14 @@ import {
   preview__IconIndicator as IconIndicator,
 } from '@carbon/react'
 import {
+  Apps,
+  Chemistry,
+  Help,
+  Launch,
+  Layers,
+  Meter,
+} from '@carbon/icons-react'
+import {
   lazy,
   Suspense,
   useCallback,
@@ -20,9 +28,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react'
 import type { SimulationStatus } from '../components'
@@ -46,9 +51,6 @@ import { simulateInWorker } from '../workers/client'
 import { useRFEditorStore } from './store'
 import { strings } from './strings'
 
-const SIDE_PANEL_MIN_WIDTH = 180
-const SIDE_PANEL_MAX_WIDTH = 360
-const CANVAS_MIN_WIDTH = 440
 const STATUS_INDICATOR_KIND = {
   idle: 'incomplete',
   running: 'in-progress',
@@ -56,11 +58,15 @@ const STATUS_INDICATOR_KIND = {
   error: 'failed',
 } as const
 type WorkflowTool = 'components' | 'canvas' | 'experiment' | 'review'
-const WORKFLOW_TOOLS: { id: WorkflowTool; label: string }[] = [
-  { id: 'components', label: 'Components' },
-  { id: 'canvas', label: 'Canvas' },
-  { id: 'experiment', label: 'Experiment' },
-  { id: 'review', label: 'Review' },
+const WORKFLOW_TOOLS: {
+  id: WorkflowTool
+  label: string
+  icon: typeof Apps
+}[] = [
+  { id: 'components', label: 'Components', icon: Apps },
+  { id: 'canvas', label: 'Canvas', icon: Layers },
+  { id: 'experiment', label: 'Experiment', icon: Chemistry },
+  { id: 'review', label: 'Review', icon: Meter },
 ]
 const loadWorkbenchComponents = () => import('../components')
 const BlockLibrary = lazy(() =>
@@ -118,10 +124,6 @@ export default function App() {
     [],
   )
   const [selectedProjectId, setSelectedProjectId] = useState('')
-  const [sidePanelWidths, setSidePanelWidths] = useState({
-    left: 304,
-    right: 250,
-  })
 
   const closeActiveTool = useCallback(() => {
     if (!activeTool) return
@@ -136,75 +138,6 @@ export default function App() {
       return
     }
     setActiveTool(tool)
-  }
-
-  const panelMaximumWidth = (side: 'left' | 'right') => {
-    const canvasWidth =
-      document.querySelector<HTMLElement>('.canvas-panel')?.offsetWidth ??
-      CANVAS_MIN_WIDTH
-    return Math.min(
-      SIDE_PANEL_MAX_WIDTH,
-      sidePanelWidths[side] + Math.max(0, canvasWidth - CANVAS_MIN_WIDTH),
-    )
-  }
-
-  const setSidePanelWidth = (side: 'left' | 'right', width: number) => {
-    const nextWidth = Math.min(
-      panelMaximumWidth(side),
-      Math.max(SIDE_PANEL_MIN_WIDTH, width),
-    )
-    setSidePanelWidths((current) => ({ ...current, [side]: nextWidth }))
-  }
-
-  const startSidePanelResize = (
-    side: 'left' | 'right',
-    event: ReactPointerEvent<HTMLDivElement>,
-  ) => {
-    if (event.button !== 0) return
-    event.preventDefault()
-    const target = event.currentTarget
-    target.setPointerCapture(event.pointerId)
-    const startX = event.clientX
-    const startWidth = sidePanelWidths[side]
-    const maximumWidth = panelMaximumWidth(side)
-    document.body.classList.add('is-resizing-panels')
-
-    const resize = (moveEvent: PointerEvent) => {
-      const movement = moveEvent.clientX - startX
-      const width = startWidth + (side === 'left' ? movement : -movement)
-      setSidePanelWidths((current) => ({
-        ...current,
-        [side]: Math.min(maximumWidth, Math.max(SIDE_PANEL_MIN_WIDTH, width)),
-      }))
-    }
-    const stop = () => {
-      document.body.classList.remove('is-resizing-panels')
-      if (target.hasPointerCapture(event.pointerId)) {
-        target.releasePointerCapture(event.pointerId)
-      }
-      window.removeEventListener('pointermove', resize)
-      window.removeEventListener('pointerup', stop)
-      window.removeEventListener('pointercancel', stop)
-    }
-    window.addEventListener('pointermove', resize)
-    window.addEventListener('pointerup', stop)
-    window.addEventListener('pointercancel', stop)
-  }
-
-  const resizeSidePanelWithKeyboard = (
-    side: 'left' | 'right',
-    event: ReactKeyboardEvent<HTMLDivElement>,
-  ) => {
-    const direction = side === 'left' ? 1 : -1
-    const nextWidth = {
-      ArrowLeft: sidePanelWidths[side] - 10 * direction,
-      ArrowRight: sidePanelWidths[side] + 10 * direction,
-      Home: SIDE_PANEL_MIN_WIDTH,
-      End: panelMaximumWidth(side),
-    }[event.key]
-    if (nextWidth === undefined) return
-    event.preventDefault()
-    setSidePanelWidth(side, nextWidth)
   }
 
   const project = useMemo<RFProject>(
@@ -452,6 +385,7 @@ export default function App() {
                 aria-keyshortcuts="?"
                 kind="ghost"
                 label="Help"
+                renderIcon={Help}
                 size="sm"
               >
                 Help
@@ -490,31 +424,16 @@ export default function App() {
               aria-label="Online Simulators & Tools"
               size="sm"
             >
-              All tools
+              All tools <Launch aria-hidden="true" />
             </Link>
-            <IconIndicator
-              className="privacy-note"
-              kind="succeeded"
-              label={strings.localPrivacy}
-            />
           </Header>
 
           <Content
             id="rf-workspace"
-            className="workspace"
+            className={`workspace${activeTool ? ' workspace--tool-open' : ''}${
+              selectedNodeId ? ' workspace--inspector-open' : ''
+            }`}
             tabIndex={-1}
-            style={
-              {
-                '--left-panel-width': activeTool
-                  ? `${sidePanelWidths.left}px`
-                  : '0px',
-                '--left-resizer-width': activeTool ? '12px' : '0px',
-                '--right-panel-width': selectedNodeId
-                  ? `${sidePanelWidths.right}px`
-                  : '0px',
-                '--right-resizer-width': selectedNodeId ? '12px' : '0px',
-              } as CSSProperties
-            }
           >
             <nav className="tool-rail" aria-label="RF workbench tools">
               {WORKFLOW_TOOLS.map((tool) => (
@@ -525,6 +444,7 @@ export default function App() {
                   isSelected={activeTool === tool.id}
                   kind="ghost"
                   key={tool.id}
+                  renderIcon={tool.icon}
                   ref={(node: HTMLButtonElement | null) => {
                     workflowTriggerRefs.current[tool.id] = node ?? undefined
                   }}
@@ -627,19 +547,6 @@ export default function App() {
                 </WorkflowPanel>
               )}
             </div>
-            <div
-              className="panel-resizer panel-resizer--left"
-              aria-hidden={!activeTool}
-              role="separator"
-              aria-label="Resize workflow panel"
-              aria-orientation="vertical"
-              aria-valuemin={SIDE_PANEL_MIN_WIDTH}
-              aria-valuemax={SIDE_PANEL_MAX_WIDTH}
-              aria-valuenow={sidePanelWidths.left}
-              tabIndex={activeTool ? 0 : -1}
-              onKeyDown={(event) => resizeSidePanelWithKeyboard('left', event)}
-              onPointerDown={(event) => startSidePanelResize('left', event)}
-            />
             <section
               id="rf-canvas"
               className="canvas-panel"
@@ -665,19 +572,6 @@ export default function App() {
                 )}
               </div>
             </section>
-            <div
-              className="panel-resizer panel-resizer--right"
-              aria-hidden={!selectedNodeId}
-              role="separator"
-              aria-label="Resize properties panel"
-              aria-orientation="vertical"
-              aria-valuemin={SIDE_PANEL_MIN_WIDTH}
-              aria-valuemax={SIDE_PANEL_MAX_WIDTH}
-              aria-valuenow={sidePanelWidths.right}
-              tabIndex={selectedNodeId ? 0 : -1}
-              onKeyDown={(event) => resizeSidePanelWithKeyboard('right', event)}
-              onPointerDown={(event) => startSidePanelResize('right', event)}
-            />
             <Suspense fallback={null}>
               <PropertiesPanel />
             </Suspense>
@@ -704,7 +598,7 @@ export default function App() {
               <span>{edges.length} connections</span>
               <span>{analysis.points} frequency points</span>
               <span>Z₀ {analysis.referenceImpedanceOhm} Ω</span>
-              <span>{statusText}</span>
+              <span className="status-strip__state">{statusText}</span>
             </footer>
           </Content>
         </Column>

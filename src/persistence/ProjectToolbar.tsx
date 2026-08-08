@@ -10,6 +10,7 @@ import {
   TextInput,
   preview__IconIndicator as IconIndicator,
 } from '@carbon/react'
+import { FolderOpen } from '@carbon/icons-react'
 import { useState, type ChangeEvent } from 'react'
 import { rfTemplates } from '../templates'
 import type { LocalProjectSummary } from './indexedDb'
@@ -72,7 +73,12 @@ export function ProjectToolbar({
           label={message ?? statusLabel(status)}
         />
       </span>
-      <Button kind="ghost" size="sm" onClick={() => setActionsOpen(true)}>
+      <Button
+        kind="ghost"
+        renderIcon={FolderOpen}
+        size="sm"
+        onClick={() => setActionsOpen(true)}
+      >
         Project actions
       </Button>
       <ComposedModal

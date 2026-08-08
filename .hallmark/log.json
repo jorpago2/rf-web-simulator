@@ -1,5 +1,17 @@
 [
   {
+    "date": "2026-08-08",
+    "scope": "app",
+    "genre": "modern-minimal",
+    "macrostructure": "Workbench",
+    "theme": "studied-DNA (source: https://jorpago2.github.io/setupsketch/)",
+    "theme_axes": "Carbon g10 / 64px shell / IBM Plex / blue signal accent",
+    "vibe": "full-viewport RF engineering workbench",
+    "variation_knobs": "Carbon icons / 128px task rail / 384px contextual sheet / split canvas-results deck / compact mobile shell",
+    "enrichment": "none",
+    "brief": "Radical Carbon redesign based on SetupSketch"
+  },
+  {
     "date": "2026-08-05",
     "macrostructure": "Workbench",
     "theme": "custom",
