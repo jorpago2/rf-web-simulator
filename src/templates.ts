@@ -50,7 +50,9 @@ const connect = (...nodeIds: string[]): RFProjectEdge[] =>
   nodeIds.slice(1).map((target, index) => ({
     id: `edge-${nodeIds[index]}-${target}`,
     source: nodeIds[index]!,
+    sourceHandle: 'output',
     target,
+    targetHandle: 'input',
   }))
 
 export const rfTemplates: readonly RFTemplate[] = [

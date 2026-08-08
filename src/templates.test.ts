@@ -22,11 +22,18 @@ it.each(rfTemplates)(
       project.edges.length,
     )
     expect(
-      project.edges.map(({ source, target }) => ({ source, target })),
+      project.edges.map(({ source, sourceHandle, target, targetHandle }) => ({
+        source,
+        sourceHandle,
+        target,
+        targetHandle,
+      })),
     ).toEqual(
       project.nodes.slice(1).map((node, index) => ({
         source: project.nodes[index]!.id,
+        sourceHandle: 'output',
         target: node.id,
+        targetHandle: 'input',
       })),
     )
     expect(project.nodes.every((node) => node.data.label.length <= 20)).toBe(

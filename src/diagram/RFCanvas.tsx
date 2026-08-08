@@ -188,6 +188,11 @@ export function RFCanvas() {
       onPaneClick={() => selectNode(null)}
       onDragOver={onDragOver}
       onDrop={onDrop}
+      defaultEdgeOptions={{ type: 'straight' }}
+      connectionLineStyle={{
+        stroke: 'var(--rf-interactive)',
+        strokeWidth: 2.5,
+      }}
       deleteKeyCode={['Backspace', 'Delete']}
       minZoom={0.35}
       maxZoom={1.8}

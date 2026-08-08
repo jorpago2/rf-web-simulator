@@ -3,8 +3,8 @@
 
 :root {
   --mobile-header-height: 10.9375rem;
-  color: var(--cds-text-primary);
-  background: var(--cds-background);
+  color: var(--rf-text-primary);
+  background: var(--rf-background);
   font-family: var(--font-body);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -18,8 +18,8 @@
   max-width: none;
   overflow: hidden;
   padding: 0;
-  color: var(--cds-text-primary);
-  background: var(--cds-background);
+  color: var(--rf-text-primary);
+  background: var(--rf-background);
   font-family: var(--font-body);
 }
 .app-shell-column {
@@ -77,13 +77,13 @@ body {
 
 .block-card:focus-visible,
 .react-flow__node:focus-visible {
-  outline: 2px solid var(--cds-focus);
+  outline: 2px solid var(--rf-focus);
   outline-offset: 2px;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .block-card:hover {
-    background: var(--cds-layer-01);
+    background: var(--rf-layer-01);
   }
 }
 
@@ -127,7 +127,7 @@ h2 {
 
 .app-help-panel p {
   margin: var(--space-2xs) 0 var(--space-sm);
-  color: var(--cds-text-secondary);
+  color: var(--rf-text-secondary);
   font-size: var(--text-sm);
   line-height: 1.5;
 }
@@ -154,13 +154,13 @@ h2 {
   padding: var(--space-2xs) var(--space-xs);
   border: 1px solid var(--cds-border-subtle);
   border-radius: 0;
-  background: var(--cds-layer-accent-01);
+  background: var(--rf-layer-accent-01);
   font: 700 var(--text-xs) var(--font-display);
 }
 
 .app-identity p {
   margin-top: var(--space-2xs);
-  color: var(--cds-text-secondary);
+  color: var(--rf-text-secondary);
   font-family: var(--font-display);
   font-size: 0.6875rem;
   letter-spacing: 0.035em;
@@ -190,13 +190,13 @@ h2 {
 .save-state {
   align-self: center;
   min-width: 92px;
-  color: var(--cds-text-secondary);
+  color: var(--rf-text-secondary);
   font-size: var(--text-xs);
   text-align: center;
 }
 
 .save-state--error {
-  color: var(--cds-support-error);
+  color: var(--rf-support-error);
 }
 
 .sr-only {
@@ -214,8 +214,8 @@ h2 {
   display: grid;
   place-items: center;
   border-radius: 0;
-  color: var(--cds-background);
-  background: var(--cds-text-primary);
+  color: var(--rf-background);
+  background: var(--rf-text-primary);
   font-family: var(--font-display);
   font-size: var(--text-xs);
   font-weight: 800;
@@ -284,8 +284,8 @@ h2 {
 }
 
 .tool-rail__button[aria-expanded='true'] {
-  border-left-color: var(--cds-focus);
-  background: var(--cds-layer-selected-01);
+  border-left-color: var(--rf-focus);
+  background: var(--rf-layer-selected-01);
 }
 
 .tool-rail__icon {
@@ -370,7 +370,7 @@ h2 {
 
 .workflow-summary dt,
 .workflow-note {
-  color: var(--cds-text-secondary);
+  color: var(--rf-text-secondary);
 }
 
 .workflow-summary dd {
@@ -438,7 +438,7 @@ h2 {
   padding-inline: var(--space-sm);
   border: 0;
   border-top: var(--rule-hairline);
-  color: var(--cds-text-secondary);
+  color: var(--rf-text-secondary);
   background: var(--cds-layer);
   font: var(--text-xs) var(--font-display);
   white-space: nowrap;
@@ -446,7 +446,7 @@ h2 {
 
 .status-strip__state {
   margin-left: auto;
-  color: var(--cds-text-primary);
+  color: var(--rf-text-primary);
 }
 
 .panel,
@@ -467,13 +467,13 @@ h2 {
 
 .panel__heading h2,
 .canvas-toolbar h2 {
-  color: var(--cds-text-primary);
+  color: var(--rf-text-primary);
   font-size: var(--text-base);
 }
 
 .panel__heading > p:last-child {
   margin-top: var(--space-xs);
-  color: var(--cds-text-secondary);
+  color: var(--rf-text-secondary);
   font-size: var(--text-sm);
   line-height: 1.45;
 }
@@ -499,7 +499,7 @@ h2 {
   border: 0;
   border-bottom: var(--rule-hairline);
   border-radius: 0;
-  color: var(--cds-text-primary);
+  color: var(--rf-text-primary);
   background: transparent;
   text-align: left;
   transition:
@@ -521,7 +521,7 @@ h2 {
   border: 1px solid
     color-mix(in srgb, var(--block-accent) 42%, var(--cds-border-strong));
   border-radius: 0;
-  color: color-mix(in srgb, var(--block-accent) 76%, var(--cds-text-secondary));
+  color: color-mix(in srgb, var(--block-accent) 76%, var(--rf-text-secondary));
   background: color-mix(in srgb, var(--block-accent) 12%, var(--cds-layer));
 }
 
@@ -538,7 +538,7 @@ h2 {
 
 .block-card small {
   margin-top: var(--space-2xs);
-  color: var(--cds-text-secondary);
+  color: var(--rf-text-secondary);
   font-size: var(--text-xs);
   line-height: 1.2;
 }
@@ -568,7 +568,7 @@ h2 {
   position: relative;
   min-height: 0;
   flex: 1;
-  background: var(--cds-layer-01);
+  background: var(--rf-layer-01);
 }
 
 .canvas-empty {
@@ -578,13 +578,13 @@ h2 {
   display: grid;
   place-content: center;
   padding: 24px;
-  color: var(--cds-text-secondary);
+  color: var(--rf-text-secondary);
   text-align: center;
   pointer-events: none;
 }
 
 .canvas-empty strong {
-  color: var(--cds-text-primary);
+  color: var(--rf-text-primary);
   font-size: 0.95rem;
 }
 .canvas-empty p {
@@ -594,12 +594,18 @@ h2 {
 }
 
 .react-flow__renderer {
-  background: var(--cds-layer-01);
+  background: var(--rf-layer-01);
 }
 
 .react-flow__edge-path {
-  stroke: var(--cds-text-secondary);
-  stroke-width: 2;
+  stroke: var(--rf-text-secondary);
+  stroke-width: 2.5;
+}
+
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:focus-visible .react-flow__edge-path {
+  stroke: var(--rf-link-primary);
+  stroke-width: 3;
 }
 
 .react-flow__controls,
@@ -630,7 +636,7 @@ h2 {
   padding: var(--space-xs);
   border: 1px solid transparent;
   border-radius: 0;
-  color: var(--cds-text-primary);
+  color: var(--rf-text-primary);
   background: transparent;
   box-shadow: none;
   transition:
@@ -648,9 +654,9 @@ h2 {
 }
 
 .rf-node.is-selected {
-  border-color: var(--cds-link-primary);
+  border-color: var(--rf-link-primary);
   background: var(--cds-layer);
-  outline: 2px solid var(--cds-focus);
+  outline: 2px solid var(--rf-focus);
   outline-offset: 1px;
 }
 
@@ -661,7 +667,7 @@ h2 {
   width: 44px;
   height: 44px;
   padding: var(--space-2xs);
-  color: color-mix(in srgb, var(--node-accent) 78%, var(--cds-text-secondary));
+  color: color-mix(in srgb, var(--node-accent) 78%, var(--rf-text-secondary));
 }
 
 .rf-block-symbol {
@@ -704,7 +710,7 @@ h2 {
 }
 
 .rf-node__description {
-  color: var(--cds-text-secondary);
+  color: var(--rf-text-secondary);
   font-size: var(--text-xs);
   line-height: 1.2;
 }
@@ -713,7 +719,7 @@ h2 {
   width: 9px;
   height: 9px;
   border: 2px solid var(--cds-layer);
-  background: var(--cds-interactive);
+  background: var(--rf-interactive);
 }
 
 .properties {
@@ -722,7 +728,7 @@ h2 {
 
 .empty-state {
   padding: 20px var(--space-2xs);
-  color: var(--cds-text-secondary);
+  color: var(--rf-text-secondary);
   font-size: var(--text-sm);
   line-height: 1.5;
 }
@@ -746,7 +752,7 @@ h2 {
 
 .file-field small,
 .file-field a {
-  color: var(--cds-text-secondary);
+  color: var(--rf-text-secondary);
   font-size: 0.75rem;
   font-weight: 500;
   line-height: 1.4;
@@ -761,7 +767,7 @@ h2 {
   padding: var(--space-sm);
   border: 1px solid var(--cds-border-strong);
   border-radius: 0;
-  background: var(--cds-layer-accent-01);
+  background: var(--rf-layer-accent-01);
 }
 
 .model-sources h3 {
@@ -784,7 +790,7 @@ h2 {
 }
 
 .model-sources dt {
-  color: var(--cds-text-secondary);
+  color: var(--rf-text-secondary);
 }
 
 .model-sources dd {
@@ -795,7 +801,7 @@ h2 {
 
 .model-sources p {
   margin-top: 8px;
-  color: var(--cds-text-secondary);
+  color: var(--rf-text-secondary);
   font-size: 0.75rem;
   line-height: 1.4;
 }
@@ -806,7 +812,7 @@ h2 {
   margin: 0 0 var(--space-sm);
   padding: var(--space-sm);
   border-radius: 0;
-  background: var(--cds-layer-accent-01);
+  background: var(--rf-layer-accent-01);
 }
 
 .file-summary div {
@@ -817,7 +823,7 @@ h2 {
 }
 
 .file-summary dt {
-  color: var(--cds-text-secondary);
+  color: var(--rf-text-secondary);
 }
 
 .file-summary dd {
@@ -936,7 +942,7 @@ h2 {
 
 .results-empty p {
   margin-top: var(--space-xs);
-  color: var(--cds-text-secondary);
+  color: var(--rf-text-secondary);
   font-size: var(--text-xs);
   line-height: 1.5;
 }
@@ -954,7 +960,7 @@ h2 {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--space-md);
   padding: var(--space-md);
-  background: var(--cds-background);
+  background: var(--rf-background);
 }
 
 .rf-plot-shell {
@@ -1003,7 +1009,7 @@ h2 {
 
 .spur-details summary {
   padding: var(--space-sm) var(--space-md);
-  color: var(--cds-text-primary);
+  color: var(--rf-text-primary);
   cursor: pointer;
   font-size: 0.75rem;
   font-weight: 750;
@@ -1015,7 +1021,7 @@ h2 {
 
 .budget-panel caption {
   padding: var(--space-sm) var(--space-md);
-  color: var(--cds-text-primary);
+  color: var(--rf-text-primary);
   font-size: 0.82rem;
   font-weight: 750;
   text-align: left;
@@ -1030,8 +1036,8 @@ h2 {
 }
 
 .budget-panel thead th {
-  color: var(--cds-text-secondary);
-  background: var(--cds-layer-accent-01);
+  color: var(--rf-text-secondary);
+  background: var(--rf-layer-accent-01);
   font-size: 0.75rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -1042,18 +1048,18 @@ h2 {
   left: 0;
   z-index: 1;
   min-width: 145px;
-  color: var(--cds-text-primary);
+  color: var(--rf-text-primary);
   background: var(--cds-layer);
   text-align: left;
 }
 
 .budget-panel thead th:first-child {
-  background: var(--cds-layer-accent-01);
+  background: var(--rf-layer-accent-01);
 }
 
 .budget-assumption {
   padding: var(--space-sm) var(--space-md);
-  color: var(--cds-text-secondary);
+  color: var(--rf-text-secondary);
   font-size: 0.75rem;
   line-height: 1.45;
 }
@@ -1079,7 +1085,7 @@ h2 {
 }
 
 .metric-card > span {
-  color: var(--cds-text-secondary);
+  color: var(--rf-text-secondary);
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -1093,7 +1099,7 @@ h2 {
 
 .metric-card > small {
   margin-top: var(--space-2xs);
-  color: var(--cds-text-secondary);
+  color: var(--rf-text-secondary);
   font-size: 0.75rem;
 }
 
@@ -1130,7 +1136,7 @@ h2 {
 
 .stage-list strong {
   flex: 0 0 auto;
-  color: var(--cds-link-primary);
+  color: var(--rf-link-primary);
   font-family: var(--font-display);
 }
 
