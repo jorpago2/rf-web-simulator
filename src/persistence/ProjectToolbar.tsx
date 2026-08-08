@@ -1,3 +1,15 @@
+import {
+  Button,
+  ComposedModal,
+  FileUploaderButton,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  Select,
+  SelectItem,
+  TextInput,
+  preview__IconIndicator as IconIndicator,
+} from '@carbon/react'
 import { useState, type ChangeEvent } from 'react'
 import { rfTemplates } from '../templates'
 import type { LocalProjectSummary } from './indexedDb'
@@ -32,6 +44,7 @@ export function ProjectToolbar({
   onLoadTemplate: (id: string) => void
 }) {
   const [templateId, setTemplateId] = useState('')
+  const [actionsOpen, setActionsOpen] = useState(false)
   const importProject = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) onImport(file)
@@ -40,45 +53,69 @@ export function ProjectToolbar({
 
   return (
     <div className="project-toolbar" aria-label="Project controls">
-      <label className="project-name-field">
-        <span>Project</span>
-        <input
-          value={projectName}
-          maxLength={200}
-          onChange={(event) => onProjectNameChange(event.target.value)}
-        />
-      </label>
+      <TextInput
+        className="project-name-field"
+        id="project-name"
+        labelText="Project"
+        maxLength={200}
+        size="sm"
+        value={projectName}
+        onChange={(event) => onProjectNameChange(event.target.value)}
+      />
       <span
         className={`save-state save-state--${status}`}
         aria-live="polite"
         title={message ?? undefined}
       >
-        {message ?? statusLabel(status)}
+        <IconIndicator
+          kind={statusKind(status)}
+          label={message ?? statusLabel(status)}
+        />
       </span>
-      <details className="project-actions">
-        <summary>Project actions</summary>
-        <div className="project-actions__panel">
-          <label className="recent-project-field">
-            <span>Recent project</span>
-            <select
+      <Button kind="ghost" size="sm" onClick={() => setActionsOpen(true)}>
+        Project actions
+      </Button>
+      <ComposedModal
+        open={actionsOpen}
+        onClose={() => setActionsOpen(false)}
+        selectorPrimaryFocus="#recent-project"
+        size="sm"
+      >
+        <ModalHeader
+          label="RF Network Simulator"
+          title="Project actions"
+          closeModal={() => setActionsOpen(false)}
+        />
+        <ModalBody hasForm>
+          <div className="project-actions__panel">
+            <Select
+              id="recent-project"
+              labelText="Recent project"
+              size="sm"
               value={selectedProjectId}
               onChange={(event) => onSelectedProjectChange(event.target.value)}
             >
-              <option value="">Choose a saved project</option>
+              <SelectItem value="" text="Choose a saved project" />
               {recentProjects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name} ·{' '}
-                  {new Date(project.updatedAt).toLocaleString()}
-                </option>
+                <SelectItem
+                  key={project.id}
+                  value={project.id}
+                  text={`${project.name} · ${new Date(project.updatedAt).toLocaleString()}`}
+                />
               ))}
-            </select>
-          </label>
-          <button type="button" onClick={onOpen} disabled={!selectedProjectId}>
-            Open
-          </button>
-          <label className="template-field">
-            <span>Template</span>
-            <select
+            </Select>
+            <Button
+              kind="secondary"
+              size="sm"
+              disabled={!selectedProjectId}
+              onClick={onOpen}
+            >
+              Open
+            </Button>
+            <Select
+              id="project-template"
+              labelText="Template"
+              size="sm"
               value={templateId}
               onChange={(event) => setTemplateId(event.target.value)}
               title={
@@ -86,40 +123,45 @@ export function ProjectToolbar({
                   ?.description
               }
             >
-              <option value="">Choose a template</option>
+              <SelectItem value="" text="Choose a template" />
               {rfTemplates.map((template) => (
-                <option key={template.id} value={template.id}>
-                  {template.label}
-                </option>
+                <SelectItem
+                  key={template.id}
+                  value={template.id}
+                  text={template.label}
+                />
               ))}
-            </select>
-          </label>
-          <button
-            type="button"
-            disabled={!templateId}
-            onClick={() => {
-              onLoadTemplate(templateId)
-              setTemplateId('')
-            }}
-          >
-            Load template
-          </button>
-          <button type="button" onClick={onNew}>
+            </Select>
+            <Button
+              kind="secondary"
+              size="sm"
+              disabled={!templateId}
+              onClick={() => {
+                onLoadTemplate(templateId)
+                setTemplateId('')
+                setActionsOpen(false)
+              }}
+            >
+              Load template
+            </Button>
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button kind="ghost" onClick={onNew}>
             New project
-          </button>
-          <button type="button" onClick={onExport}>
+          </Button>
+          <Button kind="secondary" onClick={onExport}>
             Export JSON
-          </button>
-          <label className="project-file-button">
-            Import JSON
-            <input
-              type="file"
-              accept="application/json,.json"
-              onChange={importProject}
-            />
-          </label>
-        </div>
-      </details>
+          </Button>
+          <FileUploaderButton
+            accept={['application/json', '.json']}
+            buttonKind="primary"
+            labelText="Import JSON"
+            multiple={false}
+            onChange={importProject}
+          />
+        </ModalFooter>
+      </ComposedModal>
     </div>
   )
 }
@@ -131,4 +173,13 @@ function statusLabel(status: PersistenceStatus): string {
     saved: 'Saved locally',
     error: 'Local save error',
   }[status]
+}
+
+function statusKind(status: PersistenceStatus) {
+  return {
+    loading: 'pending',
+    saving: 'in-progress',
+    saved: 'succeeded',
+    error: 'failed',
+  }[status] as 'pending' | 'in-progress' | 'succeeded' | 'failed'
 }

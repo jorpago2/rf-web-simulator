@@ -1,11 +1,27 @@
 import {
   useEffect,
+  useId,
   useMemo,
   useState,
   type ChangeEvent,
   type DragEvent,
-  type KeyboardEvent,
 } from 'react'
+import {
+  Accordion,
+  AccordionItem,
+  Button,
+  Checkbox,
+  FileUploaderButton,
+  InlineNotification,
+  NumberInput,
+  Select,
+  Tab,
+  TabList,
+  TabPanel,
+  TabPanels,
+  Tabs,
+  TextInput,
+} from '@carbon/react'
 import { blockDescriptors } from './diagram/nodeRegistry'
 import { RFBlockSymbol } from './diagram/RFBlockSymbol'
 import { parseTouchstone } from './engine/touchstone'
@@ -35,7 +51,7 @@ import { downloadTextFile, safeFileName } from './persistence/download'
 import { useRFEditorStore } from './app/store'
 import { strings } from './app/strings'
 
-export function BlockLibrary() {
+export function BlockLibrary({ open }: { open: boolean }) {
   const addNode = useRFEditorStore((state) => state.addNode)
 
   const startDrag = (event: DragEvent, type: RFNodeType) => {
@@ -44,35 +60,45 @@ export function BlockLibrary() {
   }
 
   return (
-    <aside className="panel block-library" aria-labelledby="library-title">
-      <div className="panel__heading">
-        <h2 id="library-title">{strings.libraryTitle}</h2>
-        <p>{strings.libraryHint}</p>
-      </div>
-      <div className="block-list">
-        {blockDescriptors.map((block) => (
-          <button
-            className="block-card"
-            draggable
-            key={block.type}
-            onDragStart={(event) => startDrag(event, block.type)}
-            onClick={() => addNode(block.type)}
-            type="button"
-          >
-            <span
-              className="block-card__symbol"
-              style={{ '--block-accent': block.accent } as React.CSSProperties}
-              aria-hidden="true"
-            >
-              <RFBlockSymbol type={block.type} />
-            </span>
-            <span>
-              <strong>{block.label}</strong>
-              <small>{block.description}</small>
-            </span>
-          </button>
-        ))}
-      </div>
+    <aside
+      className={`panel block-library${open ? '' : ' block-library--closed'}`}
+      aria-hidden={!open}
+      aria-labelledby={open ? 'library-title' : undefined}
+    >
+      {open && (
+        <>
+          <div className="panel__heading">
+            <h2 id="library-title">{strings.libraryTitle}</h2>
+            <p>{strings.libraryHint}</p>
+          </div>
+          <div className="block-list">
+            {blockDescriptors.map((block) => (
+              <button
+                className="block-card"
+                draggable
+                key={block.type}
+                onDragStart={(event) => startDrag(event, block.type)}
+                onClick={() => addNode(block.type)}
+                type="button"
+              >
+                <span
+                  className="block-card__symbol"
+                  style={
+                    { '--block-accent': block.accent } as React.CSSProperties
+                  }
+                  aria-hidden="true"
+                >
+                  <RFBlockSymbol type={block.type} />
+                </span>
+                <span>
+                  <strong>{block.label}</strong>
+                  <small>{block.description}</small>
+                </span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </aside>
   )
 }
@@ -121,12 +147,11 @@ export function PropertiesPanel() {
 
   if (!node || !selectedNodeId) {
     return (
-      <aside className="panel properties" aria-labelledby="properties-title">
-        <div className="panel__heading">
-          <h2 id="properties-title">{strings.propertiesTitle}</h2>
-        </div>
-        <p className="empty-state">{strings.emptyProperties}</p>
-      </aside>
+      <aside
+        id="rf-properties"
+        className="properties properties--closed"
+        aria-hidden="true"
+      />
     )
   }
 
@@ -294,17 +319,22 @@ export function PropertiesPanel() {
   }
 
   return (
-    <aside className="panel properties" aria-labelledby="properties-title">
+    <aside
+      id="rf-properties"
+      className="panel properties"
+      aria-labelledby="properties-title"
+    >
       <div className="panel__heading">
         <h2 id="properties-title">{strings.propertiesTitle}</h2>
       </div>
-      <label className="field">
-        <span>Block name</span>
-        <input
-          value={node.data.label}
-          onChange={(event) => updateLabel(node.id, event.target.value)}
-        />
-      </label>
+      <TextInput
+        className="field"
+        id={`block-name-${node.id}`}
+        labelText="Block name"
+        size="sm"
+        value={node.data.label}
+        onChange={(event) => updateLabel(node.id, event.target.value)}
+      />
 
       {node.data.type === 'source' && (
         <>
@@ -523,16 +553,15 @@ export function PropertiesPanel() {
               setNumber('phaseNoiseIntegrationStopHz', value)
             }
           />
-          <label className="field checkbox-field">
-            <input
-              type="checkbox"
-              checked={node.data.parameters.pllEnabled === true}
-              onChange={(event) =>
-                updateParameters(node.id, { pllEnabled: event.target.checked })
-              }
-            />
-            <span>Close first-order PLL loop</span>
-          </label>
+          <Checkbox
+            className="field checkbox-field"
+            id={`pll-enabled-${node.id}`}
+            labelText="Close first-order PLL loop"
+            checked={node.data.parameters.pllEnabled === true}
+            onChange={(_, { checked }) =>
+              updateParameters(node.id, { pllEnabled: checked })
+            }
+          />
           <NumberField
             label="PLL loop bandwidth"
             unit="Hz"
@@ -562,14 +591,16 @@ export function PropertiesPanel() {
             table={amplifierTable}
             touchstoneFileName={node.data.parameters.sParameterFileName}
           />
-          <label className="field file-field">
-            <span>Small-signal Touchstone (optional)</span>
-            <input
-              type="file"
-              accept=".s2p,.ts,text/plain"
-              onChange={loadAmplifierSParameters}
-            />
-          </label>
+          <FileUploaderButton
+            accept={['.s2p', '.ts', 'text/plain']}
+            buttonKind="secondary"
+            className="field file-field"
+            id={`amplifier-touchstone-${node.id}`}
+            labelText="Small-signal Touchstone (optional)"
+            multiple={false}
+            size="sm"
+            onChange={loadAmplifierSParameters}
+          />
           {typeof node.data.parameters.sParameterFileName === 'string' && (
             <>
               <dl className="file-summary">
@@ -582,8 +613,10 @@ export function PropertiesPanel() {
                   <dd>{String(node.data.parameters.sParameterPointCount)}</dd>
                 </div>
               </dl>
-              <button
+              <Button
                 className="file-reset-button"
+                kind="ghost"
+                size="sm"
                 type="button"
                 onClick={() =>
                   updateParameters(node.id, {
@@ -594,33 +627,32 @@ export function PropertiesPanel() {
                 }
               >
                 Use matched gain instead
-              </button>
+              </Button>
             </>
           )}
-          <label className="field checkbox-field">
-            <input
-              type="checkbox"
-              checked={node.data.parameters.enforcePassivity === true}
-              disabled={
-                typeof node.data.parameters.sParameterContent !== 'string'
-              }
-              onChange={(event) =>
-                updateParameters(node.id, {
-                  enforcePassivity: event.target.checked,
-                })
-              }
-            />
-            <span>Conservatively enforce imported S-parameter passivity</span>
-          </label>
+          <Checkbox
+            className="field checkbox-field"
+            id={`amplifier-passivity-${node.id}`}
+            labelText="Conservatively enforce imported S-parameter passivity"
+            checked={node.data.parameters.enforcePassivity === true}
+            disabled={
+              typeof node.data.parameters.sParameterContent !== 'string'
+            }
+            onChange={(_, { checked }) =>
+              updateParameters(node.id, { enforcePassivity: checked })
+            }
+          />
           <div className="field file-field">
             <label htmlFor={`device-table-${node.id}`}>
               Datasheet / measured table (optional)
             </label>
-            <input
+            <FileUploaderButton
+              buttonKind="secondary"
               id={`device-table-${node.id}`}
-              type="file"
-              accept=".csv,text/csv,text/plain"
-              aria-describedby={`device-table-help-${node.id}`}
+              labelText="Choose performance CSV"
+              accept={['.csv', 'text/csv', 'text/plain']}
+              multiple={false}
+              size="sm"
               onChange={loadDeviceTable}
             />
             <small id={`device-table-help-${node.id}`}>
@@ -645,8 +677,10 @@ export function PropertiesPanel() {
                   <dd>{String(node.data.parameters.deviceTableSummary)}</dd>
                 </div>
               </dl>
-              <button
+              <Button
                 className="file-reset-button"
+                kind="ghost"
+                size="sm"
                 type="button"
                 onClick={() =>
                   updateParameters(node.id, {
@@ -657,7 +691,7 @@ export function PropertiesPanel() {
                 }
               >
                 Use analytic metadata instead
-              </button>
+              </Button>
             </>
           )}
           <NumberField
@@ -736,24 +770,25 @@ export function PropertiesPanel() {
 
       {node.data.type === 'idealFilter' && (
         <>
-          <label className="field">
-            <span>Filter response</span>
-            <select
-              value={
-                typeof node.data.parameters.filterType === 'string'
-                  ? node.data.parameters.filterType
-                  : 'bandpass'
-              }
-              onChange={(event) =>
-                updateParameters(node.id, { filterType: event.target.value })
-              }
-            >
-              <option value="lowpass">Low-pass</option>
-              <option value="highpass">High-pass</option>
-              <option value="bandpass">Band-pass</option>
-              <option value="bandstop">Band-stop</option>
-            </select>
-          </label>
+          <Select
+            className="field"
+            id={`filter-response-${node.id}`}
+            labelText="Filter response"
+            size="sm"
+            value={
+              typeof node.data.parameters.filterType === 'string'
+                ? node.data.parameters.filterType
+                : 'bandpass'
+            }
+            onChange={(event) =>
+              updateParameters(node.id, { filterType: event.target.value })
+            }
+          >
+            <option value="lowpass">Low-pass</option>
+            <option value="highpass">High-pass</option>
+            <option value="bandpass">Band-pass</option>
+            <option value="bandstop">Band-stop</option>
+          </Select>
           {node.data.parameters.filterType === 'lowpass' ||
           node.data.parameters.filterType === 'highpass' ? (
             <NumberField
@@ -880,16 +915,15 @@ export function PropertiesPanel() {
 
       {node.data.type === 'idealRFSwitch' && (
         <>
-          <label className="field checkbox-field">
-            <input
-              type="checkbox"
-              checked={node.data.parameters.enabled === true}
-              onChange={(event) =>
-                updateParameters(node.id, { enabled: event.target.checked })
-              }
-            />
-            <span>Conducting (ON)</span>
-          </label>
+          <Checkbox
+            className="field checkbox-field"
+            id={`switch-enabled-${node.id}`}
+            labelText="Conducting (ON)"
+            checked={node.data.parameters.enabled === true}
+            onChange={(_, { checked }) =>
+              updateParameters(node.id, { enabled: checked })
+            }
+          />
           <NumberField
             label="ON insertion loss"
             unit="dB"
@@ -1003,31 +1037,33 @@ export function PropertiesPanel() {
 
       {node.data.type === 'matchingNetwork' && (
         <>
-          <label className="field">
-            <span>Topology</span>
-            <select
-              value={String(node.data.parameters.topology ?? 'l')}
-              onChange={(event) =>
-                updateParameters(node.id, { topology: event.target.value })
-              }
-            >
-              <option value="l">L network</option>
-              <option value="pi">π network (symmetric)</option>
-              <option value="t">T network (symmetric)</option>
-            </select>
-          </label>
-          <label className="field">
-            <span>Reactive arrangement</span>
-            <select
-              value={String(node.data.parameters.response ?? 'lowpass')}
-              onChange={(event) =>
-                updateParameters(node.id, { response: event.target.value })
-              }
-            >
-              <option value="lowpass">Low-pass: series L / shunt C</option>
-              <option value="highpass">High-pass: series C / shunt L</option>
-            </select>
-          </label>
+          <Select
+            className="field"
+            id={`matching-topology-${node.id}`}
+            labelText="Topology"
+            size="sm"
+            value={String(node.data.parameters.topology ?? 'l')}
+            onChange={(event) =>
+              updateParameters(node.id, { topology: event.target.value })
+            }
+          >
+            <option value="l">L network</option>
+            <option value="pi">π network (symmetric)</option>
+            <option value="t">T network (symmetric)</option>
+          </Select>
+          <Select
+            className="field"
+            id={`matching-response-${node.id}`}
+            labelText="Reactive arrangement"
+            size="sm"
+            value={String(node.data.parameters.response ?? 'lowpass')}
+            onChange={(event) =>
+              updateParameters(node.id, { response: event.target.value })
+            }
+          >
+            <option value="lowpass">Low-pass: series L / shunt C</option>
+            <option value="highpass">High-pass: series C / shunt L</option>
+          </Select>
           <NumberField
             label="Inductance (each)"
             unit="H"
@@ -1169,22 +1205,23 @@ export function PropertiesPanel() {
               updateParameters(node.id, { conversionLossToleranceDb: value })
             }
           />
-          <label className="field">
-            <span>Conversion mode</span>
-            <select
-              value={
-                node.data.parameters.mixerMode === 'upconvert'
-                  ? 'upconvert'
-                  : 'downconvert'
-              }
-              onChange={(event) =>
-                updateParameters(node.id, { mixerMode: event.target.value })
-              }
-            >
-              <option value="downconvert">Difference (input − LO)</option>
-              <option value="upconvert">Sum (input + LO)</option>
-            </select>
-          </label>
+          <Select
+            className="field"
+            id={`mixer-mode-${node.id}`}
+            labelText="Conversion mode"
+            size="sm"
+            value={
+              node.data.parameters.mixerMode === 'upconvert'
+                ? 'upconvert'
+                : 'downconvert'
+            }
+            onChange={(event) =>
+              updateParameters(node.id, { mixerMode: event.target.value })
+            }
+          >
+            <option value="downconvert">Difference (input − LO)</option>
+            <option value="upconvert">Sum (input + LO)</option>
+          </Select>
           <OptionalNumberField
             label="LO drive power"
             unit="dBm"
@@ -1216,16 +1253,21 @@ export function PropertiesPanel() {
             <label htmlFor={`mixer-products-${node.id}`}>
               Measured conversion products (optional CSV)
             </label>
-            <input
+            <FileUploaderButton
+              buttonKind="secondary"
               id={`mixer-products-${node.id}`}
-              type="file"
-              accept=".csv,text/csv,text/plain"
+              labelText="Choose mixer-products CSV"
+              accept={['.csv', 'text/csv', 'text/plain']}
+              multiple={false}
+              size="sm"
               onChange={loadMixerProductTable}
             />
             <small>Columns: m, n, relative_level_db, phase_deg, label.</small>
             {typeof node.data.parameters.productTableFileName === 'string' && (
-              <button
+              <Button
                 className="file-reset-button"
+                kind="ghost"
+                size="sm"
                 type="button"
                 onClick={() =>
                   updateParameters(node.id, {
@@ -1236,7 +1278,7 @@ export function PropertiesPanel() {
                 }
               >
                 Remove measured products
-              </button>
+              </Button>
             )}
           </div>
         </>
@@ -1244,24 +1286,28 @@ export function PropertiesPanel() {
 
       {node.data.type === 'touchstone2Port' && (
         <>
-          <label className="field file-field">
-            <span>Touchstone 1.0/2.0 N-port file</span>
-            <input type="file" onChange={loadTouchstone} />
-          </label>
-          <label className="field checkbox-field">
-            <input
-              type="checkbox"
-              checked={node.data.parameters.enforcePassivity === true}
-              onChange={(event) =>
-                updateParameters(node.id, {
-                  enforcePassivity: event.target.checked,
-                })
-              }
-            />
-            <span>
-              Conservatively enforce passivity (pointwise σmax scaling)
-            </span>
-          </label>
+          <FileUploaderButton
+            buttonKind="secondary"
+            className="field file-field"
+            id={`touchstone-file-${node.id}`}
+            labelText="Touchstone 1.0/2.0 N-port file"
+            multiple={false}
+            size="sm"
+            onChange={loadTouchstone}
+          />
+          <Checkbox
+            className="field checkbox-field"
+            id={`touchstone-passivity-${node.id}`}
+            checked={node.data.parameters.enforcePassivity === true}
+            onChange={(_, { checked }) =>
+              updateParameters(node.id, { enforcePassivity: checked })
+            }
+            labelText={
+              <span>
+                Conservatively enforce passivity (pointwise σmax scaling)
+              </span>
+            }
+          />
           {typeof node.data.parameters.fileName === 'string' && (
             <dl className="file-summary">
               <div>
@@ -1300,81 +1346,95 @@ export function PropertiesPanel() {
             Array.from(
               { length: numberValue(node.data.parameters.portCount, 2) },
               (_, index) => (
-                <label className="field" key={`port-role-${index}`}>
-                  <span>Port {index + 1} diagram role</span>
-                  <select
-                    value={
-                      Array.isArray(node.data.parameters.portRoles) &&
-                      node.data.parameters.portRoles[index] === 'input'
-                        ? 'input'
-                        : 'output'
-                    }
-                    onChange={(event) => {
-                      const roles = Array.isArray(
-                        node.data.parameters.portRoles,
-                      )
-                        ? [...node.data.parameters.portRoles]
-                        : []
-                      roles[index] = event.target.value
-                      updateParameters(node.id, { portRoles: roles })
-                    }}
-                  >
-                    <option value="input">Input side</option>
-                    <option value="output">Output side</option>
-                  </select>
-                </label>
+                <Select
+                  className="field"
+                  id={`port-role-${node.id}-${index}`}
+                  key={`port-role-${index}`}
+                  labelText={`Port ${index + 1} diagram role`}
+                  size="sm"
+                  value={
+                    Array.isArray(node.data.parameters.portRoles) &&
+                    node.data.parameters.portRoles[index] === 'input'
+                      ? 'input'
+                      : 'output'
+                  }
+                  onChange={(event) => {
+                    const roles = Array.isArray(node.data.parameters.portRoles)
+                      ? [...node.data.parameters.portRoles]
+                      : []
+                    roles[index] = event.target.value
+                    updateParameters(node.id, { portRoles: roles })
+                  }}
+                >
+                  <option value="input">Input side</option>
+                  <option value="output">Output side</option>
+                </Select>
               ),
             )}
           {numberValue(node.data.parameters.portCount, 2) === 2 && (
-            <details className="file-field">
-              <summary>Optional fixture de-embedding</summary>
-              {(['left', 'right'] as const).map((side) => (
-                <div className="field file-field" key={side}>
-                  <label htmlFor={`${side}-fixture-${node.id}`}>
-                    {side === 'left' ? 'Input' : 'Output'} fixture (.s2p)
-                  </label>
-                  <input
-                    id={`${side}-fixture-${node.id}`}
-                    type="file"
-                    accept=".s2p,.ts,text/plain"
-                    onChange={loadDeembeddingFixture(side)}
-                  />
-                  {typeof node.data.parameters[`${side}FixtureFileName`] ===
-                    'string' && (
-                    <button
-                      className="file-reset-button"
-                      type="button"
-                      onClick={() =>
-                        updateParameters(node.id, {
-                          [`${side}FixtureFileName`]: null,
-                          [`${side}FixtureContent`]: null,
-                        })
-                      }
-                    >
-                      Remove {side} fixture
-                    </button>
-                  )}
-                </div>
-              ))}
-            </details>
+            <Accordion className="file-field" size="sm">
+              <AccordionItem title="Optional fixture de-embedding">
+                {(['left', 'right'] as const).map((side) => (
+                  <div className="field file-field" key={side}>
+                    <label htmlFor={`${side}-fixture-${node.id}`}>
+                      {side === 'left' ? 'Input' : 'Output'} fixture (.s2p)
+                    </label>
+                    <FileUploaderButton
+                      buttonKind="secondary"
+                      id={`${side}-fixture-${node.id}`}
+                      labelText={`Choose ${side} fixture`}
+                      accept={['.s2p', '.ts', 'text/plain']}
+                      multiple={false}
+                      size="sm"
+                      onChange={loadDeembeddingFixture(side)}
+                    />
+                    {typeof node.data.parameters[`${side}FixtureFileName`] ===
+                      'string' && (
+                      <Button
+                        className="file-reset-button"
+                        kind="ghost"
+                        size="sm"
+                        type="button"
+                        onClick={() =>
+                          updateParameters(node.id, {
+                            [`${side}FixtureFileName`]: null,
+                            [`${side}FixtureContent`]: null,
+                          })
+                        }
+                      >
+                        Remove {side} fixture
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </AccordionItem>
+            </Accordion>
           )}
           <BudgetMetadataFields nodeId={node.id} />
         </>
       )}
 
       {fileStatus?.nodeId === node.id && (
-        <p className={`message message--${fileStatus.kind}`} aria-live="polite">
-          {fileStatus.message}
-        </p>
+        <InlineNotification
+          className="message"
+          hideCloseButton
+          kind={fileStatus.kind}
+          lowContrast
+          title={fileStatus.kind === 'success' ? 'File loaded' : 'File error'}
+          subtitle={fileStatus.message}
+        />
       )}
 
-      <button
+      <Button
         className="danger-button"
+        dangerDescription="Delete the selected RF block and its connections"
+        kind="danger--tertiary"
+        size="sm"
         type="button"
         onClick={removeSelectedNode}
       >
         Delete block
-      </button>
+      </Button>
     </aside>
   )
 }
@@ -1555,22 +1615,26 @@ function NumberField({
   disabled?: boolean
   onChange: (value: number) => void
 }) {
+  const id = useId()
   return (
-    <label className="field">
-      <span>{label}</span>
-      <span className="input-with-unit">
-        <input
-          type="number"
-          value={value}
-          min={min}
-          max={max}
-          step={step}
-          disabled={disabled}
-          onChange={(event) => onChange(event.target.valueAsNumber)}
-        />
-        <span>{unit}</span>
-      </span>
-    </label>
+    <NumberInput
+      className="field"
+      decorator={unit ? <span className="field-unit">{unit}</span> : undefined}
+      disabled={disabled}
+      hideSteppers
+      iconDescription={`Adjust ${label}`}
+      id={id}
+      label={label}
+      max={max}
+      min={min}
+      size="sm"
+      step={step}
+      value={value}
+      onChange={(_, { value: nextValue }) => {
+        const parsed = Number(nextValue)
+        if (Number.isFinite(parsed)) onChange(parsed)
+      }}
+    />
   )
 }
 
@@ -1589,27 +1653,25 @@ function OptionalNumberField({
   disabled?: boolean
   onChange: (value: number | null) => void
 }) {
+  const id = useId()
   return (
-    <label className="field">
-      <span>{label}</span>
-      <span className="input-with-unit">
-        <input
-          type="number"
-          value={
-            typeof value === 'number' && Number.isFinite(value) ? value : ''
-          }
-          min={min}
-          disabled={disabled}
-          placeholder="Not set"
-          onChange={(event) =>
-            onChange(
-              event.target.value === '' ? null : event.target.valueAsNumber,
-            )
-          }
-        />
-        <span>{unit}</span>
-      </span>
-    </label>
+    <NumberInput
+      allowEmpty
+      className="field"
+      decorator={unit ? <span className="field-unit">{unit}</span> : undefined}
+      disabled={disabled}
+      hideSteppers
+      iconDescription={`Adjust ${label}`}
+      id={id}
+      label={label}
+      min={min}
+      placeholder="Not set"
+      size="sm"
+      value={typeof value === 'number' && Number.isFinite(value) ? value : ''}
+      onChange={(_, { value: nextValue }) =>
+        onChange(nextValue === '' ? null : Number(nextValue))
+      }
+    />
   )
 }
 
@@ -1747,36 +1809,67 @@ export function SimulationPanel({
       frequencyPlanAvailable)
       ? 'sParameters'
       : resultView
-  const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
-    const tabs = Array.from(
-      event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
-        '[role="tab"]:not(:disabled)',
-      ) ?? [],
-    )
-    const currentIndex = tabs.indexOf(event.currentTarget)
-    if (currentIndex < 0 || tabs.length === 0) return
-    event.preventDefault()
-    const nextIndex =
-      event.key === 'Home'
-        ? 0
-        : event.key === 'End'
-          ? tabs.length - 1
-          : (currentIndex +
-              (event.key === 'ArrowRight' ? 1 : -1) +
-              tabs.length) %
-            tabs.length
-    tabs[nextIndex]?.focus()
-    tabs[nextIndex]?.click()
-  }
-  const resultTabProps = (view: ResultView) => ({
-    id: `analysis-tab-${view}`,
-    'aria-controls': 'analysis-tabpanel',
-    'aria-selected': visibleResultView === view,
-    onKeyDown: handleTabKeyDown,
-    role: 'tab' as const,
-    tabIndex: visibleResultView === view ? 0 : -1,
-  })
+  const resultTabs: {
+    view: ResultView
+    label: string
+    disabled?: boolean
+    title?: string
+  }[] = [
+    {
+      view: 'nonlinear',
+      label: 'Nonlinear',
+      disabled: !nonlinearAvailable,
+      title: 'Chain-level P1dB compression and two-tone IM3 estimate',
+    },
+    { view: 'oscillator', label: 'Oscillator', disabled: !oscillatorAvailable },
+    { view: 'antenna', label: 'Antenna', disabled: !antennaAvailable },
+    { view: 'sParameters', label: 'S-parameters' },
+    { view: 'smith', label: 'Smith' },
+    { view: 'stability', label: 'Stability' },
+    { view: 'parameters', label: 'Z/Y/ABCD' },
+    {
+      view: 'monteCarlo',
+      label: 'Monte Carlo',
+      disabled: !monteCarloAvailable,
+    },
+    {
+      view: 'parametricSweep',
+      label: 'Sweep',
+      disabled: !parametricSweepAvailable,
+    },
+    {
+      view: 'phase',
+      label: 'Phase',
+      disabled: frequencyPlanAvailable,
+      title: frequencyPlanAvailable
+        ? 'Conversion phase is not defined by the ideal mixer model'
+        : undefined,
+    },
+    {
+      view: 'groupDelay',
+      label: 'Group delay',
+      disabled: frequencyPlanAvailable,
+      title: frequencyPlanAvailable
+        ? 'Group delay is not defined across ideal frequency conversion'
+        : undefined,
+    },
+    {
+      view: 'probes',
+      label: `Probes (${result?.probeResults.length ?? 0})`,
+      disabled: !probeViewAvailable,
+      title: 'Cumulative S21 to each probe reference plane, terminated in Z0',
+    },
+    { view: 'budget', label: 'RF budget', disabled: !result },
+    {
+      view: 'frequencyPlan',
+      label: 'Frequency plan',
+      disabled: !frequencyPlanAvailable,
+    },
+  ]
+  const selectedResultTab = Math.max(
+    0,
+    resultTabs.findIndex(({ view }) => view === visibleResultView),
+  )
   const showResults = () =>
     document
       .getElementById('analysis-tabpanel')
@@ -1854,13 +1947,19 @@ export function SimulationPanel({
   ])
 
   return (
-    <section className="results-panel" aria-labelledby="results-title">
+    <section
+      id="rf-results"
+      className="results-panel"
+      aria-labelledby="results-title"
+    >
       <h2 id="results-title" className="sr-only">
         {strings.resultsTitle}
       </h2>
-      <button
+      <Button
         className="mobile-run-button"
         data-action={status === 'running' ? 'cancel' : undefined}
+        kind={status === 'running' ? 'danger' : 'primary'}
+        size="sm"
         type="button"
         disabled={status !== 'running' && nodes.length === 0}
         onClick={
@@ -1878,496 +1977,430 @@ export function SimulationPanel({
             : result
               ? 'View results'
               : 'Run simulation'}
-      </button>
-      <div className="results-header">
-        {result && <div
-          className="results-tabs"
-          role="tablist"
-          aria-label="Analysis views"
-        >
-          <button
-            type="button"
-            {...resultTabProps('nonlinear')}
-            disabled={!nonlinearAvailable}
-            title="Chain-level P1dB compression and two-tone IM3 estimate"
-            onClick={() => setResultView('nonlinear')}
-          >
-            Nonlinear
-          </button>
-          <button
-            type="button"
-            {...resultTabProps('oscillator')}
-            disabled={!oscillatorAvailable}
-            onClick={() => setResultView('oscillator')}
-          >
-            Oscillator
-          </button>
-          <button
-            type="button"
-            {...resultTabProps('antenna')}
-            disabled={!antennaAvailable}
-            onClick={() => setResultView('antenna')}
-          >
-            Antenna
-          </button>
-          <button
-            type="button"
-            {...resultTabProps('sParameters')}
-            onClick={() => setResultView('sParameters')}
-          >
-            S-parameters
-          </button>
-          <button
-            type="button"
-            {...resultTabProps('smith')}
-            onClick={() => setResultView('smith')}
-          >
-            Smith
-          </button>
-          <button
-            type="button"
-            {...resultTabProps('stability')}
-            onClick={() => setResultView('stability')}
-          >
-            Stability
-          </button>
-          <button
-            type="button"
-            {...resultTabProps('parameters')}
-            onClick={() => setResultView('parameters')}
-          >
-            Z/Y/ABCD
-          </button>
-          <button
-            type="button"
-            {...resultTabProps('monteCarlo')}
-            disabled={!monteCarloAvailable}
-            onClick={() => setResultView('monteCarlo')}
-          >
-            Monte Carlo
-          </button>
-          <button
-            type="button"
-            {...resultTabProps('parametricSweep')}
-            disabled={!parametricSweepAvailable}
-            onClick={() => setResultView('parametricSweep')}
-          >
-            Sweep
-          </button>
-          <button
-            type="button"
-            {...resultTabProps('phase')}
-            disabled={frequencyPlanAvailable}
-            title={
-              frequencyPlanAvailable
-                ? 'Conversion phase is not defined by the ideal mixer model'
-                : undefined
-            }
-            onClick={() => setResultView('phase')}
-          >
-            Phase
-          </button>
-          <button
-            type="button"
-            {...resultTabProps('groupDelay')}
-            disabled={frequencyPlanAvailable}
-            title={
-              frequencyPlanAvailable
-                ? 'Group delay is not defined across ideal frequency conversion'
-                : undefined
-            }
-            onClick={() => setResultView('groupDelay')}
-          >
-            Group delay
-          </button>
-          <button
-            type="button"
-            {...resultTabProps('probes')}
-            disabled={!probeViewAvailable}
-            title="Cumulative S21 to each probe reference plane, terminated in Z0"
-            onClick={() => setResultView('probes')}
-          >
-            Probes ({result?.probeResults.length ?? 0})
-          </button>
-          <button
-            type="button"
-            {...resultTabProps('budget')}
-            disabled={!result}
-            onClick={() => setResultView('budget')}
-          >
-            RF budget
-          </button>
-          <button
-            type="button"
-            {...resultTabProps('frequencyPlan')}
-            disabled={!frequencyPlanAvailable}
-            onClick={() => setResultView('frequencyPlan')}
-          >
-            Frequency plan
-          </button>
-        </div>}
-        <div
-          className="analysis-controls"
-          aria-label="Frequency analysis settings"
-        >
-          <CompactNumberField
-            label="Start"
-            unit="GHz"
-            min={0}
-            step={0.01}
-            value={analysis.startHz / 1e9}
-            onChange={(value) => update({ startHz: value * 1e9 })}
-          />
-          <CompactNumberField
-            label="Stop"
-            unit="GHz"
-            min={0}
-            step={0.01}
-            value={analysis.stopHz / 1e9}
-            onChange={(value) => update({ stopHz: value * 1e9 })}
-          />
-          <CompactNumberField
-            label="Points"
-            min={2}
-            max={10_001}
-            step={1}
-            value={analysis.points}
-            onChange={(value) => update({ points: value })}
-          />
-          <CompactNumberField
-            label="Z₀"
-            unit="Ω"
-            min={0.01}
-            step={1}
-            value={analysis.referenceImpedanceOhm}
-            onChange={(value) => update({ referenceImpedanceOhm: value })}
-          />
-          <details className="analysis-advanced">
-            <summary>Advanced analysis</summary>
-            <div className="analysis-advanced-grid">
-          <CompactNumberField
-            label="MC runs"
-            min={0}
-            max={500}
-            step={1}
-            value={analysis.monteCarloRuns ?? 0}
-            onChange={(value) => update({ monteCarloRuns: value })}
-          />
-          <CompactNumberField
-            label="MC seed"
-            min={0}
-            max={0xffffffff}
-            step={1}
-            value={analysis.monteCarloSeed ?? 1}
-            onChange={(value) => update({ monteCarloSeed: value })}
-          />
-          <label className="compact-field compact-select">
-            <span>Sweep block</span>
-            <select
-              value={analysis.sweepNodeId ?? ''}
-              onChange={(event) => {
-                const selected = nodes.find(
-                  (node) => node.id === event.target.value,
-                )
-                const first = selected
-                  ? sweepableParameters(selected)[0]
-                  : undefined
-                if (!selected || !first) {
-                  update({ sweepNodeId: null, sweepParameter: null })
-                  return
-                }
-                const [start, stop] = defaultSweepRange(first[0], first[1])
-                update({
-                  sweepNodeId: selected.id,
-                  sweepParameter: first[0],
-                  sweepStart: start,
-                  sweepStop: stop,
-                  sweepPoints: analysis.sweepPoints ?? 11,
-                })
-              }}
+      </Button>
+      <Tabs
+        selectedIndex={selectedResultTab}
+        onChange={({ selectedIndex }) =>
+          setResultView(resultTabs[selectedIndex]!.view)
+        }
+      >
+        <div className="results-header">
+          {result && (
+            <TabList
+              activation="automatic"
+              aria-label="Analysis views"
+              className="results-tabs"
+              size="sm"
             >
-              <option value="">Off</option>
-              {nodes
-                .filter((node) => sweepableParameters(node).length > 0)
-                .map((node) => (
-                  <option key={node.id} value={node.id}>
-                    {node.data.label}
-                  </option>
-                ))}
-            </select>
-          </label>
-          {sweepNode && sweepParameters.length > 0 && (
-            <>
-              <label className="compact-field compact-select">
-                <span>Parameter</span>
-                <select
-                  value={analysis.sweepParameter ?? ''}
-                  onChange={(event) => {
-                    const nominal =
-                      sweepNode.data.parameters[event.target.value]
-                    if (typeof nominal !== 'number') return
-                    const [start, stop] = defaultSweepRange(
-                      event.target.value,
-                      nominal,
-                    )
-                    update({
-                      sweepParameter: event.target.value,
-                      sweepStart: start,
-                      sweepStop: stop,
-                    })
-                  }}
-                >
-                  {sweepParameters.map(([key]) => (
-                    <option key={key} value={key}>
-                      {key}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <CompactNumberField
-                label="Sweep start"
-                step={0.1}
-                value={analysis.sweepStart ?? 0}
-                onChange={(value) => update({ sweepStart: value })}
-              />
-              <CompactNumberField
-                label="Sweep stop"
-                step={0.1}
-                value={analysis.sweepStop ?? 1}
-                onChange={(value) => update({ sweepStop: value })}
-              />
-              <CompactNumberField
-                label="Sweep points"
-                min={2}
-                max={101}
-                step={1}
-                value={analysis.sweepPoints ?? 11}
-                onChange={(value) => update({ sweepPoints: value })}
-              />
-              <label className="compact-field compact-select">
-                <span>Second block</span>
-                <select
-                  value={analysis.sweepSecondNodeId ?? ''}
-                  onChange={(event) => {
-                    const selected = nodes.find(
-                      (node) => node.id === event.target.value,
-                    )
-                    const first = selected
-                      ? sweepableParameters(selected)[0]
-                      : undefined
-                    if (!selected || !first) {
+              {resultTabs.map((tab) => (
+                <Tab key={tab.view} disabled={tab.disabled} title={tab.title}>
+                  {tab.label}
+                </Tab>
+              ))}
+            </TabList>
+          )}
+          <div
+            className="analysis-controls"
+            aria-label="Frequency analysis settings"
+          >
+            <CompactNumberField
+              label="Start"
+              unit="GHz"
+              min={0}
+              step={0.01}
+              value={analysis.startHz / 1e9}
+              onChange={(value) => update({ startHz: value * 1e9 })}
+            />
+            <CompactNumberField
+              label="Stop"
+              unit="GHz"
+              min={0}
+              step={0.01}
+              value={analysis.stopHz / 1e9}
+              onChange={(value) => update({ stopHz: value * 1e9 })}
+            />
+            <CompactNumberField
+              label="Points"
+              min={2}
+              max={10_001}
+              step={1}
+              value={analysis.points}
+              onChange={(value) => update({ points: value })}
+            />
+            <CompactNumberField
+              label="Z₀"
+              unit="Ω"
+              min={0.01}
+              step={1}
+              value={analysis.referenceImpedanceOhm}
+              onChange={(value) => update({ referenceImpedanceOhm: value })}
+            />
+            <Accordion className="analysis-advanced" size="sm">
+              <AccordionItem title="Advanced analysis">
+                <div className="analysis-advanced-grid">
+                  <CompactNumberField
+                    label="MC runs"
+                    min={0}
+                    max={500}
+                    step={1}
+                    value={analysis.monteCarloRuns ?? 0}
+                    onChange={(value) => update({ monteCarloRuns: value })}
+                  />
+                  <CompactNumberField
+                    label="MC seed"
+                    min={0}
+                    max={0xffffffff}
+                    step={1}
+                    value={analysis.monteCarloSeed ?? 1}
+                    onChange={(value) => update({ monteCarloSeed: value })}
+                  />
+                  <Select
+                    className="compact-field compact-select"
+                    id="sweep-block"
+                    labelText="Sweep block"
+                    size="sm"
+                    value={analysis.sweepNodeId ?? ''}
+                    onChange={(event) => {
+                      const selected = nodes.find(
+                        (node) => node.id === event.target.value,
+                      )
+                      const first = selected
+                        ? sweepableParameters(selected)[0]
+                        : undefined
+                      if (!selected || !first) {
+                        update({ sweepNodeId: null, sweepParameter: null })
+                        return
+                      }
+                      const [start, stop] = defaultSweepRange(
+                        first[0],
+                        first[1],
+                      )
                       update({
-                        sweepSecondNodeId: null,
-                        sweepSecondParameter: null,
+                        sweepNodeId: selected.id,
+                        sweepParameter: first[0],
+                        sweepStart: start,
+                        sweepStop: stop,
+                        sweepPoints: analysis.sweepPoints ?? 11,
                       })
-                      return
-                    }
-                    const [start, stop] = defaultSweepRange(first[0], first[1])
-                    update({
-                      sweepSecondNodeId: selected.id,
-                      sweepSecondParameter: first[0],
-                      sweepSecondStart: start,
-                      sweepSecondStop: stop,
-                      sweepSecondPoints: analysis.sweepSecondPoints ?? 5,
-                    })
-                  }}
-                >
-                  <option value="">Off (1-D)</option>
-                  {nodes
-                    .filter((node) => sweepableParameters(node).length > 0)
-                    .map((node) => (
-                      <option key={node.id} value={node.id}>
-                        {node.data.label}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              {secondSweepNode && secondSweepParameters.length > 0 && (
-                <>
-                  <label className="compact-field compact-select">
-                    <span>Second parameter</span>
-                    <select
-                      value={analysis.sweepSecondParameter ?? ''}
-                      onChange={(event) => {
-                        const nominal =
-                          secondSweepNode.data.parameters[event.target.value]
-                        if (typeof nominal !== 'number') return
-                        const [start, stop] = defaultSweepRange(
-                          event.target.value,
-                          nominal,
-                        )
-                        update({
-                          sweepSecondParameter: event.target.value,
-                          sweepSecondStart: start,
-                          sweepSecondStop: stop,
-                        })
-                      }}
-                    >
-                      {secondSweepParameters.map(([key]) => (
-                        <option key={key} value={key}>
-                          {key}
+                    }}
+                  >
+                    <option value="">Off</option>
+                    {nodes
+                      .filter((node) => sweepableParameters(node).length > 0)
+                      .map((node) => (
+                        <option key={node.id} value={node.id}>
+                          {node.data.label}
                         </option>
                       ))}
-                    </select>
-                  </label>
-                  <CompactNumberField
-                    label="Second start"
-                    step={0.1}
-                    value={analysis.sweepSecondStart ?? 0}
-                    onChange={(value) => update({ sweepSecondStart: value })}
-                  />
-                  <CompactNumberField
-                    label="Second stop"
-                    step={0.1}
-                    value={analysis.sweepSecondStop ?? 1}
-                    onChange={(value) => update({ sweepSecondStop: value })}
-                  />
-                  <CompactNumberField
-                    label="Second points"
-                    min={2}
-                    max={51}
-                    step={1}
-                    value={analysis.sweepSecondPoints ?? 5}
-                    onChange={(value) => update({ sweepSecondPoints: value })}
-                  />
-                </>
-              )}
-              <label className="compact-field compact-select">
-                <span>Objective</span>
-                <select
-                  value={`${analysis.sweepMetric ?? 's21Db'}:${analysis.sweepObjective ?? 'maximize'}`}
-                  onChange={(event) => {
-                    const [metric, objective] = event.target.value.split(':')
-                    update({
-                      sweepMetric: metric as RFAnalysisSettings['sweepMetric'],
-                      sweepObjective:
-                        objective as RFAnalysisSettings['sweepObjective'],
-                    })
-                  }}
-                >
-                  <option value="s21Db:maximize">Maximize S21</option>
-                  <option value="loadPowerDbm:maximize">
-                    Maximize load power
-                  </option>
-                  <option value="inputP1Dbm:maximize">
-                    Maximize input P1dB
-                  </option>
-                  <option value="noiseFigureDb:minimize">
-                    Minimize noise figure
-                  </option>
-                </select>
-              </label>
-            </>
-          )}
-          <label className="compact-field compact-select">
-            <span>Yield constraint</span>
-            <select
-              value={analysis.sweepConstraintMetric ?? ''}
-              onChange={(event) => {
-                const metric = event.target.value || null
-                update({
-                  sweepConstraintMetric:
-                    metric as RFAnalysisSettings['sweepConstraintMetric'],
-                  sweepConstraintDirection:
-                    metric === 'noiseFigureDb' ? 'maximum' : 'minimum',
-                  sweepConstraintValue: analysis.sweepConstraintValue ?? 0,
-                })
-              }}
+                  </Select>
+                  {sweepNode && sweepParameters.length > 0 && (
+                    <>
+                      <Select
+                        className="compact-field compact-select"
+                        id="sweep-parameter"
+                        labelText="Parameter"
+                        size="sm"
+                        value={analysis.sweepParameter ?? ''}
+                        onChange={(event) => {
+                          const nominal =
+                            sweepNode.data.parameters[event.target.value]
+                          if (typeof nominal !== 'number') return
+                          const [start, stop] = defaultSweepRange(
+                            event.target.value,
+                            nominal,
+                          )
+                          update({
+                            sweepParameter: event.target.value,
+                            sweepStart: start,
+                            sweepStop: stop,
+                          })
+                        }}
+                      >
+                        {sweepParameters.map(([key]) => (
+                          <option key={key} value={key}>
+                            {key}
+                          </option>
+                        ))}
+                      </Select>
+                      <CompactNumberField
+                        label="Sweep start"
+                        step={0.1}
+                        value={analysis.sweepStart ?? 0}
+                        onChange={(value) => update({ sweepStart: value })}
+                      />
+                      <CompactNumberField
+                        label="Sweep stop"
+                        step={0.1}
+                        value={analysis.sweepStop ?? 1}
+                        onChange={(value) => update({ sweepStop: value })}
+                      />
+                      <CompactNumberField
+                        label="Sweep points"
+                        min={2}
+                        max={101}
+                        step={1}
+                        value={analysis.sweepPoints ?? 11}
+                        onChange={(value) => update({ sweepPoints: value })}
+                      />
+                      <Select
+                        className="compact-field compact-select"
+                        id="second-sweep-block"
+                        labelText="Second block"
+                        size="sm"
+                        value={analysis.sweepSecondNodeId ?? ''}
+                        onChange={(event) => {
+                          const selected = nodes.find(
+                            (node) => node.id === event.target.value,
+                          )
+                          const first = selected
+                            ? sweepableParameters(selected)[0]
+                            : undefined
+                          if (!selected || !first) {
+                            update({
+                              sweepSecondNodeId: null,
+                              sweepSecondParameter: null,
+                            })
+                            return
+                          }
+                          const [start, stop] = defaultSweepRange(
+                            first[0],
+                            first[1],
+                          )
+                          update({
+                            sweepSecondNodeId: selected.id,
+                            sweepSecondParameter: first[0],
+                            sweepSecondStart: start,
+                            sweepSecondStop: stop,
+                            sweepSecondPoints: analysis.sweepSecondPoints ?? 5,
+                          })
+                        }}
+                      >
+                        <option value="">Off (1-D)</option>
+                        {nodes
+                          .filter(
+                            (node) => sweepableParameters(node).length > 0,
+                          )
+                          .map((node) => (
+                            <option key={node.id} value={node.id}>
+                              {node.data.label}
+                            </option>
+                          ))}
+                      </Select>
+                      {secondSweepNode && secondSweepParameters.length > 0 && (
+                        <>
+                          <Select
+                            className="compact-field compact-select"
+                            id="second-sweep-parameter"
+                            labelText="Second parameter"
+                            size="sm"
+                            value={analysis.sweepSecondParameter ?? ''}
+                            onChange={(event) => {
+                              const nominal =
+                                secondSweepNode.data.parameters[
+                                  event.target.value
+                                ]
+                              if (typeof nominal !== 'number') return
+                              const [start, stop] = defaultSweepRange(
+                                event.target.value,
+                                nominal,
+                              )
+                              update({
+                                sweepSecondParameter: event.target.value,
+                                sweepSecondStart: start,
+                                sweepSecondStop: stop,
+                              })
+                            }}
+                          >
+                            {secondSweepParameters.map(([key]) => (
+                              <option key={key} value={key}>
+                                {key}
+                              </option>
+                            ))}
+                          </Select>
+                          <CompactNumberField
+                            label="Second start"
+                            step={0.1}
+                            value={analysis.sweepSecondStart ?? 0}
+                            onChange={(value) =>
+                              update({ sweepSecondStart: value })
+                            }
+                          />
+                          <CompactNumberField
+                            label="Second stop"
+                            step={0.1}
+                            value={analysis.sweepSecondStop ?? 1}
+                            onChange={(value) =>
+                              update({ sweepSecondStop: value })
+                            }
+                          />
+                          <CompactNumberField
+                            label="Second points"
+                            min={2}
+                            max={51}
+                            step={1}
+                            value={analysis.sweepSecondPoints ?? 5}
+                            onChange={(value) =>
+                              update({ sweepSecondPoints: value })
+                            }
+                          />
+                        </>
+                      )}
+                      <Select
+                        className="compact-field compact-select"
+                        id="sweep-objective"
+                        labelText="Objective"
+                        size="sm"
+                        value={`${analysis.sweepMetric ?? 's21Db'}:${analysis.sweepObjective ?? 'maximize'}`}
+                        onChange={(event) => {
+                          const [metric, objective] =
+                            event.target.value.split(':')
+                          update({
+                            sweepMetric:
+                              metric as RFAnalysisSettings['sweepMetric'],
+                            sweepObjective:
+                              objective as RFAnalysisSettings['sweepObjective'],
+                          })
+                        }}
+                      >
+                        <option value="s21Db:maximize">Maximize S21</option>
+                        <option value="loadPowerDbm:maximize">
+                          Maximize load power
+                        </option>
+                        <option value="inputP1Dbm:maximize">
+                          Maximize input P1dB
+                        </option>
+                        <option value="noiseFigureDb:minimize">
+                          Minimize noise figure
+                        </option>
+                      </Select>
+                    </>
+                  )}
+                  <Select
+                    className="compact-field compact-select"
+                    id="yield-constraint"
+                    labelText="Yield constraint"
+                    size="sm"
+                    value={analysis.sweepConstraintMetric ?? ''}
+                    onChange={(event) => {
+                      const metric = event.target.value || null
+                      update({
+                        sweepConstraintMetric:
+                          metric as RFAnalysisSettings['sweepConstraintMetric'],
+                        sweepConstraintDirection:
+                          metric === 'noiseFigureDb' ? 'maximum' : 'minimum',
+                        sweepConstraintValue:
+                          analysis.sweepConstraintValue ?? 0,
+                      })
+                    }}
+                  >
+                    <option value="">None</option>
+                    <option value="s21Db">Minimum S21</option>
+                    <option value="loadPowerDbm">Minimum load power</option>
+                    <option value="inputP1Dbm">Minimum input P1dB</option>
+                    <option value="noiseFigureDb">Maximum noise figure</option>
+                  </Select>
+                  {analysis.sweepConstraintMetric && (
+                    <CompactNumberField
+                      label="Constraint value"
+                      step={0.1}
+                      value={analysis.sweepConstraintValue ?? 0}
+                      onChange={(value) =>
+                        update({ sweepConstraintValue: value })
+                      }
+                    />
+                  )}
+                </div>
+              </AccordionItem>
+            </Accordion>
+            {result && (
+              <Select
+                className="compact-field compact-select"
+                id="plot-frequency-unit"
+                labelText="Display"
+                size="sm"
+                value={frequencyUnit}
+                disabled={
+                  visibleResultView === 'nonlinear' ||
+                  visibleResultView === 'smith' ||
+                  visibleResultView === 'oscillator' ||
+                  visibleResultView === 'antenna'
+                }
+                onChange={(event) =>
+                  setFrequencyUnit(event.target.value as FrequencyUnit)
+                }
+              >
+                <option value="auto">Auto</option>
+                <option value="Hz">Hz</option>
+                <option value="kHz">kHz</option>
+                <option value="MHz">MHz</option>
+                <option value="GHz">GHz</option>
+              </Select>
+            )}
+            <Button
+              className="run-button"
+              data-action={status === 'running' ? 'cancel' : undefined}
+              kind={status === 'running' ? 'danger' : 'primary'}
+              size="sm"
+              type="button"
+              disabled={status !== 'running' && nodes.length === 0}
+              onClick={status === 'running' ? onCancel : onRun}
             >
-              <option value="">None</option>
-              <option value="s21Db">Minimum S21</option>
-              <option value="loadPowerDbm">Minimum load power</option>
-              <option value="inputP1Dbm">Minimum input P1dB</option>
-              <option value="noiseFigureDb">Maximum noise figure</option>
-            </select>
-          </label>
-          {analysis.sweepConstraintMetric && (
-            <CompactNumberField
-              label="Constraint value"
-              step={0.1}
-              value={analysis.sweepConstraintValue ?? 0}
-              onChange={(value) => update({ sweepConstraintValue: value })}
-            />
-          )}
-            </div>
-          </details>
-          {result && <label className="compact-field compact-select">
-            <span>Display</span>
-            <select
-              value={frequencyUnit}
-              disabled={
-                visibleResultView === 'nonlinear' ||
-                visibleResultView === 'smith' ||
-                visibleResultView === 'oscillator' ||
-                visibleResultView === 'antenna'
-              }
-              onChange={(event) =>
-                setFrequencyUnit(event.target.value as FrequencyUnit)
-              }
-              aria-label="Plot frequency unit"
+              {status === 'running' ? 'Cancel simulation' : 'Run simulation'}
+            </Button>
+            <Button
+              className="export-button"
+              kind="secondary"
+              size="sm"
+              type="button"
+              disabled={!result}
+              onClick={exportResults}
             >
-              <option value="auto">Auto</option>
-              <option value="Hz">Hz</option>
-              <option value="kHz">kHz</option>
-              <option value="MHz">MHz</option>
-              <option value="GHz">GHz</option>
-            </select>
-          </label>}
-          <button
-            className="run-button"
-            data-action={status === 'running' ? 'cancel' : undefined}
-            type="button"
-            disabled={status !== 'running' && nodes.length === 0}
-            onClick={status === 'running' ? onCancel : onRun}
-          >
-            {status === 'running' ? 'Cancel simulation' : 'Run simulation'}
-          </button>
-          <button
-            className="export-button"
-            type="button"
-            disabled={!result}
-            onClick={exportResults}
-          >
-            {visibleResultView === 'nonlinear'
-              ? 'Export power CSV'
-              : 'Export sweep CSV'}
-          </button>
+              {visibleResultView === 'nonlinear'
+                ? 'Export power CSV'
+                : 'Export sweep CSV'}
+            </Button>
+          </div>
         </div>
-      </div>
 
-      <div
-        id="analysis-tabpanel"
-        role="tabpanel"
-        aria-labelledby={`analysis-tab-${visibleResultView}`}
-        aria-live="polite"
-        tabIndex={0}
-      >
-        {status === 'error' && error && (
-          <div className="simulation-message simulation-message--error">
-            <strong>Simulation stopped</strong>
-            <p>{error}</p>
+        {result ? (
+          <TabPanels>
+            {resultTabs.map(({ view }) => (
+              <TabPanel key={view}>
+                {visibleResultView === view && (
+                  <SimulationSummary
+                    frequencyUnit={frequencyUnit}
+                    resultView={view}
+                    result={result}
+                  />
+                )}
+              </TabPanel>
+            ))}
+          </TabPanels>
+        ) : (
+          <div id="analysis-tabpanel" aria-live="polite">
+            {status === 'error' && error ? (
+              <InlineNotification
+                className="simulation-message"
+                hideCloseButton
+                kind="error"
+                lowContrast
+                title="Simulation stopped"
+                subtitle={error}
+              />
+            ) : (
+              <div className="results-empty">
+                <span className="results-empty__trace" aria-hidden="true" />
+                <div>
+                  <strong className="results-empty__title">
+                    {strings.resultsTitle}
+                  </strong>
+                  <p>{strings.resultsPlaceholder}</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
-        {status !== 'error' && result ? (
-          <SimulationSummary
-            frequencyUnit={frequencyUnit}
-            resultView={visibleResultView}
-            result={result}
-          />
-        ) : (
-          status !== 'error' && (
-            <div className="results-empty">
-              <span className="results-empty__trace" aria-hidden="true" />
-              <div>
-                <strong className="results-empty__title">
-                  {strings.resultsTitle}
-                </strong>
-                <p>{strings.resultsPlaceholder}</p>
-              </div>
-            </div>
-          )
-        )}
-      </div>
+      </Tabs>
     </section>
   )
 }
@@ -2697,9 +2730,14 @@ function NetworkParametersTable({ result }: { result: SimulationOutput }) {
   const conversion = safeTwoPortParameters(result, centerIndex)
   if (typeof conversion === 'string') {
     return (
-      <p className="simulation-message simulation-message--error">
-        {conversion}
-      </p>
+      <InlineNotification
+        className="simulation-message"
+        hideCloseButton
+        kind="error"
+        lowContrast
+        title="Parameter conversion unavailable"
+        subtitle={conversion}
+      />
     )
   }
   const parameters = conversion
@@ -2995,82 +3033,84 @@ function FrequencyPlanTable({ plan }: { plan: FrequencyPlanResult }) {
           </tbody>
         </table>
       </div>
-      <details className="spur-details">
-        <summary>Low-order mixing products at sweep center</summary>
-        <div className="budget-table-wrap">
-          <table>
-            <caption>
-              Default products through order 3 plus measured rows
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Mixer</th>
-                <th scope="col">Product</th>
-                <th scope="col">Formula</th>
-                <th scope="col">Order</th>
-                <th scope="col">Frequency</th>
-                <th scope="col">Relative level</th>
-                <th scope="col">Phase</th>
-                <th scope="col">Role</th>
-              </tr>
-            </thead>
-            <tbody>
-              {plan.stages.flatMap((stage) =>
-                stage.products.map((product) => (
-                  <tr key={`${stage.nodeId}-${product.formula}`}>
-                    <th scope="row">{stage.label}</th>
-                    <td>{product.label}</td>
-                    <td>{product.formula}</td>
-                    <td>{product.order}</td>
-                    <td>{formatFrequency(product.frequencyHz)}</td>
-                    <td>{formatBudgetValue(product.relativeLevelDb, 'dB')}</td>
-                    <td>
-                      {product.phaseDeg === null
-                        ? 'Unavailable'
-                        : `${product.phaseDeg.toFixed(2)}°`}
-                    </td>
-                    <td>{productKindLabel(product.kind)}</td>
-                  </tr>
-                )),
-              )}
-            </tbody>
-          </table>
-        </div>
-      </details>
-      <details className="spur-details">
-        <summary>
-          Propagated output spectrum ({plan.spectralLines.length} paths)
-        </summary>
-        <div className="budget-table-wrap">
-          <table>
-            <caption>
-              Measured/declared products propagated through every mixer
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Frequency</th>
-                <th scope="col">Power</th>
-                <th scope="col">Phase</th>
-                <th scope="col">Conversion path</th>
-              </tr>
-            </thead>
-            <tbody>
-              {plan.spectralLines.map((line, index) => (
-                <tr key={`${line.frequencyHz}-${index}`}>
-                  <td>{formatFrequency(line.frequencyHz)}</td>
-                  <td>{formatBudgetValue(line.powerDbm, 'dBm')}</td>
-                  <td>
-                    {line.phaseDeg === null
-                      ? 'Unavailable'
-                      : `${line.phaseDeg.toFixed(2)}°`}
-                  </td>
-                  <td>{line.path}</td>
+      <Accordion className="spur-details" size="sm">
+        <AccordionItem title="Low-order mixing products at sweep center">
+          <div className="budget-table-wrap">
+            <table>
+              <caption>
+                Default products through order 3 plus measured rows
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Mixer</th>
+                  <th scope="col">Product</th>
+                  <th scope="col">Formula</th>
+                  <th scope="col">Order</th>
+                  <th scope="col">Frequency</th>
+                  <th scope="col">Relative level</th>
+                  <th scope="col">Phase</th>
+                  <th scope="col">Role</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </details>
+              </thead>
+              <tbody>
+                {plan.stages.flatMap((stage) =>
+                  stage.products.map((product) => (
+                    <tr key={`${stage.nodeId}-${product.formula}`}>
+                      <th scope="row">{stage.label}</th>
+                      <td>{product.label}</td>
+                      <td>{product.formula}</td>
+                      <td>{product.order}</td>
+                      <td>{formatFrequency(product.frequencyHz)}</td>
+                      <td>
+                        {formatBudgetValue(product.relativeLevelDb, 'dB')}
+                      </td>
+                      <td>
+                        {product.phaseDeg === null
+                          ? 'Unavailable'
+                          : `${product.phaseDeg.toFixed(2)}°`}
+                      </td>
+                      <td>{productKindLabel(product.kind)}</td>
+                    </tr>
+                  )),
+                )}
+              </tbody>
+            </table>
+          </div>
+        </AccordionItem>
+        <AccordionItem
+          title={`Propagated output spectrum (${plan.spectralLines.length} paths)`}
+        >
+          <div className="budget-table-wrap">
+            <table>
+              <caption>
+                Measured/declared products propagated through every mixer
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Frequency</th>
+                  <th scope="col">Power</th>
+                  <th scope="col">Phase</th>
+                  <th scope="col">Conversion path</th>
+                </tr>
+              </thead>
+              <tbody>
+                {plan.spectralLines.map((line, index) => (
+                  <tr key={`${line.frequencyHz}-${index}`}>
+                    <td>{formatFrequency(line.frequencyHz)}</td>
+                    <td>{formatBudgetValue(line.powerDbm, 'dBm')}</td>
+                    <td>
+                      {line.phaseDeg === null
+                        ? 'Unavailable'
+                        : `${line.phaseDeg.toFixed(2)}°`}
+                    </td>
+                    <td>{line.path}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </AccordionItem>
+      </Accordion>
       <p className="budget-assumption">
         Product frequencies use |m·fIN + n·fLO|. Rejection and isolation are
         declared or measured metadata; absent spur amplitudes are not inferred.
@@ -3096,25 +3136,25 @@ function CompactNumberField({
   step: number
   onChange: (value: number) => void
 }) {
+  const id = useId()
   return (
-    <label className="compact-field">
-      <span>{label}</span>
-      <span>
-        <input
-          type="number"
-          value={value}
-          min={min}
-          max={max}
-          step={step}
-          onChange={(event) => {
-            if (Number.isFinite(event.target.valueAsNumber)) {
-              onChange(event.target.valueAsNumber)
-            }
-          }}
-        />
-        {unit && <small>{unit}</small>}
-      </span>
-    </label>
+    <NumberInput
+      className="compact-field"
+      decorator={unit ? <span className="field-unit">{unit}</span> : undefined}
+      hideSteppers
+      iconDescription={`Adjust ${label}`}
+      id={id}
+      label={label}
+      max={max}
+      min={min}
+      size="sm"
+      step={step}
+      value={value}
+      onChange={(_, { value: nextValue }) => {
+        const parsed = Number(nextValue)
+        if (Number.isFinite(parsed)) onChange(parsed)
+      }}
+    />
   )
 }
 
