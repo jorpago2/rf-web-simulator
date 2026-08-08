@@ -110,6 +110,7 @@ test('implements the result-first scientific workbench contract', async () => {
   assert.match(app, /if \(activeTool === tool\)/)
   assert.match(app, /workflowTriggerRefs\.current\[activeTool\]/)
   assert.match(app, /<RFCanvas \/>/)
+  assert.match(app, /<Tab>Schematic<\/Tab>[\s\S]*<Tab>Results<\/Tab>/)
   assert.match(app, /selectedNodeId[\s\S]*<PropertiesPanel \/>/)
   assert.match(components, /createPortal\([\s\S]*analysisControlsHost/)
 })

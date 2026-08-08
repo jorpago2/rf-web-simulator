@@ -7,6 +7,11 @@ import {
   Header,
   Link,
   SkipToContent,
+  Tab,
+  TabList,
+  TabPanel,
+  TabPanels,
+  Tabs,
   Toggletip,
   ToggletipButton,
   ToggletipContent,
@@ -112,6 +117,7 @@ export default function App() {
     Partial<Record<WorkflowTool, HTMLButtonElement>>
   >({})
   const [activeTool, setActiveTool] = useState<WorkflowTool | null>(null)
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState(0)
   const [analysisControlsHost, setAnalysisControlsHost] =
     useState<HTMLDivElement | null>(null)
   const [persistenceReady, setPersistenceReady] = useState(false)
@@ -137,6 +143,8 @@ export default function App() {
       closeActiveTool()
       return
     }
+    if (tool === 'components' || tool === 'canvas') setActiveWorkspaceTab(0)
+    if (tool === 'review') setActiveWorkspaceTab(1)
     setActiveTool(tool)
   }
 
@@ -230,6 +238,7 @@ export default function App() {
       setResult(output)
       setResultRevision(requestedRevision)
       setStatus('success')
+      setActiveWorkspaceTab(1)
     } catch (simulationError) {
       if (
         simulationError instanceof DOMException &&
@@ -242,6 +251,7 @@ export default function App() {
       setResultRevision(null)
       setError(errorText(simulationError))
       setStatus('error')
+      setActiveWorkspaceTab(1)
     } finally {
       if (simulationAbortRef.current === controller) {
         simulationAbortRef.current = null
@@ -547,51 +557,79 @@ export default function App() {
                 </WorkflowPanel>
               )}
             </div>
-            <section
-              id="rf-canvas"
-              className="canvas-panel"
-              aria-labelledby="canvas-title"
-            >
-              <div className="canvas-toolbar">
-                <div>
-                  <h2 id="canvas-title">{strings.canvasTitle}</h2>
-                </div>
-                <IconIndicator
-                  className="status-chip"
-                  kind={STATUS_INDICATOR_KIND[visibleStatus]}
-                  label={statusText}
-                />
-              </div>
-              <div className="canvas-wrap">
-                <RFCanvas />
-                {nodes.length === 0 && (
-                  <div className="canvas-empty">
-                    <strong>Start with a block</strong>
-                    <p>Add components from the library or load a template.</p>
-                  </div>
-                )}
-              </div>
-            </section>
+            <div className="workbench-deck">
+              <Tabs
+                selectedIndex={activeWorkspaceTab}
+                onChange={({ selectedIndex }) =>
+                  setActiveWorkspaceTab(selectedIndex)
+                }
+              >
+                <TabList
+                  activation="automatic"
+                  aria-label="Workbench view"
+                  className="workbench-view-tabs"
+                  contained
+                  fullWidth
+                  size="sm"
+                >
+                  <Tab>Schematic</Tab>
+                  <Tab>Results</Tab>
+                </TabList>
+                <TabPanels>
+                  <TabPanel className="workbench-tab-panel">
+                    <section
+                      id="rf-canvas"
+                      className="canvas-panel"
+                      aria-labelledby="canvas-title"
+                    >
+                      <div className="canvas-toolbar">
+                        <div>
+                          <h2 id="canvas-title">{strings.canvasTitle}</h2>
+                        </div>
+                        <IconIndicator
+                          className="status-chip"
+                          kind={STATUS_INDICATOR_KIND[visibleStatus]}
+                          label={statusText}
+                        />
+                      </div>
+                      <div className="canvas-wrap">
+                        <RFCanvas />
+                        {nodes.length === 0 && (
+                          <div className="canvas-empty">
+                            <strong>Start with a block</strong>
+                            <p>
+                              Add components from the library or load a
+                              template.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </section>
+                  </TabPanel>
+                  <TabPanel className="workbench-tab-panel workbench-tab-panel--results">
+                    <Suspense fallback={null}>
+                      <SimulationPanel
+                        analysis={analysis}
+                        analysisControlsHost={analysisControlsHost}
+                        nodes={nodes}
+                        error={status === 'error' ? error : null}
+                        onAnalysisChange={updateAnalysis}
+                        onCancel={cancelSimulation}
+                        onRun={runSimulation}
+                        onExport={(fileName) =>
+                          setPersistenceMessage(`Exported ${fileName}`)
+                        }
+                        projectName={project.name}
+                        result={visibleResult}
+                        status={visibleStatus}
+                      />
+                    </Suspense>
+                  </TabPanel>
+                </TabPanels>
+              </Tabs>
+            </div>
             <Suspense fallback={null}>
               <PropertiesPanel />
-            </Suspense>
-
-            <Suspense fallback={null}>
-              <SimulationPanel
-                analysis={analysis}
-                analysisControlsHost={analysisControlsHost}
-                nodes={nodes}
-                error={status === 'error' ? error : null}
-                onAnalysisChange={updateAnalysis}
-                onCancel={cancelSimulation}
-                onRun={runSimulation}
-                onExport={(fileName) =>
-                  setPersistenceMessage(`Exported ${fileName}`)
-                }
-                projectName={project.name}
-                result={visibleResult}
-                status={visibleStatus}
-              />
             </Suspense>
             <footer className="status-strip" aria-label="Scientific status">
               <span>{nodes.length} blocks</span>
