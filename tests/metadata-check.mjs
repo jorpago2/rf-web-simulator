@@ -61,8 +61,8 @@ test('uses the Carbon UI contract', async () => {
     new globalThis.URL('../src/carbon.scss', import.meta.url),
     'utf8',
   )
-  const tokens = await readFile(
-    new globalThis.URL('../tokens.css', import.meta.url),
+  const packageJson = await readFile(
+    new globalThis.URL('../package.json', import.meta.url),
     'utf8',
   )
   const html = await readFile(
@@ -71,14 +71,19 @@ test('uses the Carbon UI contract', async () => {
   )
   assert.match(carbon, /@use ["']@carbon\/react["']/)
   assert.doesNotMatch(styles, /tailwindcss|@theme inline/)
+  assert.doesNotMatch(
+    styles,
+    /@import|var\(--(?:font|space|text|rule|ease|dur|z)-/,
+  )
   assert.doesNotMatch(html, /fonts\.googleapis|fonts\.gstatic/)
+  assert.doesNotMatch(packageJson, /storybook/i)
   assert.doesNotMatch(styles, /\.cds--/)
   assert.doesNotMatch(
     styles,
     /--(?:ink|muted|line|panel|canvas|page|teal|orange|danger|good|bad|radius|shadow):/,
   )
   assert.doesNotMatch(
-    tokens,
+    carbon,
     /oklch\(|Space Grotesk|--color-|--radius-|--shadow-/,
   )
   assert.doesNotMatch(

@@ -2,6 +2,7 @@
   $font-path: '@ibm/plex'
 );
 @use '@carbon/react/scss/theme' as theme;
+@use '@carbon/react/scss/spacing' as spacing;
 
 /*
  * Carbon's React styles resolve color tokens at build time. Expose the subset
@@ -9,6 +10,22 @@
  * SVG and canvas styles never depend on invalid or inherited CSS values.
  */
 :root {
+  --rf-font-display: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  --rf-font-body: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  --rf-font-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+  --rf-space-2xs: #{spacing.$spacing-02};
+  --rf-space-xs: #{spacing.$spacing-03};
+  --rf-space-sm: #{spacing.$spacing-04};
+  --rf-space-md: #{spacing.$spacing-05};
+  --rf-space-lg: #{spacing.$spacing-06};
+  --rf-type-xs: 0.75rem;
+  --rf-type-sm: 0.875rem;
+  --rf-type-base: 1rem;
+  --rf-type-lg: 1.25rem;
+  --rf-rule-hairline: 1px solid var(--cds-border-subtle);
+  --rf-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --rf-duration-micro: 120ms;
+  --rf-z-sticky: 200;
   --rf-background: #{theme.$background};
   --rf-focus: #{theme.$focus};
   --rf-interactive: #{theme.$interactive};
