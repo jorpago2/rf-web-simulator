@@ -238,7 +238,7 @@ h2 {
   --left-panel-width: 0px;
   --right-panel-width: 0px;
   grid-template-columns:
-    128px var(--left-panel-width) var(--rf-space-md) minmax(440px, 1fr)
+    var(--scientific-ui-rail-compact-inline-size) var(--left-panel-width) var(--rf-space-md) minmax(440px, 1fr)
     var(--right-panel-width);
   grid-template-rows: minmax(0, 1fr) 32px;
   column-gap: 0;
@@ -263,41 +263,11 @@ h2 {
 .tool-rail {
   grid-column: 1;
   grid-row: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
   padding: 0;
-  border: 0;
-  border-right: var(--rf-rule-hairline);
-  background: var(--cds-layer);
-}
-
-.tool-rail__button {
-  width: 100%;
-  min-height: 64px;
-  min-width: 0;
-  flex-direction: column-reverse;
-  gap: var(--rf-space-2xs);
-  justify-content: center;
-  padding: var(--rf-space-xs);
-  border-left: 3px solid transparent;
-  font-size: var(--rf-type-xs);
-  white-space: nowrap;
 }
 
 .suite-link__icon {
   margin-left: var(--rf-space-2xs);
-}
-
-.tool-rail__button[aria-expanded='true'] {
-  border-left-color: var(--rf-focus);
-  background: var(--rf-layer-selected-01);
-}
-
-.tool-rail__icon {
-  position: static;
-  flex: 0 0 auto;
-  margin: 0;
 }
 
 .tool-panel-slot {
@@ -350,6 +320,14 @@ h2 {
   display: grid;
   gap: var(--rf-space-md);
   padding-top: var(--rf-space-md);
+}
+
+@media (min-width: 66rem) {
+  .workspace {
+    grid-template-columns:
+      var(--scientific-ui-rail-inline-size) var(--left-panel-width) var(--rf-space-md) minmax(440px, 1fr)
+      var(--right-panel-width);
+  }
 }
 
 .workflow-summary {
@@ -1316,7 +1294,7 @@ h2 {
 @media (max-width: 1100px) {
   .workspace {
     grid-template-columns:
-      96px var(--left-panel-width) var(--rf-space-sm) minmax(380px, 1fr)
+      var(--scientific-ui-rail-inline-size) var(--left-panel-width) var(--rf-space-sm) minmax(380px, 1fr)
       var(--right-panel-width);
   }
 
@@ -1334,8 +1312,20 @@ h2 {
     top: 64px;
     right: 0;
     bottom: 0;
-    width: min(320px, calc(100% - 96px));
+    width: min(320px, calc(100% - var(--scientific-ui-rail-inline-size)));
     overflow-y: auto;
+  }
+}
+
+@media (max-width: 65.99rem) {
+  .workspace {
+    grid-template-columns:
+      var(--scientific-ui-rail-compact-inline-size) var(--left-panel-width) var(--rf-space-sm) minmax(380px, 1fr)
+      var(--right-panel-width);
+  }
+
+  .properties {
+    width: min(320px, calc(100% - var(--scientific-ui-rail-compact-inline-size)));
   }
 }
 
@@ -1508,20 +1498,34 @@ h2 {
     right: 0;
     bottom: 0;
     left: 0;
-    min-height: 64px;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    border: 0;
-    border-top: var(--rf-rule-hairline);
+    inline-size: 100%;
+    block-size: 64px;
   }
 
-  .tool-rail__button {
-    width: auto;
-    min-width: 0;
-    flex: 1;
-    min-height: 56px;
-    padding: var(--rf-space-2xs);
+  .tool-rail ul {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+  }
+
+  .tool-rail .scientific-tool-rail__item {
+    block-size: 100%;
+    flex-direction: column;
+    border-inline-start: 0;
+    border-block-start: var(--scientific-ui-active-indicator-size) solid transparent;
+  }
+
+  .tool-rail .scientific-tool-rail__item.is-active,
+  .tool-rail .scientific-tool-rail__item[aria-expanded='true'] {
+    border-block-start-color: var(--scientific-ui-link);
+  }
+
+  .tool-rail .scientific-tool-rail__label {
+    position: static;
+    inline-size: auto;
+    block-size: auto;
+    clip: auto;
+    clip-path: none;
   }
 
   .tool-panel-slot {

@@ -129,7 +129,11 @@ test('implements the result-first scientific workbench contract', async () => {
   for (const task of ['components', 'canvas', 'experiment', 'review']) {
     assert.match(app, new RegExp(`id: '${task}'`))
   }
-  assert.match(app, /activeTool === tool\.id/)
+  assert.match(app, /<ScientificToolRail/)
+  assert.match(app, /activeId=\{activeTool\}/)
+  assert.match(app, /onChange=\{\(id\) => id === null \? closeActiveTool\(\) : toggleTool/)
+  assert.match(app, /items=\{WORKFLOW_TOOLS\.map/)
+  assert.match(app, /controlsId: ["']workflow-panel["']/)
   assert.match(app, /if \(activeTool === tool\)/)
   assert.match(app, /workflowTriggerRefs\.current\[activeTool\]/)
   assert.match(app, /<RFCanvas \/>/)

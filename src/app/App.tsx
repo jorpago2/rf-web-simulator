@@ -36,7 +36,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { ScientificStatusBar } from '@jorpago2/scientific-ui'
+import { ScientificStatusBar, ScientificToolRail } from '@jorpago2/scientific-ui'
 import type { SimulationStatus } from '../components'
 import { RFCanvas } from '../diagram/RFCanvas'
 import type { RFProject, SimulationOutput } from '../engine/types'
@@ -480,30 +480,19 @@ export default function App() {
                 subtitle={workspaceNotice}
               />
             )}
-            <nav className="tool-rail" aria-label="RF workbench tools">
-              {WORKFLOW_TOOLS.map((tool) => {
-                const ToolIcon = tool.icon
-                return (
-                  <Button
-                    aria-controls="workflow-panel"
-                    aria-expanded={activeTool === tool.id}
-                    className="tool-rail__button"
-                    isSelected={activeTool === tool.id}
-                    kind="ghost"
-                    key={tool.id}
-                    ref={(node: HTMLButtonElement | null) => {
-                      workflowTriggerRefs.current[tool.id] = node ?? undefined
-                    }}
-                    size="sm"
-                    type="button"
-                    onClick={() => toggleTool(tool.id)}
-                  >
-                    <ToolIcon className="tool-rail__icon" aria-hidden="true" />
-                    <span>{tool.label}</span>
-                  </Button>
-                )
-              })}
-            </nav>
+            <ScientificToolRail
+              className="tool-rail"
+              label="RF workbench tools"
+              activeId={activeTool}
+              onChange={(id) => id === null ? closeActiveTool() : toggleTool(id as WorkflowTool)}
+              registerItemRef={(id, node) => { workflowTriggerRefs.current[id as WorkflowTool] = node ?? undefined }}
+              items={WORKFLOW_TOOLS.map(({ id, label, icon: ToolIcon }) => ({
+                id,
+                label,
+                icon: <ToolIcon size={20} />,
+                controlsId: "workflow-panel",
+              }))}
+            />
             <div
               className={`tool-panel-slot${activeTool ? '' : ' tool-panel-slot--closed'}`}
             >
