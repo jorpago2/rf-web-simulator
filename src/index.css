@@ -44,11 +44,6 @@
   border-radius: 0;
   background: var(--cds-layer);
 }
-.block-library,
-.properties {
-  padding: 1rem;
-}
-
 html,
 body,
 #root {
@@ -269,9 +264,6 @@ h2 {
 
 .workflow-panel {
   height: 100%;
-  overflow-y: auto;
-  padding: var(--rf-space-md);
-  scrollbar-gutter: stable;
 }
 
 .workflow-panel__header {
@@ -294,7 +286,6 @@ h2 {
 .workflow-panel__body {
   display: grid;
   gap: var(--rf-space-md);
-  padding-top: var(--rf-space-md);
 }
 
 @media (min-width: 66rem) {
@@ -420,10 +411,6 @@ h2 {
   border: 0;
 }
 
-.panel__heading {
-  margin-bottom: var(--rf-space-md);
-}
-
 .panel__heading h2,
 .canvas-toolbar h2 {
   color: var(--rf-text-primary);
@@ -461,11 +448,6 @@ h2 {
   color: var(--rf-text-secondary);
   font-size: var(--rf-type-sm);
   line-height: 1.5;
-}
-
-.block-library {
-  overflow-y: auto;
-  scrollbar-gutter: stable;
 }
 
 .block-card {
@@ -699,10 +681,6 @@ h2 {
   height: 9px;
   border: 2px solid var(--cds-layer);
   background: var(--rf-interactive);
-}
-
-.properties {
-  overflow-y: auto;
 }
 
 .empty-state {
@@ -1469,10 +1447,6 @@ h2 {
   .tool-panel-slot > .panel,
   .workflow-panel {
     height: 100%;
-  }
-
-  .block-library {
-    overflow-y: auto;
   }
 
   .block-list {

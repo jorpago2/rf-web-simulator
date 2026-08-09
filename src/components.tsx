@@ -138,14 +138,14 @@ export function BlockLibrary({
   return (
     <aside
       id="workflow-panel"
-      className={`panel block-library${open ? '' : ' block-library--closed'}`}
+      className={`panel block-library scientific-task-panel scientific-task-panel--managed${open ? '' : ' block-library--closed'}`}
       aria-hidden={!open}
       aria-labelledby={open ? 'library-title' : undefined}
     >
       {open && (
         <>
-          <div className="workflow-panel__header">
-            <div className="panel__heading">
+          <div className="workflow-panel__header scientific-task-panel__header">
+            <div className="panel__heading scientific-task-panel__heading">
               <h2 id="library-title">{strings.libraryTitle}</h2>
               <p>{strings.libraryHint}</p>
             </div>
@@ -159,6 +159,7 @@ export function BlockLibrary({
               Close
             </Button>
           </div>
+          <div className="block-library__body scientific-task-panel__body">
           <div className="block-library__filters">
             <TextInput
               id="component-search"
@@ -217,6 +218,7 @@ export function BlockLibrary({
                 No components match this search.
               </p>
             )}
+          </div>
           </div>
         </>
       )}
@@ -443,11 +445,11 @@ export function PropertiesPanel() {
   return (
     <aside
       id="rf-properties"
-      className="panel properties"
+      className="panel properties scientific-task-panel scientific-task-panel--managed"
       aria-labelledby="properties-title"
     >
-      <div className="workflow-panel__header">
-        <div className="panel__heading">
+      <div className="workflow-panel__header scientific-task-panel__header">
+        <div className="panel__heading scientific-task-panel__heading">
           <h2 id="properties-title">{strings.propertiesTitle}</h2>
           <p>{node.data.label}</p>
         </div>
@@ -461,6 +463,7 @@ export function PropertiesPanel() {
           Close
         </Button>
       </div>
+      <div className="properties__body scientific-task-panel__body">
       <TextInput
         className="field"
         id={`block-name-${node.id}`}
@@ -1569,6 +1572,7 @@ export function PropertiesPanel() {
       >
         Delete block
       </Button>
+      </div>
     </aside>
   )
 }

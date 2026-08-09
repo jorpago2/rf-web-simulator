@@ -4,7 +4,6 @@ import {
   Column,
   Content,
   Grid,
-  Header,
   InlineNotification,
   Link,
   SkipToContent,
@@ -36,7 +35,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { ScientificStatusBar, ScientificToolRail } from '@jorpago2/scientific-ui'
+import { ScientificHeader, ScientificStatusBar, ScientificToolRail } from '@jorpago2/scientific-ui'
 import type { SimulationStatus } from '../components'
 import { RFCanvas } from '../diagram/RFCanvas'
 import type { RFProject, SimulationOutput } from '../engine/types'
@@ -361,20 +360,14 @@ export default function App() {
     <ReactFlowProvider>
       <Grid fullWidth condensed className="app-shell">
         <Column sm={4} md={8} lg={16} className="app-shell-column">
-          <SkipToContent href="#rf-workspace">
-            Skip to RF workspace
-          </SkipToContent>
-          <Header className="scientific-header scientific-app-header" aria-label="RF Network Simulator">
-            <div className="scientific-header__brand scientific-app-header__brand">
-              <div className="scientific-app-header__brand-mark" aria-hidden="true">
-                RF
-              </div>
-              <div className="scientific-header__brand-copy">
-                <strong>{strings.appName}</strong>
-                <small>RF network workbench · {strings.version}</small>
-              </div>
-            </div>
-            <div className="scientific-header__context scientific-app-header__context"><Suspense fallback={<span aria-label="Loading project controls" />}>
+          <ScientificHeader
+            aria-label="RF Network Simulator"
+            product={strings.appName}
+            productMark="RF"
+            descriptor={`RF network workbench · ${strings.version}`}
+            href="./"
+            skipLink={<SkipToContent href="#rf-workspace">Skip to RF workspace</SkipToContent>}
+            context={<Suspense fallback={<span aria-label="Loading project controls" />}>
               <ProjectToolbar
                 message={persistenceMessage}
                 onExport={exportProject}
@@ -414,10 +407,8 @@ export default function App() {
                 selectedProjectId={selectedProjectId}
                 status={persistenceStatus}
               />
-            </Suspense></div>
-            <div className="scientific-header__actions scientific-app-header__actions">
-            <div className="scientific-header__primary-action">
-            <Toggletip align="bottom-start" className="app-help">
+            </Suspense>}
+            primaryAction={<Toggletip align="bottom-start" className="app-help">
               <ToggletipButton
                 as={Button}
                 aria-keyshortcuts="?"
@@ -455,10 +446,8 @@ export default function App() {
                   </div>
                 </dl>
               </ToggletipContent>
-            </Toggletip>
-            </div>
-            <div className="scientific-header__secondary-actions">
-            <Link
+            </Toggletip>}
+            secondaryActions={<Link
               className="suite-link"
               href="https://jorpago2.github.io/"
               aria-label="Online Simulators & Tools"
@@ -466,10 +455,8 @@ export default function App() {
             >
               <span className="suite-link__label">All tools</span>
               <Launch className="suite-link__icon" aria-hidden="true" />
-            </Link>
-            </div>
-            </div>
-          </Header>
+            </Link>}
+          />
 
           <Content
             id="rf-workspace"
@@ -610,7 +597,7 @@ export default function App() {
                 </WorkflowPanel>
               )}
             </div>
-            <div className="workbench-deck">
+            <div className="workbench-deck scientific-stage">
               <Tabs
                 selectedIndex={activeWorkspaceTab}
                 onChange={({ selectedIndex }) =>
@@ -632,10 +619,10 @@ export default function App() {
                   <TabPanel className="workbench-tab-panel">
                     <section
                       id="rf-canvas"
-                      className="canvas-panel"
+                      className="canvas-panel scientific-stage"
                       aria-labelledby="canvas-title"
                     >
-                      <div className="canvas-toolbar">
+                      <div className="canvas-toolbar scientific-stage__header">
                         <div>
                           <h2 id="canvas-title">{strings.canvasTitle}</h2>
                         </div>
@@ -719,11 +706,11 @@ function WorkflowPanel({
   return (
     <aside
       id="workflow-panel"
-      className="panel workflow-panel"
+      className="panel workflow-panel scientific-task-panel scientific-task-panel--managed"
       aria-labelledby="workflow-panel-title"
     >
-      <div className="workflow-panel__header">
-        <div className="panel__heading">
+      <div className="workflow-panel__header scientific-task-panel__header">
+        <div className="panel__heading scientific-task-panel__heading">
           <h2 id="workflow-panel-title">{title}</h2>
           <p>{description}</p>
         </div>
@@ -737,7 +724,7 @@ function WorkflowPanel({
           Close
         </Button>
       </div>
-      <div className="workflow-panel__body">{children}</div>
+      <div className="workflow-panel__body scientific-task-panel__body">{children}</div>
     </aside>
   )
 }
