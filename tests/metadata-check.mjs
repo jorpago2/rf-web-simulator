@@ -91,8 +91,9 @@ test('uses the Carbon UI contract', async () => {
     /(?:button|input|select|a):focus-visible|results-empty__trace|\.(?:warning-list|budget-warnings)\b/,
   )
   assert.match(app, /<Grid fullWidth/)
+  assert.match(app, /<ScientificHeader\b/)
+  assert.match(app, /<ScientificStatusBar\b/)
   for (const component of [
-    'Header',
     'Content',
     'SkipToContent',
     'Link',
