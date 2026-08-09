@@ -1404,7 +1404,7 @@ h2 {
   }
 }
 
-@media (max-width: 48rem) {
+@media (max-width: 65.99rem) {
   :root {
     --mobile-header-height: 64px;
   }
