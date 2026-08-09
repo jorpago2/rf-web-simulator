@@ -5,6 +5,8 @@ import '@xyflow/react/dist/style.css'
 import './carbon.scss'
 import './index.css'
 import '@jorpago2/scientific-ui/styles.css'
+
+document.documentElement.classList.add('cds--g10')
 import App from './app/App'
 
 const root = document.getElementById('root')

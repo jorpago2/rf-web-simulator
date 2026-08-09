@@ -57,6 +57,7 @@ export function ProjectToolbar({
       <TextInput
         className="project-name-field"
         id="project-name"
+        hideLabel
         labelText="Project"
         maxLength={200}
         size="sm"

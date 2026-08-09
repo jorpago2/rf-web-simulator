@@ -364,17 +364,17 @@ export default function App() {
           <SkipToContent href="#rf-workspace">
             Skip to RF workspace
           </SkipToContent>
-          <Header className="app-header scientific-app-header" aria-label="RF Network Simulator">
-            <div className="app-brand">
-              <div className="brand-mark scientific-app-header__brand-mark" aria-hidden="true">
+          <Header className="scientific-header scientific-app-header" aria-label="RF Network Simulator">
+            <div className="scientific-header__brand scientific-app-header__brand">
+              <div className="scientific-app-header__brand-mark" aria-hidden="true">
                 RF
               </div>
-              <div className="app-identity">
-                <h1>{strings.appName}</h1>
-                <p>RF network workbench · {strings.version}</p>
+              <div className="scientific-header__brand-copy">
+                <strong>{strings.appName}</strong>
+                <small>RF network workbench · {strings.version}</small>
               </div>
             </div>
-            <Suspense fallback={<span aria-label="Loading project controls" />}>
+            <div className="scientific-header__context scientific-app-header__context"><Suspense fallback={<span aria-label="Loading project controls" />}>
               <ProjectToolbar
                 message={persistenceMessage}
                 onExport={exportProject}
@@ -414,8 +414,9 @@ export default function App() {
                 selectedProjectId={selectedProjectId}
                 status={persistenceStatus}
               />
-            </Suspense>
-            <div className="app-header-actions">
+            </Suspense></div>
+            <div className="scientific-header__actions scientific-app-header__actions">
+            <div className="scientific-header__primary-action">
             <Toggletip align="bottom-start" className="app-help">
               <ToggletipButton
                 as={Button}
@@ -455,6 +456,8 @@ export default function App() {
                 </dl>
               </ToggletipContent>
             </Toggletip>
+            </div>
+            <div className="scientific-header__secondary-actions">
             <Link
               className="suite-link"
               href="https://jorpago2.github.io/"
@@ -464,6 +467,7 @@ export default function App() {
               <span className="suite-link__label">All tools</span>
               <Launch className="suite-link__icon" aria-hidden="true" />
             </Link>
+            </div>
             </div>
           </Header>
 

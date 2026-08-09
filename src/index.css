@@ -26,26 +26,6 @@
   max-width: none;
   padding: 0;
 }
-.app-header {
-  position: static;
-  width: auto;
-  height: var(--rf-header-height);
-  min-height: var(--rf-header-height);
-  display: grid;
-  grid-template-columns: minmax(max-content, 1fr) minmax(18rem, 36rem) minmax(max-content, 1fr);
-  align-items: center;
-  gap: var(--rf-space-xs);
-  padding: 0 var(--rf-space-md);
-  background: var(--cds-layer);
-}
-.app-brand,
-.app-header-actions {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-}
-.app-brand { gap: var(--rf-space-sm); }
-.app-header-actions { justify-self: end; }
 .workspace {
   height: calc(100svh - var(--rf-header-height));
   min-height: 0;
@@ -116,10 +96,6 @@ h2 {
   letter-spacing: -0.01em;
 }
 
-.app-header {
-  border-bottom: var(--rf-rule-hairline);
-}
-
 .app-help {
   flex: 0 0 auto;
 }
@@ -163,23 +139,6 @@ h2 {
   border-radius: 0;
   background: var(--rf-layer-accent-01);
   font: 700 var(--rf-type-xs) var(--rf-font-display);
-}
-
-.app-identity p {
-  margin-top: var(--rf-space-2xs);
-  color: var(--rf-text-secondary);
-  font-family: var(--rf-font-display);
-  font-size: 0.6875rem;
-  letter-spacing: 0.035em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.app-identity h1,
-.app-identity p {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .project-toolbar {
@@ -1346,14 +1305,6 @@ h2 {
 }
 
 @media (max-width: 980px) {
-  .app-header {
-    height: var(--rf-header-height);
-    grid-template-columns: 80px minmax(0, 1fr) 80px;
-    grid-template-rows: var(--rf-header-height);
-    gap: var(--rf-space-2xs);
-  }
-
-  .app-identity,
   .save-state {
     display: none;
   }
@@ -1363,8 +1314,6 @@ h2 {
     grid-column: 2;
     justify-content: stretch;
   }
-
-  .app-header-actions { grid-column: 3; }
 
   .project-name-field {
     min-width: 0;
@@ -1424,27 +1373,6 @@ h2 {
     width: 44px;
     height: 44px;
   }
-
-  .app-header {
-    height: var(--mobile-header-height);
-    align-items: center;
-    grid-template-columns: 80px minmax(0, 1fr) 80px;
-    grid-template-rows: var(--mobile-header-height);
-    gap: var(--rf-space-2xs);
-    padding: 0 var(--rf-space-sm);
-  }
-
-  .brand-mark {
-    width: 32px;
-    height: 32px;
-  }
-
-  .app-identity {
-    display: none;
-  }
-
-  .app-brand { display: contents; }
-  .app-header-actions { grid-column: 3; }
 
   .project-toolbar {
     position: static;
