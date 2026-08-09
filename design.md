@@ -1,5 +1,9 @@
 # Design — RF Network Simulator
 
+## Shared contract (normative)
+
+This application consumes `@jorpago2/scientific-ui` and follows the [shared interface contract](https://github.com/jorpago2/jorpago2.github.io/blob/main/docs/interface-contract.md). Local rules below document only RF canvas, Plotly and solver-specific exceptions.
+
 A locked design system for the RF workbench. Interface changes must preserve
 the scientific canvas, simulation behavior, and project data model.
 

@@ -17,6 +17,9 @@ importers:
       '@ibm/plex':
         specifier: 6.4.1
         version: 6.4.1
+      '@jorpago2/scientific-ui':
+        specifier: file:vendor/jorpago2-scientific-ui-0.1.0.tgz
+        version: file:vendor/jorpago2-scientific-ui-0.1.0.tgz(@carbon/react@1.113.0(react-dom@19.2.8(react@19.2.8))(react-is@18.3.1)(react@19.2.8)(sass@1.102.0))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@xyflow/react':
         specifier: 12.11.2
         version: 12.11.2(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -475,6 +478,15 @@ packages:
 
   '@internationalized/number@3.6.7':
     resolution: {integrity: sha512-3ji1fcrT+FPAK86UqEhB/psHixYo6niWPJtt7+qRaYFynt/BaJG8GhAPimtWUpEiVSTq8ZM8L5psMxGquiB/Vg==}
+
+  '@jorpago2/scientific-ui@file:vendor/jorpago2-scientific-ui-0.1.0.tgz':
+    resolution: {integrity: sha512-fhJKhHYAIQyOOP54UbGi98bmf+HuAqkjcStCeqIitIhQHXHdoWDrY647rAhavem9yzSDI0h6rIU0cjGc7nUgcw==, tarball: file:vendor/jorpago2-scientific-ui-0.1.0.tgz}
+    version: 0.1.0
+    engines: {node: '>=24'}
+    peerDependencies:
+      '@carbon/react': 1.113.x
+      react: 19.2.x
+      react-dom: 19.2.x
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -2084,6 +2096,12 @@ snapshots:
   '@internationalized/number@3.6.7':
     dependencies:
       '@swc/helpers': 0.5.23
+
+  '@jorpago2/scientific-ui@file:vendor/jorpago2-scientific-ui-0.1.0.tgz(@carbon/react@1.113.0(react-dom@19.2.8(react@19.2.8))(react-is@18.3.1)(react@19.2.8)(sass@1.102.0))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+    dependencies:
+      '@carbon/react': 1.113.0(react-dom@19.2.8(react@19.2.8))(react-is@18.3.1)(react@19.2.8)(sass@1.102.0)
+      react: 19.2.8
+      react-dom: 19.2.8(react@19.2.8)
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:

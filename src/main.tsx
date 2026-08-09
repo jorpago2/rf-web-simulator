@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { GlobalTheme } from '@carbon/react'
 import '@xyflow/react/dist/style.css'
 import './carbon.scss'
+import '@jorpago2/scientific-ui/styles.css'
 import './index.css'
 import App from './app/App'
 

@@ -36,6 +36,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { ScientificStatusBar } from '@jorpago2/scientific-ui'
 import type { SimulationStatus } from '../components'
 import { RFCanvas } from '../diagram/RFCanvas'
 import type { RFProject, SimulationOutput } from '../engine/types'
@@ -685,19 +686,20 @@ export default function App() {
             <Suspense fallback={null}>
               <PropertiesPanel />
             </Suspense>
-            <footer className="status-strip" aria-label="Scientific status">
-              <span>{nodes.length} blocks</span>
-              <span className="status-strip__connection">
-                {edges.length} connections
-              </span>
-              <span className="status-strip__detail">
-                {analysis.points} frequency points
-              </span>
-              <span className="status-strip__detail">
-                Z₀ {analysis.referenceImpedanceOhm} Ω
-              </span>
-              <span className="status-strip__state">{statusText}</span>
-            </footer>
+            <ScientificStatusBar
+              className="status-strip"
+              aria-label="Scientific status"
+              status={{
+                state: visibleStatus === 'running' ? 'running' : visibleStatus === 'error' ? 'failed' : visibleStatus === 'success' ? 'up-to-date' : nodes.length ? 'modified' : 'needs-input',
+                label: statusText,
+              }}
+              metadata={<>
+                <span>{nodes.length} blocks</span>
+                <span className="status-strip__connection">{edges.length} connections</span>
+                <span className="status-strip__detail">{analysis.points} frequency points</span>
+                <span className="status-strip__detail">Z₀ {analysis.referenceImpedanceOhm} Ω</span>
+              </>}
+            />
           </Content>
         </Column>
       </Grid>
