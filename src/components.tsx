@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useId,
   useMemo,
@@ -13,6 +14,7 @@ import {
   Button,
   Checkbox,
   FileUploaderButton,
+  IconButton,
   InlineNotification,
   Link,
   NumberInput,
@@ -25,6 +27,7 @@ import {
   TextInput,
   Tile,
 } from '@carbon/react'
+import { Close } from '@carbon/icons-react'
 import { blockDescriptors } from './diagram/nodeRegistry'
 import { RFBlockSymbol } from './diagram/RFBlockSymbol'
 import { parseTouchstone } from './engine/touchstone'
@@ -146,20 +149,22 @@ export function BlockLibrary({
         <>
           <div className="workflow-panel__header scientific-task-panel__header">
             <div className="panel__heading scientific-task-panel__heading">
+              <p>Library</p>
               <h2 id="library-title">{strings.libraryTitle}</h2>
-              <p>{strings.libraryHint}</p>
             </div>
-            <Button
+            <IconButton
               className="panel-close-button"
               kind="ghost"
-              size="sm"
+              size="lg"
               type="button"
+              label="Close component library"
               onClick={onClose}
             >
-              Close
-            </Button>
+              <Close size={20} aria-hidden="true" />
+            </IconButton>
           </div>
           <div className="block-library__body scientific-task-panel__body">
+          <p className="workflow-panel__description">{strings.libraryHint}</p>
           <div className="block-library__filters">
             <TextInput
               id="component-search"
@@ -268,6 +273,29 @@ export function PropertiesPanel() {
       return null
     }
   }, [deviceTableContent, deviceTableFileName, nodeLabel, nodeType])
+
+  const closeProperties = useCallback(() => {
+    if (!selectedNodeId) return
+    const triggerId = selectedNodeId
+    selectNode(null)
+    window.requestAnimationFrame(() => {
+      const trigger = Array.from(
+        document.querySelectorAll<HTMLElement>('.react-flow__node'),
+      ).find((candidate) => candidate.dataset.id === triggerId)
+      trigger?.focus()
+    })
+  }, [selectNode, selectedNodeId])
+
+  useEffect(() => {
+    if (!selectedNodeId) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      closeProperties()
+    }
+    document.addEventListener('keydown', closeOnEscape, true)
+    return () => document.removeEventListener('keydown', closeOnEscape, true)
+  }, [closeProperties, selectedNodeId])
 
   if (!node || !selectedNodeId) {
     return (
@@ -450,20 +478,22 @@ export function PropertiesPanel() {
     >
       <div className="workflow-panel__header scientific-task-panel__header">
         <div className="panel__heading scientific-task-panel__heading">
+          <p>Inspector</p>
           <h2 id="properties-title">{strings.propertiesTitle}</h2>
-          <p>{node.data.label}</p>
         </div>
-        <Button
+        <IconButton
           className="panel-close-button"
           kind="ghost"
-          size="sm"
+          size="lg"
           type="button"
-          onClick={() => selectNode(null)}
+          label="Close block inspector"
+          onClick={closeProperties}
         >
-          Close
-        </Button>
+          <Close size={20} aria-hidden="true" />
+        </IconButton>
       </div>
       <div className="properties__body scientific-task-panel__body">
+      <p className="workflow-panel__description">{node.data.label}</p>
       <TextInput
         className="field"
         id={`block-name-${node.id}`}

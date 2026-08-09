@@ -62,27 +62,38 @@ export function RFCanvas() {
     setCenter,
   } = useReactFlow()
 
+  const fitResponsiveView = useCallback(() => {
+    if (!nodesInitialized) return
+    const currentNodes = useRFEditorStore.getState().nodes
+    if (currentNodes.length === 0) return
+    const canvasWidth =
+      document.querySelector<HTMLElement>('.canvas-wrap')?.clientWidth ??
+      window.innerWidth
+    const focusedNodeCount = canvasWidth < 480 ? 2 : canvasWidth < 720 ? 4 : 0
+    void fitView(
+      focusedNodeCount > 0
+        ? {
+            nodes: currentNodes
+              .slice(0, focusedNodeCount)
+              .map(({ id }) => ({ id })),
+            padding: 0.18,
+            maxZoom: canvasWidth < 480 ? 0.85 : 0.9,
+          }
+        : { padding: 0.12, maxZoom: 1 },
+    )
+  }, [fitView, nodesInitialized])
+
   useEffect(() => {
     if (!nodesInitialized || nodes.length === 0) return
-    const frame = window.requestAnimationFrame(() => {
-      const compactViewport = window.matchMedia('(max-width: 48rem)').matches
-      const narrowViewport = window.matchMedia('(max-width: 68.75rem)').matches
-      const currentNodes = useRFEditorStore.getState().nodes
-      const focusedNodeCount = compactViewport ? 2 : narrowViewport ? 4 : 0
-      void fitView(
-        focusedNodeCount > 0
-          ? {
-              nodes: currentNodes
-                .slice(0, focusedNodeCount)
-                .map(({ id }) => ({ id })),
-              padding: 0.18,
-              maxZoom: compactViewport ? 0.85 : 0.9,
-            }
-          : { padding: 0.12, maxZoom: 1 },
-      )
-    })
+    const frame = window.requestAnimationFrame(fitResponsiveView)
     return () => window.cancelAnimationFrame(frame)
-  }, [activeProjectId, fitView, nodes.length, nodesInitialized, topologyKey])
+  }, [
+    activeProjectId,
+    fitResponsiveView,
+    nodes.length,
+    nodesInitialized,
+    topologyKey,
+  ])
 
   const ensureSelectedNodeVisible = useCallback(() => {
     if (!selectedNodeId || !nodesInitialized) return
@@ -142,21 +153,23 @@ export function RFCanvas() {
   }, [ensureSelectedNodeVisible])
 
   useEffect(() => {
-    if (!selectedNodeId) return
     const canvas = document.querySelector('.canvas-wrap')
     if (!canvas) return
 
     let frame = 0
     const observer = new ResizeObserver(() => {
       window.cancelAnimationFrame(frame)
-      frame = window.requestAnimationFrame(ensureSelectedNodeVisible)
+      frame = window.requestAnimationFrame(() => {
+        if (selectedNodeId) ensureSelectedNodeVisible()
+        else fitResponsiveView()
+      })
     })
     observer.observe(canvas)
     return () => {
       observer.disconnect()
       window.cancelAnimationFrame(frame)
     }
-  }, [ensureSelectedNodeVisible, selectedNodeId])
+  }, [ensureSelectedNodeVisible, fitResponsiveView, selectedNodeId])
 
   const onDragOver = useCallback((event: DragEvent) => {
     event.preventDefault()

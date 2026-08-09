@@ -4,6 +4,7 @@ import {
   Column,
   Content,
   Grid,
+  IconButton,
   InlineNotification,
   Link,
   SkipToContent,
@@ -20,6 +21,7 @@ import {
 import {
   Apps,
   Chemistry,
+  Close,
   Help,
   Launch,
   Layers,
@@ -711,20 +713,24 @@ function WorkflowPanel({
     >
       <div className="workflow-panel__header scientific-task-panel__header">
         <div className="panel__heading scientific-task-panel__heading">
+          <p>Workflow</p>
           <h2 id="workflow-panel-title">{title}</h2>
-          <p>{description}</p>
         </div>
-        <Button
+        <IconButton
           className="panel-close-button"
           kind="ghost"
-          size="sm"
+          size="lg"
           type="button"
+          label={`Close ${title.toLowerCase()} panel`}
           onClick={onClose}
         >
-          Close
-        </Button>
+          <Close size={20} aria-hidden="true" />
+        </IconButton>
       </div>
-      <div className="workflow-panel__body scientific-task-panel__body">{children}</div>
+      <div className="workflow-panel__body scientific-task-panel__body">
+        <p className="workflow-panel__description">{description}</p>
+        {children}
+      </div>
     </aside>
   )
 }
