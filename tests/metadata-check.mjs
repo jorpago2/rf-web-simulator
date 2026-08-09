@@ -130,7 +130,8 @@ test('implements the result-first scientific workbench contract', async () => {
     assert.match(app, new RegExp(`id: '${task}'`))
   }
   assert.match(app, /<ScientificToolRail/)
-  assert.match(app, /activeId=\{activeTool\}/)
+  assert.match(app, /activeId=\{activeTool \?\? 'components'\}/)
+  assert.match(app, /expandedId=\{activeTool\}/)
   assert.match(app, /onChange=\{\(id\) => id === null \? closeActiveTool\(\) : toggleTool/)
   assert.match(app, /items=\{WORKFLOW_TOOLS\.map/)
   assert.match(app, /controlsId: ["']workflow-panel["']/)

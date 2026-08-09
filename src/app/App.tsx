@@ -364,9 +364,9 @@ export default function App() {
           <SkipToContent href="#rf-workspace">
             Skip to RF workspace
           </SkipToContent>
-          <Header className="app-header" aria-label="RF Network Simulator">
+          <Header className="app-header scientific-app-header" aria-label="RF Network Simulator">
             <div className="app-brand">
-              <div className="brand-mark" aria-hidden="true">
+              <div className="brand-mark scientific-app-header__brand-mark" aria-hidden="true">
                 RF
               </div>
               <div className="app-identity">
@@ -487,7 +487,8 @@ export default function App() {
             <ScientificToolRail
               className="tool-rail"
               label="RF workbench tools"
-              activeId={activeTool}
+              activeId={activeTool ?? 'components'}
+              expandedId={activeTool}
               onChange={(id) => id === null ? closeActiveTool() : toggleTool(id as WorkflowTool)}
               registerItemRef={(id, node) => { workflowTriggerRefs.current[id as WorkflowTool] = node ?? undefined }}
               items={WORKFLOW_TOOLS.map(({ id, label, icon: ToolIcon }) => ({

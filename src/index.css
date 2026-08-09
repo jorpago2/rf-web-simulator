@@ -49,7 +49,7 @@
   height: calc(100svh - 64px);
   min-height: 0;
   display: grid;
-  padding: var(--rf-space-md) var(--rf-space-md) 0 0;
+  padding: 0 var(--rf-space-md) 0 0;
 }
 
 .app-shell .workspace {
@@ -1520,32 +1520,6 @@ h2 {
     left: 0;
     inline-size: 100%;
     block-size: var(--scientific-ui-mobile-nav-block-size);
-  }
-
-  .tool-rail ul {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(0, 1fr);
-  }
-
-  .tool-rail .scientific-tool-rail__item {
-    block-size: 100%;
-    flex-direction: column;
-    border-inline-start: 0;
-    border-block-start: var(--scientific-ui-active-indicator-size) solid transparent;
-  }
-
-  .tool-rail .scientific-tool-rail__item.is-active,
-  .tool-rail .scientific-tool-rail__item[aria-expanded='true'] {
-    border-block-start-color: var(--scientific-ui-link);
-  }
-
-  .tool-rail .scientific-tool-rail__label {
-    position: static;
-    inline-size: auto;
-    block-size: auto;
-    clip: auto;
-    clip-path: none;
   }
 
   .tool-panel-slot {
