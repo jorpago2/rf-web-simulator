@@ -238,7 +238,7 @@ h2 {
   --left-panel-width: 0px;
   --right-panel-width: 0px;
   grid-template-columns:
-    var(--scientific-ui-rail-compact-inline-size) var(--left-panel-width) var(--rf-space-md) minmax(440px, 1fr)
+    var(--scientific-ui-rail-inline-size) var(--left-panel-width) var(--rf-space-md) minmax(440px, 1fr)
     var(--right-panel-width);
   grid-template-rows: minmax(0, 1fr) 32px;
   column-gap: 0;
@@ -1489,7 +1489,7 @@ h2 {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    padding: 8px 8px 76px;
+    padding: 8px 8px calc(var(--scientific-ui-mobile-nav-block-size) + var(--rf-space-sm));
   }
 
   .tool-rail {
@@ -1499,7 +1499,7 @@ h2 {
     bottom: 0;
     left: 0;
     inline-size: 100%;
-    block-size: 64px;
+    block-size: var(--scientific-ui-mobile-nav-block-size);
   }
 
   .tool-rail ul {
@@ -1533,7 +1533,7 @@ h2 {
     z-index: calc(var(--rf-z-sticky) - 1);
     top: var(--mobile-header-height);
     right: 0;
-    bottom: 64px;
+    bottom: var(--scientific-ui-mobile-nav-block-size);
     left: 0;
     overflow-y: auto;
     background: var(--cds-layer);
@@ -1588,10 +1588,10 @@ h2 {
 
   .properties {
     top: auto;
-    bottom: 64px;
+    bottom: var(--scientific-ui-mobile-nav-block-size);
     left: 0;
     width: 100%;
-    max-height: calc(100svh - 128px);
+    max-height: calc(100svh - var(--mobile-header-height) - var(--scientific-ui-mobile-nav-block-size));
   }
 
   .results-panel {
