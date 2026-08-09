@@ -365,12 +365,14 @@ export default function App() {
             Skip to RF workspace
           </SkipToContent>
           <Header className="app-header" aria-label="RF Network Simulator">
-            <div className="brand-mark" aria-hidden="true">
-              RF
-            </div>
-            <div className="app-identity">
-              <h1>{strings.appName}</h1>
-              <p>{strings.version}</p>
+            <div className="app-brand">
+              <div className="brand-mark" aria-hidden="true">
+                RF
+              </div>
+              <div className="app-identity">
+                <h1>{strings.appName}</h1>
+                <p>RF network workbench · {strings.version}</p>
+              </div>
             </div>
             <Suspense fallback={<span aria-label="Loading project controls" />}>
               <ProjectToolbar
@@ -413,6 +415,7 @@ export default function App() {
                 status={persistenceStatus}
               />
             </Suspense>
+            <div className="app-header-actions">
             <Toggletip align="bottom-start" className="app-help">
               <ToggletipButton
                 as={Button}
@@ -461,6 +464,7 @@ export default function App() {
               <span className="suite-link__label">All tools</span>
               <Launch className="suite-link__icon" aria-hidden="true" />
             </Link>
+            </div>
           </Header>
 
           <Content
