@@ -278,6 +278,8 @@ h2 {
 
 .workflow-panel__body {
   display: grid;
+  align-content: start;
+  grid-auto-rows: max-content;
   gap: var(--rf-space-md);
 }
 
@@ -574,8 +576,7 @@ h2 {
   stroke-width: 3;
 }
 
-.react-flow__controls,
-.react-flow__minimap {
+.react-flow__controls {
   overflow: hidden;
   border: 1px solid var(--cds-border-subtle);
   border-radius: 0;
@@ -585,10 +586,6 @@ h2 {
 .react-flow__controls-button {
   width: 44px;
   height: 44px;
-}
-
-.react-flow__minimap {
-  background: var(--cds-layer);
 }
 
 .rf-node {
@@ -1527,6 +1524,20 @@ h2 {
   }
 }
 
+@media (max-width: 29.99rem) {
+  .block-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .block-card small,
+  .block-card > span:last-child,
+  .block-card strong {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+}
+
 @media (max-width: 22.5rem) {
   .metric-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -1537,17 +1548,11 @@ h2 {
   }
 }
 
-@media (max-width: 30rem) {
-  .react-flow__minimap {
-    display: none;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
+    scroll-behavior: auto;
+    transition-duration: 0s;
   }
 }

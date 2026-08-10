@@ -362,6 +362,7 @@ export default function App() {
     <ReactFlowProvider>
       <Grid fullWidth condensed className="app-shell">
         <Column sm={4} md={8} lg={16} className="app-shell-column">
+          <h1 className="scientific-visually-hidden">RF Network Simulator</h1>
           <ScientificHeader
             aria-label="RF Network Simulator"
             product={strings.appName}
@@ -415,6 +416,7 @@ export default function App() {
                 as={Button}
                 aria-label="Help"
                 aria-keyshortcuts="?"
+                className="scientific-header__icon-action"
                 kind="ghost"
                 label="Help"
                 size="sm"

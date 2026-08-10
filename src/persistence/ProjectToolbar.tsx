@@ -57,7 +57,7 @@ export function ProjectToolbar({
   return (
     <div className="project-toolbar" aria-label="Project controls">
       <TextInput
-        className="project-name-field"
+        className="project-name-field scientific-header__field"
         id="project-name"
         hideLabel
         labelText="Project"
@@ -83,6 +83,7 @@ export function ProjectToolbar({
         kind="ghost"
         size="lg"
         label="Project actions"
+        align="bottom-end"
         onClick={() => setActionsOpen(true)}
       >
         <FolderOpen aria-hidden="true" />

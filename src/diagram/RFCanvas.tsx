@@ -3,7 +3,6 @@ import {
   Background,
   BackgroundVariant,
   Controls,
-  MiniMap,
   ReactFlow,
   useNodesInitialized,
   useReactFlow,
@@ -69,7 +68,7 @@ export function RFCanvas() {
     const canvasWidth =
       document.querySelector<HTMLElement>('.canvas-wrap')?.clientWidth ??
       window.innerWidth
-    const focusedNodeCount = canvasWidth < 480 ? 2 : canvasWidth < 720 ? 4 : 0
+    const focusedNodeCount = canvasWidth < 480 ? 2 : canvasWidth < 1056 ? 4 : 0
     void fitView(
       focusedNodeCount > 0
         ? {
@@ -213,9 +212,6 @@ export function RFCanvas() {
       tabIndex={0}
     >
       <Background variant={BackgroundVariant.Dots} gap={18} size={1} />
-      {nodes.length > 0 && (
-        <MiniMap pannable zoomable aria-label="Diagram overview" />
-      )}
       <Controls showInteractive={false} />
     </ReactFlow>
   )
