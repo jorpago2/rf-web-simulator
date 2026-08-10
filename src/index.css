@@ -93,6 +93,7 @@ h2 {
 
 .app-help {
   flex: 0 0 auto;
+  margin-inline-end: var(--rf-space-2xs);
 }
 
 .app-help button {
@@ -101,11 +102,12 @@ h2 {
 
 .app-help-panel {
   width: min(22rem, calc(100vw - 2 * var(--rf-space-lg)));
+  color: var(--cds-text-inverse);
 }
 
 .app-help-panel p {
   margin: var(--rf-space-2xs) 0 var(--rf-space-sm);
-  color: var(--rf-text-secondary);
+  color: var(--cds-text-inverse);
   font-size: var(--rf-type-sm);
   line-height: 1.5;
 }
@@ -130,9 +132,10 @@ h2 {
 
 .app-help-panel kbd {
   padding: var(--rf-space-2xs) var(--rf-space-xs);
-  border: 1px solid var(--cds-border-subtle);
+  border: 1px solid var(--cds-border-inverse);
   border-radius: 0;
-  background: var(--rf-layer-accent-01);
+  background: transparent;
+  color: var(--cds-text-inverse);
   font: 700 var(--rf-type-xs) var(--rf-font-display);
 }
 
