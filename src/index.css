@@ -100,7 +100,7 @@ h2 {
 }
 
 .app-help-panel {
-  width: min(22rem, calc(100vw - 24px));
+  width: min(22rem, calc(100vw - 2 * var(--rf-space-lg)));
 }
 
 .app-help-panel p {
