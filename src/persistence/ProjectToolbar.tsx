@@ -2,6 +2,7 @@ import {
   Button,
   ComposedModal,
   FileUploaderButton,
+  IconButton,
   ModalBody,
   ModalFooter,
   ModalHeader,
@@ -76,19 +77,16 @@ export function ProjectToolbar({
           label={message ?? statusLabel(status)}
         />
       </span>
-      <Button
+      <IconButton
         aria-label="Project actions"
         className="project-actions-button"
         kind="ghost"
-        size="sm"
+        size="lg"
+        label="Project actions"
         onClick={() => setActionsOpen(true)}
       >
-        <FolderOpen
-          className="project-actions-button__icon"
-          aria-hidden="true"
-        />
-        <span className="project-actions-button__label">Project actions</span>
-      </Button>
+        <FolderOpen aria-hidden="true" />
+      </IconButton>
       {createPortal(<ComposedModal
         open={actionsOpen}
         onClose={() => setActionsOpen(false)}

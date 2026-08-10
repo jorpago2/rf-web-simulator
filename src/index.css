@@ -191,11 +191,19 @@ h2 {
 }
 
 .suite-link {
-  min-height: 44px;
+  width: var(--scientific-ui-header-block-size);
+  min-width: var(--scientific-ui-header-block-size);
+  min-height: var(--scientific-ui-header-block-size);
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   flex: 0 0 auto;
   white-space: nowrap;
+}
+
+.app-help__label,
+.suite-link__label {
+  display: none;
 }
 
 .app-help__icon,

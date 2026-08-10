@@ -366,7 +366,7 @@ export default function App() {
             aria-label="RF Network Simulator"
             product={strings.appName}
             productMark="RF"
-            descriptor={`RF network workbench · ${strings.version}`}
+            descriptor="RF network simulation"
             href="./"
             skipLink={<SkipToContent href="#rf-workspace">Skip to RF workspace</SkipToContent>}
             context={<Suspense fallback={<span aria-label="Loading project controls" />}>
