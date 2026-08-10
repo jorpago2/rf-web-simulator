@@ -413,6 +413,7 @@ export default function App() {
             primaryAction={<Toggletip align="bottom-start" className="app-help">
               <ToggletipButton
                 as={Button}
+                aria-label="Help"
                 aria-keyshortcuts="?"
                 kind="ghost"
                 label="Help"
