@@ -12,6 +12,7 @@ import {
 } from '@carbon/react'
 import { FolderOpen } from '@carbon/icons-react'
 import { useState, type ChangeEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { rfTemplates } from '../templates'
 import type { LocalProjectSummary } from './indexedDb'
 
@@ -88,7 +89,7 @@ export function ProjectToolbar({
         />
         <span className="project-actions-button__label">Project actions</span>
       </Button>
-      <ComposedModal
+      {createPortal(<ComposedModal
         open={actionsOpen}
         onClose={() => setActionsOpen(false)}
         selectorPrimaryFocus="#recent-project"
@@ -174,7 +175,7 @@ export function ProjectToolbar({
             onChange={importProject}
           />
         </ModalFooter>
-      </ComposedModal>
+      </ComposedModal>, document.body)}
     </div>
   )
 }

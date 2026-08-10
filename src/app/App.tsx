@@ -246,6 +246,7 @@ export default function App() {
       setResult(output)
       setResultRevision(requestedRevision)
       setStatus('success')
+      setActiveTool(null)
       setActiveWorkspaceTab(1)
     } catch (simulationError) {
       if (
@@ -259,6 +260,7 @@ export default function App() {
       setResultRevision(null)
       setError(errorText(simulationError))
       setStatus('error')
+      setActiveTool(null)
       setActiveWorkspaceTab(1)
     } finally {
       if (simulationAbortRef.current === controller) {
