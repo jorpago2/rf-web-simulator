@@ -14,7 +14,6 @@ import {
   Button,
   Checkbox,
   FileUploaderButton,
-  IconButton,
   InlineNotification,
   Link,
   NumberInput,
@@ -27,7 +26,7 @@ import {
   TextInput,
   Tile,
 } from '@carbon/react'
-import { Close } from '@carbon/icons-react'
+import { ScientificTaskPanel } from '@jorpago2/scientific-ui'
 import { blockDescriptors } from './diagram/nodeRegistry'
 import { RFBlockSymbol } from './diagram/RFBlockSymbol'
 import { parseTouchstone } from './engine/touchstone'
@@ -138,33 +137,19 @@ export function BlockLibrary({
     event.dataTransfer.effectAllowed = 'copy'
   }
 
+  if (!open) return null
+
   return (
-    <aside
+    <ScientificTaskPanel
       id="workflow-panel"
-      className={`panel block-library scientific-task-panel scientific-task-panel--managed${open ? '' : ' block-library--closed'}`}
-      aria-hidden={!open}
-      aria-labelledby={open ? 'library-title' : undefined}
+      className="panel block-library"
+      titleId="library-title"
+      title={strings.libraryTitle}
+      eyebrow="Library"
+      closeLabel="Close"
+      onClose={onClose}
     >
-      {open && (
-        <>
-          <div className="workflow-panel__header scientific-task-panel__header">
-            <div className="panel__heading scientific-task-panel__heading">
-              <p>Library</p>
-              <h2 id="library-title">{strings.libraryTitle}</h2>
-            </div>
-            <IconButton
-              className="panel-close-button"
-              kind="ghost"
-              size="lg"
-              type="button"
-              label="Close component library"
-              onClick={onClose}
-            >
-              <Close size={20} aria-hidden="true" />
-            </IconButton>
-          </div>
-          <div className="block-library__body scientific-task-panel__body">
-          <p className="workflow-panel__description">{strings.libraryHint}</p>
+      <p className="workflow-panel__description">{strings.libraryHint}</p>
           <div className="block-library__filters">
             <TextInput
               id="component-search"
@@ -224,10 +209,7 @@ export function BlockLibrary({
               </p>
             )}
           </div>
-          </div>
-        </>
-      )}
-    </aside>
+    </ScientificTaskPanel>
   )
 }
 
@@ -471,28 +453,15 @@ export function PropertiesPanel() {
   }
 
   return (
-    <aside
+    <ScientificTaskPanel
       id="rf-properties"
-      className="panel properties scientific-task-panel scientific-task-panel--managed"
-      aria-labelledby="properties-title"
+      className="panel properties"
+      titleId="properties-title"
+      title={strings.propertiesTitle}
+      eyebrow="Inspector"
+      closeLabel="Close"
+      onClose={closeProperties}
     >
-      <div className="workflow-panel__header scientific-task-panel__header">
-        <div className="panel__heading scientific-task-panel__heading">
-          <p>Inspector</p>
-          <h2 id="properties-title">{strings.propertiesTitle}</h2>
-        </div>
-        <IconButton
-          className="panel-close-button"
-          kind="ghost"
-          size="lg"
-          type="button"
-          label="Close block inspector"
-          onClick={closeProperties}
-        >
-          <Close size={20} aria-hidden="true" />
-        </IconButton>
-      </div>
-      <div className="properties__body scientific-task-panel__body">
       <p className="workflow-panel__description">{node.data.label}</p>
       <TextInput
         className="field"
@@ -1602,8 +1571,7 @@ export function PropertiesPanel() {
       >
         Delete block
       </Button>
-      </div>
-    </aside>
+    </ScientificTaskPanel>
   )
 }
 

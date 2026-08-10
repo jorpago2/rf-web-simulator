@@ -4,7 +4,6 @@ import {
   Column,
   Content,
   Grid,
-  IconButton,
   InlineNotification,
   Link,
   SkipToContent,
@@ -21,7 +20,6 @@ import {
 import {
   Apps,
   Chemistry,
-  Close,
   Help,
   Launch,
   Layers,
@@ -37,7 +35,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { ScientificHeader, ScientificStatusBar, ScientificToolRail } from '@jorpago2/scientific-ui'
+import { ScientificHeader, ScientificStatusBar, ScientificTaskPanel, ScientificToolRail } from '@jorpago2/scientific-ui'
 import type { SimulationStatus } from '../components'
 import { RFCanvas } from '../diagram/RFCanvas'
 import type { RFProject, SimulationOutput } from '../engine/types'
@@ -706,32 +704,19 @@ function WorkflowPanel({
   children: ReactNode
 }) {
   return (
-    <aside
+    <ScientificTaskPanel
       id="workflow-panel"
-      className="panel workflow-panel scientific-task-panel scientific-task-panel--managed"
-      aria-labelledby="workflow-panel-title"
+      className="panel workflow-panel"
+      titleId="workflow-panel-title"
+      title={title}
+      eyebrow="Workflow"
+      closeLabel="Close"
+      onClose={onClose}
+      bodyClassName="workflow-panel__body"
     >
-      <div className="workflow-panel__header scientific-task-panel__header">
-        <div className="panel__heading scientific-task-panel__heading">
-          <p>Workflow</p>
-          <h2 id="workflow-panel-title">{title}</h2>
-        </div>
-        <IconButton
-          className="panel-close-button"
-          kind="ghost"
-          size="lg"
-          type="button"
-          label={`Close ${title.toLowerCase()} panel`}
-          onClick={onClose}
-        >
-          <Close size={20} aria-hidden="true" />
-        </IconButton>
-      </div>
-      <div className="workflow-panel__body scientific-task-panel__body">
-        <p className="workflow-panel__description">{description}</p>
-        {children}
-      </div>
-    </aside>
+      <p className="workflow-panel__description">{description}</p>
+      {children}
+    </ScientificTaskPanel>
   )
 }
 
