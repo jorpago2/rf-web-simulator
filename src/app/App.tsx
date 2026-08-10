@@ -410,7 +410,7 @@ export default function App() {
                 status={persistenceStatus}
               />
             </Suspense>}
-            primaryAction={<Toggletip align="bottom-start" className="app-help">
+            primaryAction={<Toggletip align="bottom-end" className="app-help">
               <ToggletipButton
                 as={Button}
                 aria-label="Help"
