@@ -1,9 +1,6 @@
 import { ReactFlowProvider } from '@xyflow/react'
 import {
   Button,
-  Column,
-  Content,
-  Grid,
   InlineNotification,
   Link,
   SkipToContent,
@@ -31,7 +28,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { ScientificHeader, ScientificRunControl, ScientificStatusBar, ScientificTaskPanel, ScientificToolRail, useScientificShortcut } from '@jorpago2/scientific-ui'
+import { ScientificAppShell, ScientificHeader, ScientificRunControl, ScientificStatusBar, ScientificTaskPanel, ScientificToolRail, useScientificShortcut } from '@jorpago2/scientific-ui'
 import type { SimulationStatus } from '../components'
 import { RFCanvas } from '../diagram/RFCanvas'
 import type { RFProject, SimulationOutput } from '../engine/types'
@@ -352,10 +349,127 @@ export default function App() {
           ? 'modified'
           : 'needs-input'
 
+  const workflowNavigation = (
+    <ScientificToolRail
+      className="tool-rail"
+      label="RF workbench tools"
+      activeId={activeTool ?? 'components'}
+      expandedId={activeTool}
+      onChange={(id) => id === null ? closeActiveTool() : toggleTool(id as WorkflowTool)}
+      registerItemRef={(id, node) => { workflowTriggerRefs.current[id as WorkflowTool] = node ?? undefined }}
+      items={WORKFLOW_TOOLS.map(({ id, label, icon: ToolIcon }) => ({
+        id,
+        label,
+        icon: <ToolIcon size={20} />,
+        controlsId: "workflow-panel",
+      }))}
+    />
+  )
+
+  const workflowPanel = activeTool ? (
+    <>
+      {activeTool === 'components' && (
+        <Suspense fallback={null}>
+          <BlockLibrary open onClose={closeActiveTool} />
+        </Suspense>
+      )}
+      {activeTool === 'canvas' && (
+        <WorkflowPanel
+          description="Viewport and diagram-level controls. Object parameters remain in the contextual inspector."
+          title="Canvas"
+          onClose={closeActiveTool}
+        >
+          <dl className="workflow-summary">
+            <div><dt>Blocks</dt><dd>{nodes.length}</dd></div>
+            <div><dt>Connections</dt><dd>{edges.length}</dd></div>
+            <div><dt>Selection</dt><dd>{selectedNodeId ? '1 block' : 'None'}</dd></div>
+          </dl>
+          <Button
+            disabled={!selectedNodeId}
+            kind="secondary"
+            size="sm"
+            type="button"
+            onClick={() => selectNode(null)}
+          >
+            Clear selection
+          </Button>
+          <p className="workflow-note">
+            Use the viewport controls to zoom or fit the network. Drag blocks to
+            position them; Delete removes the selected block.
+          </p>
+        </WorkflowPanel>
+      )}
+      {activeTool === 'experiment' && (
+        <WorkflowPanel
+          description="Configure the sweep, uncertainty study, and solver before running the RF chain."
+          title="Experiment"
+          onClose={closeActiveTool}
+        >
+          <div ref={setAnalysisControlsHost} />
+        </WorkflowPanel>
+      )}
+      {activeTool === 'review' && (
+        <WorkflowPanel
+          description="Current solver and validation state. Detailed scientific views remain in Results."
+          title="Review"
+          onClose={closeActiveTool}
+        >
+          <IconIndicator kind={STATUS_INDICATOR_KIND[visibleStatus]} label={statusText} />
+          <dl className="workflow-summary">
+            <div><dt>Model revision</dt><dd>{modelRevision}</dd></div>
+            <div><dt>Warnings</dt><dd>{visibleResult?.warnings.length ?? 0}</dd></div>
+            <div><dt>Result</dt><dd>{visibleResult ? 'Current' : 'Not solved'}</dd></div>
+          </dl>
+          {error && (
+            <InlineNotification
+              className="workflow-notification"
+              hideCloseButton
+              kind="error"
+              lowContrast
+              title="Simulation stopped"
+              subtitle={error}
+            />
+          )}
+          {(visibleResult?.warnings.length ?? 0) > 0 && (
+            <InlineNotification
+              className="workflow-notification"
+              hideCloseButton
+              kind="warning"
+              lowContrast
+              title={`${visibleResult!.warnings.length} simulation ${visibleResult!.warnings.length === 1 ? 'warning' : 'warnings'}`}
+            >
+              <ul className="scientific-warning-list">
+                {visibleResult!.warnings.map((warning, index) => (
+                  <li key={`${warning.code}-${warning.frequencyHz ?? index}`}>{warning.message}</li>
+                ))}
+              </ul>
+            </InlineNotification>
+          )}
+        </WorkflowPanel>
+      )}
+    </>
+  ) : undefined
+
+  const workbenchStatus = (
+    <ScientificStatusBar
+      className="status-strip"
+      aria-label="Scientific status"
+      status={{ state: scientificState, label: statusText }}
+      metadata={<>
+        <span>{nodes.length} blocks</span>
+        <span className="status-strip__connection">{edges.length} connections</span>
+        <span className="status-strip__detail">{analysis.points} frequency points</span>
+        <span className="status-strip__detail">Z₀ {analysis.referenceImpedanceOhm} Ω</span>
+      </>}
+    />
+  )
+
   return (
     <ReactFlowProvider>
-      <Grid fullWidth condensed className="app-shell">
-        <Column sm={4} md={8} lg={16} className="app-shell-column">
+      <ScientificAppShell
+        className="app-shell"
+        panelOpen={Boolean(activeTool)}
+        header={<>
           <h1 className="scientific-visually-hidden">RF Network Simulator</h1>
           <ScientificHeader
             aria-label="RF Network Simulator"
@@ -435,12 +549,15 @@ export default function App() {
               <Launch className="suite-link__icon" aria-hidden="true" />
             </Link>}
           />
-
-          <Content
+        </>}
+        navigation={workflowNavigation}
+        panel={workflowPanel}
+        inspector={<Suspense fallback={null}><PropertiesPanel /></Suspense>}
+        statusBar={workbenchStatus}
+      >
+          <div
             id="rf-workspace"
-            className={`workspace${activeTool ? ' workspace--tool-open' : ''}${
-              selectedNodeId ? ' workspace--inspector-open' : ''
-            }`}
+            className="workspace"
             tabIndex={-1}
           >
             {workspaceNotice && (
@@ -453,128 +570,6 @@ export default function App() {
                 subtitle={workspaceNotice}
               />
             )}
-            <ScientificToolRail
-              className="tool-rail"
-              label="RF workbench tools"
-              activeId={activeTool ?? 'components'}
-              expandedId={activeTool}
-              onChange={(id) => id === null ? closeActiveTool() : toggleTool(id as WorkflowTool)}
-              registerItemRef={(id, node) => { workflowTriggerRefs.current[id as WorkflowTool] = node ?? undefined }}
-              items={WORKFLOW_TOOLS.map(({ id, label, icon: ToolIcon }) => ({
-                id,
-                label,
-                icon: <ToolIcon size={20} />,
-                controlsId: "workflow-panel",
-              }))}
-            />
-            <div
-              className={`tool-panel-slot${activeTool ? '' : ' tool-panel-slot--closed'}`}
-            >
-              {activeTool === 'components' && (
-                <Suspense fallback={null}>
-                  <BlockLibrary open onClose={closeActiveTool} />
-                </Suspense>
-              )}
-              {activeTool === 'canvas' && (
-                <WorkflowPanel
-                  description="Viewport and diagram-level controls. Object parameters remain in the contextual inspector."
-                  title="Canvas"
-                  onClose={closeActiveTool}
-                >
-                  <dl className="workflow-summary">
-                    <div>
-                      <dt>Blocks</dt>
-                      <dd>{nodes.length}</dd>
-                    </div>
-                    <div>
-                      <dt>Connections</dt>
-                      <dd>{edges.length}</dd>
-                    </div>
-                    <div>
-                      <dt>Selection</dt>
-                      <dd>{selectedNodeId ? '1 block' : 'None'}</dd>
-                    </div>
-                  </dl>
-                  <Button
-                    disabled={!selectedNodeId}
-                    kind="secondary"
-                    size="sm"
-                    type="button"
-                    onClick={() => selectNode(null)}
-                  >
-                    Clear selection
-                  </Button>
-                  <p className="workflow-note">
-                    Use the viewport controls to zoom or fit the network. Drag
-                    blocks to position them; Delete removes the selected block.
-                  </p>
-                </WorkflowPanel>
-              )}
-              {activeTool === 'experiment' && (
-                <WorkflowPanel
-                  description="Configure the sweep, uncertainty study, and solver before running the RF chain."
-                  title="Experiment"
-                  onClose={closeActiveTool}
-                >
-                  <div ref={setAnalysisControlsHost} />
-                </WorkflowPanel>
-              )}
-              {activeTool === 'review' && (
-                <WorkflowPanel
-                  description="Current solver and validation state. Detailed scientific views remain in Results."
-                  title="Review"
-                  onClose={closeActiveTool}
-                >
-                  <IconIndicator
-                    kind={STATUS_INDICATOR_KIND[visibleStatus]}
-                    label={statusText}
-                  />
-                  <dl className="workflow-summary">
-                    <div>
-                      <dt>Model revision</dt>
-                      <dd>{modelRevision}</dd>
-                    </div>
-                    <div>
-                      <dt>Warnings</dt>
-                      <dd>{visibleResult?.warnings.length ?? 0}</dd>
-                    </div>
-                    <div>
-                      <dt>Result</dt>
-                      <dd>{visibleResult ? 'Current' : 'Not solved'}</dd>
-                    </div>
-                  </dl>
-                  {error && (
-                    <InlineNotification
-                      className="workflow-notification"
-                      hideCloseButton
-                      kind="error"
-                      lowContrast
-                      title="Simulation stopped"
-                      subtitle={error}
-                    />
-                  )}
-                  {(visibleResult?.warnings.length ?? 0) > 0 && (
-                    <InlineNotification
-                      className="workflow-notification"
-                      hideCloseButton
-                      kind="warning"
-                      lowContrast
-                      title={`${visibleResult!.warnings.length} simulation ${visibleResult!.warnings.length === 1 ? 'warning' : 'warnings'}`}
-                    >
-                      <ul className="scientific-warning-list">
-                        {visibleResult!.warnings.map((warning, index) => (
-                          <li
-                            key={`${warning.code}-${warning.frequencyHz ?? index}`}
-                          >
-                            {warning.message}
-                          </li>
-                        ))}
-                      </ul>
-                    </InlineNotification>
-                  )}
-                </WorkflowPanel>
-              )}
-            </div>
             <div className="workbench-deck scientific-stage">
               <Tabs
                 selectedIndex={activeWorkspaceTab}
@@ -646,26 +641,8 @@ export default function App() {
                 </TabPanels>
               </Tabs>
             </div>
-            <Suspense fallback={null}>
-              <PropertiesPanel />
-            </Suspense>
-            <ScientificStatusBar
-              className="status-strip"
-              aria-label="Scientific status"
-              status={{
-                state: scientificState,
-                label: statusText,
-              }}
-              metadata={<>
-                <span>{nodes.length} blocks</span>
-                <span className="status-strip__connection">{edges.length} connections</span>
-                <span className="status-strip__detail">{analysis.points} frequency points</span>
-                <span className="status-strip__detail">Z₀ {analysis.referenceImpedanceOhm} Ω</span>
-              </>}
-            />
-          </Content>
-        </Column>
-      </Grid>
+          </div>
+      </ScientificAppShell>
     </ReactFlowProvider>
   )
 }
