@@ -31,7 +31,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { ScientificHeader, ScientificStatusBar, ScientificTaskPanel, ScientificToolRail } from '@jorpago2/scientific-ui'
+import { ScientificHeader, ScientificRunControl, ScientificStatusBar, ScientificTaskPanel, ScientificToolRail, useScientificShortcut } from '@jorpago2/scientific-ui'
 import type { SimulationStatus } from '../components'
 import { RFCanvas } from '../diagram/RFCanvas'
 import type { RFProject, SimulationOutput } from '../engine/types'
@@ -267,22 +267,19 @@ export default function App() {
 
   const cancelSimulation = () => simulationAbortRef.current?.abort()
 
-  useEffect(() => {
-    const handleShortcut = (event: globalThis.KeyboardEvent) => {
-      if (event.repeat) return
-      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-        event.preventDefault()
-        if (status !== 'running') {
-          void runSimulation()
-        }
-      } else if (event.key === 'Escape') {
-        if (activeTool) closeActiveTool()
-        if (status === 'running') simulationAbortRef.current?.abort()
-      }
-    }
-    document.addEventListener('keydown', handleShortcut, true)
-    return () => document.removeEventListener('keydown', handleShortcut, true)
-  }, [activeTool, closeActiveTool, runSimulation, status])
+  const escapeShortcut = useMemo(() => ({
+    id: 'rf:close-or-cancel',
+    shortcut: 'Escape',
+    displayKeys: ['Esc'],
+    description: 'Close the active tool or cancel simulation',
+    enabled: Boolean(activeTool) || status === 'running',
+    priority: 20,
+    handler: () => {
+      if (activeTool) closeActiveTool()
+      if (status === 'running') simulationAbortRef.current?.abort()
+    },
+  }), [activeTool, closeActiveTool, status])
+  useScientificShortcut(escapeShortcut)
 
   const openSelectedProject = async () => {
     if (!selectedProjectId) return
@@ -345,6 +342,15 @@ export default function App() {
     success: 'Validated · complete',
     error: 'Diagram needs attention',
   }[visibleStatus]
+  const scientificState = visibleStatus === 'running'
+    ? 'running'
+    : visibleStatus === 'error'
+      ? 'failed'
+      : visibleStatus === 'success'
+        ? 'up-to-date'
+        : nodes.length
+          ? 'modified'
+          : 'needs-input'
 
   return (
     <ReactFlowProvider>
@@ -399,13 +405,26 @@ export default function App() {
                 status={persistenceStatus}
               />
             </Suspense>}
+            status={{
+              state: scientificState,
+              label: statusText,
+            }}
             help={{
               summary: 'Build a connected source-to-load chain, set the analysis, simulate, then inspect and export current results.',
-              shortcuts: [
-                { keys: ['Ctrl/⌘', 'Enter'], description: 'Run simulation' },
-                { keys: ['Esc'], description: 'Cancel simulation' },
-              ],
             }}
+            primaryAction={<ScientificRunControl
+              size="lg"
+              execution={{
+                state: scientificState,
+                label: statusText,
+                onRun: () => { void runSimulation() },
+                onStop: cancelSimulation,
+                runLabel: 'Simulate',
+                stopLabel: 'Cancel',
+                disabled: nodes.length === 0,
+                disabledReason: 'Add RF blocks before simulating',
+              }}
+            />}
             secondaryActions={<Link
               className="suite-link"
               href="https://jorpago2.github.io/"
@@ -634,7 +653,7 @@ export default function App() {
               className="status-strip"
               aria-label="Scientific status"
               status={{
-                state: visibleStatus === 'running' ? 'running' : visibleStatus === 'error' ? 'failed' : visibleStatus === 'success' ? 'up-to-date' : nodes.length ? 'modified' : 'needs-input',
+                state: scientificState,
                 label: statusText,
               }}
               metadata={<>
