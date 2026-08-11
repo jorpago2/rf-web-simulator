@@ -91,54 +91,6 @@ h2 {
   letter-spacing: -0.01em;
 }
 
-.app-help {
-  flex: 0 0 auto;
-  margin-inline-end: var(--rf-space-2xs);
-}
-
-.app-help button {
-  min-height: 44px;
-}
-
-.app-help-panel {
-  width: min(22rem, calc(100vw - 2 * var(--rf-space-lg)));
-  color: var(--cds-text-inverse);
-}
-
-.app-help-panel p {
-  margin: var(--rf-space-2xs) 0 var(--rf-space-sm);
-  color: var(--cds-text-inverse);
-  font-size: var(--rf-type-sm);
-  line-height: 1.5;
-}
-
-.app-help-panel dl,
-.app-help-panel dl div {
-  display: grid;
-  gap: var(--rf-space-xs);
-  margin: 0;
-}
-
-.app-help-panel dl div {
-  grid-template-columns: minmax(120px, auto) 1fr;
-  align-items: center;
-}
-
-.app-help-panel dt,
-.app-help-panel dd {
-  margin: 0;
-  font-size: var(--rf-type-xs);
-}
-
-.app-help-panel kbd {
-  padding: var(--rf-space-2xs) var(--rf-space-xs);
-  border: 1px solid var(--cds-border-inverse);
-  border-radius: 0;
-  background: transparent;
-  color: var(--cds-text-inverse);
-  font: 700 var(--rf-type-xs) var(--rf-font-display);
-}
-
 .project-toolbar {
   min-width: 0;
   display: flex;
@@ -204,12 +156,10 @@ h2 {
   white-space: nowrap;
 }
 
-.app-help__label,
 .suite-link__label {
   display: none;
 }
 
-.app-help__icon,
 .suite-link__icon,
 .project-actions-button__icon {
   flex: 0 0 auto;
@@ -1288,7 +1238,6 @@ h2 {
     flex: 1 1 auto;
   }
 
-  .app-help button,
   .suite-link {
     width: 40px;
     min-width: 40px;
@@ -1296,12 +1245,10 @@ h2 {
     justify-content: center;
   }
 
-  .app-help__label,
   .suite-link__label {
     display: none;
   }
 
-  .app-help__icon,
   .suite-link__icon {
     margin: 0;
   }
@@ -1355,21 +1302,18 @@ h2 {
     width: 100%;
   }
 
-  .project-actions-button,
-  .app-help button {
+  .project-actions-button {
     width: 40px;
     min-width: 40px;
     padding: 0;
     justify-content: center;
   }
 
-  .project-actions-button__icon,
-  .app-help__icon {
+  .project-actions-button__icon {
     margin: 0;
   }
 
   .project-actions-button__label,
-  .app-help__label,
   .suite-link__label {
     display: none;
   }

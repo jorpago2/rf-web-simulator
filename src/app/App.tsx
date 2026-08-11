@@ -12,15 +12,11 @@ import {
   TabPanel,
   TabPanels,
   Tabs,
-  Toggletip,
-  ToggletipButton,
-  ToggletipContent,
   preview__IconIndicator as IconIndicator,
 } from '@carbon/react'
 import {
   Apps,
   Chemistry,
-  Help,
   Launch,
   Layers,
   Meter,
@@ -280,16 +276,8 @@ export default function App() {
           void runSimulation()
         }
       } else if (event.key === 'Escape') {
-        const helpContent =
-          document.querySelector<HTMLElement>('.app-help-panel')
-        if (helpContent?.offsetParent) {
-          document.querySelector<HTMLButtonElement>('.app-help button')?.click()
-        }
         if (activeTool) closeActiveTool()
         if (status === 'running') simulationAbortRef.current?.abort()
-      } else if (event.key === '?' && !isEditableTarget(event.target)) {
-        event.preventDefault()
-        document.querySelector<HTMLButtonElement>('.app-help button')?.click()
       }
     }
     document.addEventListener('keydown', handleShortcut, true)
@@ -411,47 +399,13 @@ export default function App() {
                 status={persistenceStatus}
               />
             </Suspense>}
-            primaryAction={<Toggletip align="bottom-end" className="app-help">
-              <ToggletipButton
-                as={Button}
-                aria-label="Help"
-                aria-keyshortcuts="?"
-                className="scientific-header__icon-action"
-                kind="ghost"
-                label="Help"
-                size="sm"
-              >
-                <Help className="app-help__icon" aria-hidden="true" />
-                <span className="app-help__label">Help</span>
-              </ToggletipButton>
-              <ToggletipContent className="app-help-panel">
-                <strong>Quick workflow</strong>
-                <p>
-                  Build a connected source-to-load chain, set the analysis,
-                  simulate, then inspect and export current results.
-                </p>
-                <dl>
-                  <div>
-                    <dt>
-                      <kbd>Ctrl/⌘</kbd> + <kbd>Enter</kbd>
-                    </dt>
-                    <dd>Run simulation</dd>
-                  </div>
-                  <div>
-                    <dt>
-                      <kbd>Esc</kbd>
-                    </dt>
-                    <dd>Cancel simulation</dd>
-                  </div>
-                  <div>
-                    <dt>
-                      <kbd>?</kbd>
-                    </dt>
-                    <dd>Toggle this help</dd>
-                  </div>
-                </dl>
-              </ToggletipContent>
-            </Toggletip>}
+            help={{
+              summary: 'Build a connected source-to-load chain, set the analysis, simulate, then inspect and export current results.',
+              shortcuts: [
+                { keys: ['Ctrl/⌘', 'Enter'], description: 'Run simulation' },
+                { keys: ['Esc'], description: 'Cancel simulation' },
+              ],
+            }}
             secondaryActions={<Link
               className="suite-link"
               href="https://jorpago2.github.io/"
@@ -727,11 +681,4 @@ function WorkflowPanel({
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : 'Unknown error.'
-}
-
-function isEditableTarget(target: EventTarget | null): boolean {
-  return (
-    target instanceof HTMLElement &&
-    (target.matches('input, select, textarea') || target.isContentEditable)
-  )
 }

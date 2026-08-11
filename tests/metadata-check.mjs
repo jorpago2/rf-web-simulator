@@ -97,11 +97,11 @@ test('uses the Carbon UI contract', async () => {
     'Content',
     'SkipToContent',
     'Link',
-    'Toggletip',
     'IconIndicator',
   ]) {
     assert.match(app, new RegExp(`<${component}`))
   }
+  assert.match(app, /help=\{\{/)
   assert.doesNotMatch(app, /<(?:a|button|details|summary|header|main)\b/)
   for (const component of [
     'Button',
