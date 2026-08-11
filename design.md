@@ -27,7 +27,7 @@ does not introduce a parallel color system.
 ## Typography
 
 - Display and body: IBM Plex Sans.
-- Scientific values and identifiers: IBM Plex Mono.
+- Scientific values and identifiers: IBM Plex Sans with tabular numerals.
 - Numeric readouts use tabular figures.
 
 ## Spacing
