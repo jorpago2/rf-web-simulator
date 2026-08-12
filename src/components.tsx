@@ -2063,10 +2063,6 @@ export function SimulationPanel({
     )
     if (firstAvailable) setResultView(firstAvailable.view)
   }
-  const showResults = () =>
-    document
-      .getElementById('analysis-tabpanel')
-      ?.scrollIntoView({ block: 'start' })
   const update = (values: Partial<RFAnalysisSettings>) =>
     onAnalysisChange({ ...analysis, ...values })
   const exportResults = () => {
@@ -2148,29 +2144,6 @@ export function SimulationPanel({
       <h2 id="results-title" className="sr-only">
         {strings.resultsTitle}
       </h2>
-      <Button
-        className="mobile-run-button"
-        data-action={status === 'running' ? 'cancel' : undefined}
-        kind={status === 'running' ? 'danger' : 'primary'}
-        size="sm"
-        type="button"
-        disabled={status !== 'running' && nodes.length === 0}
-        onClick={
-          status === 'running'
-            ? onCancel
-            : result || status === 'error'
-              ? showResults
-              : onRun
-        }
-      >
-        {status === 'running'
-          ? 'Cancel simulation'
-          : status === 'error'
-            ? 'View error'
-            : result
-              ? 'View results'
-              : 'Run simulation'}
-      </Button>
       <Tabs
         selectedIndex={selectedResultCategory}
         onChange={({ selectedIndex }) => selectResultCategory(selectedIndex)}

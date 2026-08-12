@@ -809,10 +809,6 @@ h2 {
   max-width: none;
 }
 
-.mobile-run-button {
-  display: none;
-}
-
 .results-empty {
   min-height: 150px;
   display: flex;
@@ -1312,14 +1308,6 @@ h2 {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-
-  .mobile-run-button {
-    position: fixed;
-    right: 14px;
-    bottom: calc(var(--scientific-ui-mobile-nav-total-block-size) + 14px);
-    z-index: 30;
-    display: block;
   }
 
   .simulation-summary {
