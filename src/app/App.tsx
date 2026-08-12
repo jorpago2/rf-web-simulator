@@ -32,6 +32,7 @@ import { ScientificAppShell, ScientificHeader, ScientificRunControl, ScientificS
 import type { SimulationStatus } from '../components'
 import { RFCanvas } from '../diagram/RFCanvas'
 import type { RFProject, SimulationOutput } from '../engine/types'
+import type { GraphValidationResult } from '../engine/validation'
 import { downloadTextFile, safeFileName } from '../persistence/download'
 import {
   listLocalProjects,
@@ -62,9 +63,9 @@ const WORKFLOW_TOOLS: {
   label: string
   icon: typeof Apps
 }[] = [
-  { id: 'components', label: 'Components', icon: Apps },
-  { id: 'canvas', label: 'Canvas', icon: Layers },
-  { id: 'experiment', label: 'Experiment', icon: Chemistry },
+  { id: 'components', label: 'Build', icon: Apps },
+  { id: 'canvas', label: 'Configure', icon: Layers },
+  { id: 'experiment', label: 'Run', icon: Chemistry },
   { id: 'review', label: 'Review', icon: Meter },
 ]
 const loadWorkbenchComponents = () => import('../components')
@@ -88,6 +89,7 @@ const ProjectToolbar = lazy(() =>
     default: module.ProjectToolbar,
   })),
 )
+const RFValidationSummary = lazy(() => import('./RFValidationSummary'))
 
 export default function App() {
   const activeProjectId = useRFEditorStore((state) => state.activeProjectId)
@@ -125,6 +127,8 @@ export default function App() {
     [],
   )
   const [selectedProjectId, setSelectedProjectId] = useState('')
+  const [graphValidation, setGraphValidation] =
+    useState<GraphValidationResult | null>(null)
 
   useEffect(() => {
     if (!workspaceNotice) return
@@ -170,6 +174,16 @@ export default function App() {
     }),
     [analysis, edges, nodes, projectName],
   )
+
+  useEffect(() => {
+    if (activeTool !== 'review') return
+    let cancelled = false
+    setGraphValidation(null)
+    void import('../engine/validation').then(({ validateLinearGraph }) => {
+      if (!cancelled) setGraphValidation(validateLinearGraph(project.nodes, project.edges))
+    })
+    return () => { cancelled = true }
+  }, [activeTool, project])
 
   useEffect(() => {
     let cancelled = false
@@ -336,7 +350,7 @@ export default function App() {
   const statusText = {
     idle: nodes.length ? 'Linear chain · draft' : 'Empty chain · add blocks',
     running: 'Simulating in worker…',
-    success: 'Validated · complete',
+    success: 'Solved · review validation',
     error: 'Diagram needs attention',
   }[visibleStatus]
   const scientificState = visibleStatus === 'running'
@@ -376,7 +390,7 @@ export default function App() {
       {activeTool === 'canvas' && (
         <WorkflowPanel
           description="Viewport and diagram-level controls. Object parameters remain in the contextual inspector."
-          title="Canvas"
+          title="Configure canvas"
           onClose={closeActiveTool}
         >
           <dl className="workflow-summary">
@@ -401,8 +415,8 @@ export default function App() {
       )}
       {activeTool === 'experiment' && (
         <WorkflowPanel
-          description="Configure the sweep, uncertainty study, and solver before running the RF chain."
-          title="Experiment"
+          description="Configure the sweep, uncertainty study, and solver, then run the RF chain."
+          title="Run setup"
           onClose={closeActiveTool}
         >
           <div ref={setAnalysisControlsHost} />
@@ -414,37 +428,9 @@ export default function App() {
           title="Review"
           onClose={closeActiveTool}
         >
-          <IconIndicator kind={STATUS_INDICATOR_KIND[visibleStatus]} label={statusText} />
-          <dl className="workflow-summary">
-            <div><dt>Model revision</dt><dd>{modelRevision}</dd></div>
-            <div><dt>Warnings</dt><dd>{visibleResult?.warnings.length ?? 0}</dd></div>
-            <div><dt>Result</dt><dd>{visibleResult ? 'Current' : 'Not solved'}</dd></div>
-          </dl>
-          {error && (
-            <InlineNotification
-              className="workflow-notification"
-              hideCloseButton
-              kind="error"
-              lowContrast
-              title="Simulation stopped"
-              subtitle={error}
-            />
-          )}
-          {(visibleResult?.warnings.length ?? 0) > 0 && (
-            <InlineNotification
-              className="workflow-notification"
-              hideCloseButton
-              kind="warning"
-              lowContrast
-              title={`${visibleResult!.warnings.length} simulation ${visibleResult!.warnings.length === 1 ? 'warning' : 'warnings'}`}
-            >
-              <ul className="scientific-warning-list">
-                {visibleResult!.warnings.map((warning, index) => (
-                  <li key={`${warning.code}-${warning.frequencyHz ?? index}`}>{warning.message}</li>
-                ))}
-              </ul>
-            </InlineNotification>
-          )}
+          <Suspense fallback={<p>Checking model…</p>}>
+            <RFValidationSummary analysis={analysis} error={error} graphValidation={graphValidation} modelRevision={modelRevision} result={visibleResult} resultRevision={resultRevision} />
+          </Suspense>
         </WorkflowPanel>
       )}
     </>
