@@ -1190,7 +1190,8 @@ h2 {
   .project-toolbar {
     position: static;
     grid-column: 2;
-    width: auto;
+    width: 100%;
+    max-width: 100%;
     justify-content: stretch;
   }
 
@@ -1208,8 +1209,8 @@ h2 {
   }
 
   .project-actions-button {
-    width: 40px;
-    min-width: 40px;
+    width: var(--scientific-ui-header-block-size);
+    min-width: var(--scientific-ui-header-block-size);
     padding: 0;
     justify-content: center;
   }
