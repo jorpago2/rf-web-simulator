@@ -1145,8 +1145,10 @@ h2 {
   }
 
   .project-name-field {
+    width: 0;
     min-width: 0;
-    flex: 1 1 auto;
+    max-width: 100%;
+    flex: 1 1 0;
   }
 
   .suite-link {
