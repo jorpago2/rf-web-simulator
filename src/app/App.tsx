@@ -128,7 +128,7 @@ export default function App() {
   )
   const [selectedProjectId, setSelectedProjectId] = useState('')
   const [graphValidation, setGraphValidation] =
-    useState<GraphValidationResult | null>(null)
+    useState<{ modelRevision: number; result: GraphValidationResult } | null>(null)
 
   useEffect(() => {
     if (!workspaceNotice) return
@@ -178,12 +178,14 @@ export default function App() {
   useEffect(() => {
     if (activeTool !== 'review') return
     let cancelled = false
-    setGraphValidation(null)
     void import('../engine/validation').then(({ validateLinearGraph }) => {
-      if (!cancelled) setGraphValidation(validateLinearGraph(project.nodes, project.edges))
+      if (!cancelled) setGraphValidation({
+        modelRevision,
+        result: validateLinearGraph(project.nodes, project.edges),
+      })
     })
     return () => { cancelled = true }
-  }, [activeTool, project])
+  }, [activeTool, modelRevision, project])
 
   useEffect(() => {
     let cancelled = false
@@ -340,6 +342,9 @@ export default function App() {
   }
 
   const resultIsCurrent = resultRevision === modelRevision
+  const currentGraphValidation = graphValidation?.modelRevision === modelRevision
+    ? graphValidation.result
+    : null
   const visibleResult = resultIsCurrent ? result : null
   const visibleStatus =
     status === 'running' || status === 'error'
@@ -429,7 +434,7 @@ export default function App() {
           onClose={closeActiveTool}
         >
           <Suspense fallback={<p>Checking model…</p>}>
-            <RFValidationSummary analysis={analysis} error={error} graphValidation={graphValidation} modelRevision={modelRevision} result={visibleResult} resultRevision={resultRevision} />
+            <RFValidationSummary analysis={analysis} error={error} graphValidation={currentGraphValidation} modelRevision={modelRevision} result={visibleResult} resultRevision={resultRevision} />
           </Suspense>
         </WorkflowPanel>
       )}
