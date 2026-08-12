@@ -180,9 +180,11 @@ export function BlockLibrary({
           </p>
           <div className="block-list">
             {visibleBlocks.map((block) => (
-              <button
+              <Button
                 className="block-card"
                 draggable
+                kind="ghost"
+                size="sm"
                 key={block.type}
                 onDragStart={(event) => startDrag(event, block.type)}
                 onClick={() => addNode(block.type)}
@@ -201,7 +203,7 @@ export function BlockLibrary({
                   <strong>{block.label}</strong>
                   <small>{block.description}</small>
                 </span>
-              </button>
+              </Button>
             ))}
             {visibleBlocks.length === 0 && (
               <p className="block-library__empty">
