@@ -3,6 +3,7 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
   type ChangeEvent,
   type DragEvent,
@@ -26,7 +27,7 @@ import {
   TextInput,
   Tile,
 } from '@carbon/react'
-import { ScientificOutcomeSummary, ScientificTaskPanel } from '@jorpago2/scientific-ui'
+import { ScientificOutcomeSummary, ScientificTaskPanel, useScientificResultTransition } from '@jorpago2/scientific-ui'
 import { blockDescriptors } from './diagram/nodeRegistry'
 import { RFBlockSymbol } from './diagram/RFBlockSymbol'
 import { parseTouchstone } from './engine/touchstone'
@@ -1923,6 +1924,7 @@ export function SimulationPanel({
   onRun: () => void
   onExport: (fileName: string) => void
 }) {
+  const outcomeHeading = useRef<HTMLHeadingElement>(null)
   const [resultView, setResultView] = useState<ResultView>('sParameters')
   const [resultCategory, setResultCategory] =
     useState<ResultCategory>('network')
@@ -2096,6 +2098,11 @@ export function SimulationPanel({
     [secondSweepNode],
   )
 
+  useScientificResultTransition({
+    state: status === 'running' ? 'running' : status === 'error' ? 'failed' : result ? result.warnings.length ? 'warning' : 'up-to-date' : 'ready',
+    resultRef: outcomeHeading,
+  })
+
   useEffect(() => {
     const changes: Partial<RFAnalysisSettings> = {}
     const first = sweepParameters[0]
@@ -2150,6 +2157,7 @@ export function SimulationPanel({
       <ScientificOutcomeSummary
         className="rf-outcome"
         headingLevel={3}
+        headingRef={outcomeHeading}
         title={result ? 'RF simulation outcome' : status === 'running' ? 'RF simulation running' : 'RF simulation'}
         status={status === 'running'
           ? { state: 'running', label: 'Solving network', detail: 'The worker is evaluating the current model.' }
@@ -2168,9 +2176,9 @@ export function SimulationPanel({
               : 'The current network and analysis settings produced a usable result. Review validation before export.'
             : 'Build a connected source-to-load network, then simulate it to reveal the first interpretable result.'}
         metrics={result ? [
-          { id: 'center-s21', label: 'Center S21', value: formatDb(outcomeCenterS21!), status: result.warnings.length ? 'warning' : 'success' },
+          { id: 'center-s21', label: 'Center S21', value: outcomeCenterS21!, unit: 'dB', format: { significantDigits: 4 }, status: result.warnings.length ? 'warning' : 'success' },
           { id: 'center-frequency', label: 'Center frequency', value: formatFrequency(result.total.frequencyHz[outcomeCenterIndex]!) },
-          { id: 'frequency-points', label: 'Frequency points', value: result.total.frequencyHz.length.toLocaleString('en-US') },
+          { id: 'frequency-points', label: 'Frequency points', value: result.total.frequencyHz.length, format: { notation: 'standard', significantDigits: 8 } },
           { id: 'solver-warnings', label: 'Solver warnings', value: result.warnings.length },
         ] : []}
         actions={result ? [
