@@ -618,7 +618,6 @@ export default function App() {
                         nodes={nodes}
                         error={status === 'error' ? error : null}
                         onAnalysisChange={updateAnalysis}
-                        onCancel={cancelSimulation}
                         onRun={runSimulation}
                         onExport={(fileName) =>
                           setPersistenceMessage(`Exported ${fileName}`)

@@ -26,7 +26,7 @@ import {
   TextInput,
   Tile,
 } from '@carbon/react'
-import { ScientificTaskPanel } from '@jorpago2/scientific-ui'
+import { ScientificOutcomeSummary, ScientificTaskPanel } from '@jorpago2/scientific-ui'
 import { blockDescriptors } from './diagram/nodeRegistry'
 import { RFBlockSymbol } from './diagram/RFBlockSymbol'
 import { parseTouchstone } from './engine/touchstone'
@@ -1909,7 +1909,6 @@ export function SimulationPanel({
   result,
   error,
   onAnalysisChange,
-  onCancel,
   onRun,
   onExport,
 }: {
@@ -1921,7 +1920,6 @@ export function SimulationPanel({
   result: SimulationOutput | null
   error: string | null
   onAnalysisChange: (analysis: RFAnalysisSettings) => void
-  onCancel: () => void
   onRun: () => void
   onExport: (fileName: string) => void
 }) {
@@ -2080,6 +2078,11 @@ export function SimulationPanel({
     )
     onExport(fileName)
   }
+  const outcomeCenterIndex = result ? Math.floor(result.total.frequencyHz.length / 2) : 0
+  const outcomeCenterS21 = result ? magnitudeDb({
+    re: result.total.s21.re[outcomeCenterIndex]!,
+    im: result.total.s21.im[outcomeCenterIndex]!,
+  }) : null
   const sweepNode = nodes.find((node) => node.id === analysis.sweepNodeId)
   const sweepParameters = useMemo(
     () => (sweepNode ? sweepableParameters(sweepNode) : []),
@@ -2144,6 +2147,39 @@ export function SimulationPanel({
       <h2 id="results-title" className="sr-only">
         {strings.resultsTitle}
       </h2>
+      <ScientificOutcomeSummary
+        className="rf-outcome"
+        headingLevel={3}
+        title={result ? 'RF simulation outcome' : status === 'running' ? 'RF simulation running' : 'RF simulation'}
+        status={status === 'running'
+          ? { state: 'running', label: 'Solving network', detail: 'The worker is evaluating the current model.' }
+          : status === 'error'
+            ? { state: 'failed', label: 'Simulation stopped', detail: error ?? undefined }
+            : result?.warnings.length
+              ? { state: 'warning', label: 'Solved with warnings' }
+              : result
+                ? { state: 'up-to-date', label: 'Result current' }
+                : { state: 'needs-input', label: nodes.length ? 'Ready to simulate' : 'Add RF blocks' }}
+        summary={status === 'error'
+          ? error ?? 'Correct the network and run the simulation again.'
+          : result
+            ? result.warnings.length
+              ? `The network solved, but ${result.warnings.length} warning${result.warnings.length === 1 ? ' requires' : 's require'} review before interpretation.`
+              : 'The current network and analysis settings produced a usable result. Review validation before export.'
+            : 'Build a connected source-to-load network, then simulate it to reveal the first interpretable result.'}
+        metrics={result ? [
+          { id: 'center-s21', label: 'Center S21', value: formatDb(outcomeCenterS21!), status: result.warnings.length ? 'warning' : 'success' },
+          { id: 'center-frequency', label: 'Center frequency', value: formatFrequency(result.total.frequencyHz[outcomeCenterIndex]!) },
+          { id: 'frequency-points', label: 'Frequency points', value: result.total.frequencyHz.length.toLocaleString('en-US') },
+          { id: 'solver-warnings', label: 'Solver warnings', value: result.warnings.length },
+        ] : []}
+        actions={result ? [
+          { id: 'export-result', label: visibleResultView === 'nonlinear' ? 'Export power CSV' : 'Export result CSV', emphasis: 'primary', disabled: !categoryResultView, disabledReason: 'Choose an available result view first.', onClick: exportResults },
+          { id: 'rerun', label: 'Run again', emphasis: 'secondary', collapseAt: 'sm', onClick: onRun },
+        ] : [
+          { id: 'run', label: status === 'error' ? 'Try again' : 'Run simulation', emphasis: 'primary', disabled: nodes.length === 0 || status === 'running', disabledReason: nodes.length === 0 ? 'Add RF blocks before simulating.' : undefined, onClick: onRun },
+        ]}
+      />
       <Tabs
         selectedIndex={selectedResultCategory}
         onChange={({ selectedIndex }) => selectResultCategory(selectedIndex)}
@@ -2520,31 +2556,6 @@ export function SimulationPanel({
                     <option value="GHz">GHz</option>
                   </Select>
                 )}
-                <Button
-                  className="run-button"
-                  data-action={status === 'running' ? 'cancel' : undefined}
-                  kind={status === 'running' ? 'danger' : 'primary'}
-                  size="sm"
-                  type="button"
-                  disabled={status !== 'running' && nodes.length === 0}
-                  onClick={status === 'running' ? onCancel : onRun}
-                >
-                  {status === 'running'
-                    ? 'Cancel simulation'
-                    : 'Run simulation'}
-                </Button>
-                <Button
-                  className="export-button"
-                  kind="secondary"
-                  size="sm"
-                  type="button"
-                  disabled={!result || !categoryResultView}
-                  onClick={exportResults}
-                >
-                  {visibleResultView === 'nonlinear'
-                    ? 'Export power CSV'
-                    : 'Export sweep CSV'}
-                </Button>
               </div>,
               analysisControlsHost,
             )}
