@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useRef } from 'react'
 import type { Config, Data, Layout } from 'plotly.js'
+import {
+  createScientificPlotlyConfig,
+  createScientificPlotlyLayout,
+  prepareScientificPlotlyToolbar,
+  readScientificPlotTheme,
+} from '@jorpago2/scientific-ui'
 import type { SimulationOutput } from '../engine/types'
 
 export type PlotView =
@@ -70,19 +76,10 @@ export function RFPlot({
               ? 'Normalized antenna radiation pattern versus angle'
               : `${plotTitle(view, frequencyConverting)} versus frequency`
       }
-      config={{
-        displaylogo: false,
-        responsive: true,
+      config={createScientificPlotlyConfig({
+        filename: `rf-${view}`,
         scrollZoom: true,
-        modeBarButtonsToRemove: ['lasso2d', 'select2d'],
-        toImageButtonOptions: {
-          format: 'svg',
-          filename: `rf-${view}`,
-          width: 1200,
-          height: 650,
-          scale: 1,
-        },
-      }}
+      }) as Partial<Config>}
       data={figure.data}
       layout={figure.layout}
     />
@@ -111,7 +108,14 @@ function PlotlyFigure({
     void import('plotly.js-basic-dist-min').then((module) => {
       if (cancelled) return
       plotly = module.default
-      return plotly.react(element, data, layout, config)
+      const normalizedLayout = createScientificPlotlyLayout({
+        height: typeof layout.height === 'number' ? layout.height : 330,
+        theme: readScientificPlotTheme(element),
+        overrides: layout as Record<string, unknown>,
+      }) as Partial<Layout>
+      return plotly.react(element, data, normalizedLayout, config).then((plot) => {
+        prepareScientificPlotlyToolbar(plot)
+      })
     })
 
     return () => {
@@ -121,7 +125,7 @@ function PlotlyFigure({
   }, [config, data, layout])
 
   return (
-    <div className="rf-plot" ref={plotRef} role="img" aria-label={ariaLabel} />
+    <div className="rf-plot scientific-plot-surface" ref={plotRef} role="img" aria-label={ariaLabel} />
   )
 }
 
