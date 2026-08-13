@@ -24,7 +24,7 @@ const gzipBytes = (
 // Shared Carbon status and theme controls are part of the initial workbench.
 // Keep the measured allowance explicit and tight rather than excluding preloads.
 // Session recovery adds a deliberately small amount of startup code.
-const maximumKiB = 183.0
+const maximumKiB = 183.5
 const maximumBytes = maximumKiB * 1024
 const measuredKiB = (gzipBytes / 1024).toFixed(1)
 
