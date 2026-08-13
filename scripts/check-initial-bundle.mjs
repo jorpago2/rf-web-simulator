@@ -21,9 +21,9 @@ const gzipBytes = (
     ),
   )
 ).reduce((total, bytes) => total + bytes, 0)
-// The on-demand scientific review flow adds a small shared Carbon status surface.
-// Keep the allowance explicit and tight rather than silently excluding preloads.
-const maximumKiB = 182
+// Shared Carbon status and theme controls are part of the initial workbench.
+// Keep the measured allowance explicit and tight rather than excluding preloads.
+const maximumKiB = 182.5
 const maximumBytes = maximumKiB * 1024
 const measuredKiB = (gzipBytes / 1024).toFixed(1)
 

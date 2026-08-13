@@ -5,7 +5,7 @@ import {
   createScientificPlotlyConfig,
   createScientificPlotlyLayout,
   prepareScientificPlotlyToolbar,
-  readScientificPlotTheme,
+  useScientificPlotTheme,
 } from '@jorpago2/scientific-ui'
 import type { SimulationOutput } from '../engine/types'
 
@@ -99,6 +99,7 @@ function PlotlyFigure({
   ariaLabel: string
 }) {
   const plotRef = useRef<HTMLDivElement>(null)
+  const plotTheme = useScientificPlotTheme()
 
   useEffect(() => {
     const element = plotRef.current
@@ -111,7 +112,7 @@ function PlotlyFigure({
       plotly = module.default
       const normalizedLayout = createScientificPlotlyLayout({
         height: typeof layout.height === 'number' ? layout.height : 330,
-        theme: readScientificPlotTheme(element),
+        theme: plotTheme,
         overrides: layout as Record<string, unknown>,
       }) as Partial<Layout>
       return plotly.react(element, data, normalizedLayout, config).then((plot) => {
@@ -123,7 +124,7 @@ function PlotlyFigure({
       cancelled = true
       if (plotly) plotly.purge(element)
     }
-  }, [config, data, layout])
+  }, [config, data, layout, plotTheme])
 
   return (
     <div className="rf-plot scientific-plot-surface" ref={plotRef} role="img" aria-label={ariaLabel} />
