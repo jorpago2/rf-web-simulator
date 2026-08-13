@@ -465,7 +465,7 @@ export default function App() {
           <ScientificHeader
             aria-label="RF Network Simulator"
             product={strings.appName}
-            productMark="RF"
+            productIcon="rf-circuit"
             descriptor="RF network simulation"
             href="./"
             skipLink={<SkipToContent href="#rf-workspace">Skip to RF workspace</SkipToContent>}
