@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import type { Config, Data, Layout } from 'plotly.js'
 import {
+  SCIENTIFIC_PLOT_LINE_WIDTHS,
   createScientificPlotlyConfig,
   createScientificPlotlyLayout,
   prepareScientificPlotlyToolbar,
@@ -186,7 +187,7 @@ function createFigure(
         line: {
           color: TRACE_STYLES[index]!.color,
           dash: TRACE_STYLES[index]!.dash,
-          width: 2,
+          width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary,
         },
         hovertemplate: `${name}: %{y:.4g}<extra></extra>`,
       })),
@@ -201,7 +202,7 @@ function createFigure(
             x1: 1,
             y0: 1,
             y1: 1,
-            line: { color: '#64748b', dash: 'dot', width: 1 },
+            line: { color: '#64748b', dash: 'dot', width: SCIENTIFIC_PLOT_LINE_WIDTHS.reference },
           },
         ],
       },
@@ -222,7 +223,7 @@ function createFigure(
             name: 'Conversion gain',
             x: frequency,
             y: Array.from(result.curves.s21Db),
-            line: { color: TRACE_STYLES[1].color, width: 2 },
+            line: { color: TRACE_STYLES[1].color, width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary },
             hovertemplate: 'Conversion gain: %{y:.3f} dB<extra></extra>',
           },
         ],
@@ -249,7 +250,7 @@ function createFigure(
         line: {
           color: TRACE_STYLES[index]!.color,
           dash: TRACE_STYLES[index]!.dash,
-          width: 2,
+          width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary,
         },
         hovertemplate: `${name}: %{y:.3f} dB<extra></extra>`,
       })),
@@ -272,7 +273,7 @@ function createFigure(
         name: `${probe.label} (probe ${index + 1})`,
         x: frequency,
         y: Array.from(probe.s21Db),
-        line: { ...probeTraceStyle(index), width: 2 },
+        line: { ...probeTraceStyle(index), width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary },
         hovertemplate: `${conversion ? 'Accumulated conversion gain' : 'Accumulated S<sub>21</sub>'}: %{y:.3f} dB<extra>%{fullData.name}</extra>`,
       })),
       layout: {
@@ -296,7 +297,7 @@ function createFigure(
           x: frequency,
           y: Array.from(result.curves.s21PhaseDeg),
           connectgaps: false,
-          line: { color: TRACE_STYLES[0].color, width: 2 },
+          line: { color: TRACE_STYLES[0].color, width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary },
           hovertemplate: 'Phase: %{y:.3f}°<extra></extra>',
         },
       ],
@@ -317,7 +318,7 @@ function createFigure(
         x: frequency,
         y: [...result.curves.s21GroupDelayS].map((value) => value * 1e9),
         connectgaps: false,
-        line: { color: TRACE_STYLES[2].color, width: 2 },
+        line: { color: TRACE_STYLES[2].color, width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary },
         hovertemplate: 'Group delay: %{y:.4f} ns<extra></extra>',
       },
     ],
@@ -341,7 +342,7 @@ function createOscillatorFigure(result: SimulationOutput): {
       name: 'Free-running VCO',
       x: Array.from(noise.offsetFrequencyHz),
       y: Array.from(noise.freeRunningDbcHz),
-      line: { color: TRACE_STYLES[1].color, dash: 'dash', width: 2 },
+      line: { color: TRACE_STYLES[1].color, dash: 'dash', width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary },
       hovertemplate: '%{x:.4g} Hz: %{y:.2f} dBc/Hz<extra>VCO</extra>',
     },
   ]
@@ -352,7 +353,7 @@ function createOscillatorFigure(result: SimulationOutput): {
       name: 'PLL output',
       x: Array.from(noise.offsetFrequencyHz),
       y: Array.from(noise.outputDbcHz),
-      line: { color: TRACE_STYLES[0].color, width: 2.5 },
+      line: { color: TRACE_STYLES[0].color, width: SCIENTIFIC_PLOT_LINE_WIDTHS.emphasis },
       hovertemplate: '%{x:.4g} Hz: %{y:.2f} dBc/Hz<extra>PLL output</extra>',
     })
   }
@@ -389,7 +390,7 @@ function createAntennaFigure(result: SimulationOutput): {
         name: 'Normalized power cut',
         x: Array.from(result.antenna.angleDeg),
         y: Array.from(result.antenna.normalizedPatternDb),
-        line: { color: TRACE_STYLES[2].color, width: 2.5 },
+        line: { color: TRACE_STYLES[2].color, width: SCIENTIFIC_PLOT_LINE_WIDTHS.emphasis },
         hovertemplate: '%{x:.0f}°: %{y:.2f} dB<extra></extra>',
       },
     ],
@@ -425,7 +426,7 @@ function createNonlinearFigure(result: SimulationOutput): {
       name: 'Linear fundamental',
       x: inputPowerDbm,
       y: Array.from(nonlinear.linearOutputPowerDbm),
-      line: { color: '#6b7280', dash: 'dash', width: 2 },
+      line: { color: '#6b7280', dash: 'dash', width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary },
       hovertemplate: 'Linear output: %{y:.3f} dBm<extra></extra>',
     },
   ]
@@ -436,7 +437,7 @@ function createNonlinearFigure(result: SimulationOutput): {
       name: 'Compressed fundamental',
       x: inputPowerDbm,
       y: Array.from(nonlinear.compressedOutputPowerDbm),
-      line: { color: TRACE_STYLES[1].color, width: 2.5 },
+      line: { color: TRACE_STYLES[1].color, width: SCIENTIFIC_PLOT_LINE_WIDTHS.emphasis },
       hovertemplate: 'Compressed output: %{y:.3f} dBm<extra></extra>',
     })
   }
@@ -447,7 +448,7 @@ function createNonlinearFigure(result: SimulationOutput): {
       name: 'IM<sub>3</sub> extrapolation',
       x: inputPowerDbm,
       y: Array.from(nonlinear.im3OutputPowerDbm),
-      line: { color: TRACE_STYLES[3].color, dash: 'dot', width: 2 },
+      line: { color: TRACE_STYLES[3].color, dash: 'dot', width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary },
       hovertemplate: 'IM<sub>3</sub> output: %{y:.3f} dBm<extra></extra>',
     })
   }
@@ -463,7 +464,7 @@ function createNonlinearFigure(result: SimulationOutput): {
       x: inputPowerDbm,
       y: Array.from(nonlinear.outputPhaseDeg),
       yaxis: 'y2',
-      line: { color: TRACE_STYLES[2].color, dash: 'dashdot', width: 2 },
+      line: { color: TRACE_STYLES[2].color, dash: 'dashdot', width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary },
       hovertemplate: 'Output phase: %{y:.3f}°<extra></extra>',
     })
   }
@@ -554,7 +555,7 @@ function createSmithFigure(result: SimulationOutput): {
         x: circle.map(Math.cos),
         y: circle.map(Math.sin),
         hoverinfo: 'skip',
-        line: { color: '#94a3b8', dash: 'dot', width: 1 },
+        line: { color: '#94a3b8', dash: 'dot', width: SCIENTIFIC_PLOT_LINE_WIDTHS.reference },
       },
       {
         type: 'scatter',
@@ -563,7 +564,7 @@ function createSmithFigure(result: SimulationOutput): {
         x: Array.from(result.total.s11.re),
         y: Array.from(result.total.s11.im),
         customdata: Array.from(result.total.frequencyHz),
-        line: { color: TRACE_STYLES[0].color, width: 2 },
+        line: { color: TRACE_STYLES[0].color, width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary },
         hovertemplate:
           'S<sub>11</sub> = %{x:.4f} %{y:+.4f}j<br>f = %{customdata:.6g} Hz<extra></extra>',
       },
