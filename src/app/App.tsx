@@ -28,7 +28,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { ScientificAppShell, ScientificHeader, ScientificRunControl, ScientificStatusBar, ScientificTaskPanel, ScientificToolRail, useScientificShortcut } from '@jorpago2/scientific-ui'
+import { ScientificAppShell, ScientificHeader, ScientificRecoveryNotice, ScientificRunControl, ScientificStatusBar, ScientificTaskPanel, ScientificToolRail, useScientificShortcut } from '@jorpago2/scientific-ui'
 import type { SimulationStatus } from '../components'
 import { RFCanvas } from '../diagram/RFCanvas'
 import type { RFProject, SimulationOutput } from '../engine/types'
@@ -39,6 +39,7 @@ import {
   loadLocalProject,
   loadMostRecentProject,
   saveLocalProject,
+  type LocalProjectRecord,
   type LocalProjectSummary,
 } from '../persistence/indexedDb'
 import {
@@ -126,6 +127,8 @@ export default function App() {
   const [recentProjects, setRecentProjects] = useState<LocalProjectSummary[]>(
     [],
   )
+  const [recoveryProject, setRecoveryProject] =
+    useState<LocalProjectRecord | null>(null)
   const [selectedProjectId, setSelectedProjectId] = useState('')
   const [graphValidation, setGraphValidation] =
     useState<{ modelRevision: number; result: GraphValidationResult } | null>(null)
@@ -192,22 +195,21 @@ export default function App() {
     void loadMostRecentProject()
       .then(async (record) => {
         if (cancelled) return
-        if (record) loadProject(record.project, record.id)
+        if (record) setRecoveryProject(record)
         setRecentProjects(await listLocalProjects())
         setPersistenceStatus('saved')
+        if (!record) setPersistenceReady(true)
       })
       .catch((storageError: unknown) => {
         if (cancelled) return
         setPersistenceStatus('error')
         setPersistenceMessage(errorText(storageError))
-      })
-      .finally(() => {
-        if (!cancelled) setPersistenceReady(true)
+        setPersistenceReady(true)
       })
     return () => {
       cancelled = true
     }
-  }, [loadProject])
+  }, [])
 
   useEffect(() => {
     if (!persistenceReady) return
@@ -459,6 +461,21 @@ export default function App() {
     <ReactFlowProvider>
       <ScientificAppShell
         className="app-shell"
+        recovery={recoveryProject && <ScientificRecoveryNotice
+          savedAt={new Date(recoveryProject.updatedAt).toISOString()}
+          description={`${recoveryProject.project.name} was saved locally. Restore it, or start from the current blank workspace.`}
+          onRestore={() => {
+            loadProject(recoveryProject.project, recoveryProject.id)
+            setRecoveryProject(null)
+            setPersistenceReady(true)
+            setPersistenceMessage('Previous project restored')
+          }}
+          onDiscard={() => {
+            setRecoveryProject(null)
+            setPersistenceReady(true)
+            setPersistenceMessage('Previous project kept in Recent projects')
+          }}
+        />}
         panelOpen={Boolean(activeTool)}
         header={<>
           <h1 className="scientific-visually-hidden">RF Network Simulator</h1>
