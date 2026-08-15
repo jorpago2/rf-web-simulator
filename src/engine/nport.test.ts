@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { createNPortS, renormalizeNPortNetwork } from './nport'
+import {
+  createNPortS,
+  renormalizeNPortNetwork,
+  solveComplexLinearSystem,
+} from './nport'
 
 describe('N-port network operations', () => {
   it('renormalizes a matched through without changing its transmission', () => {
@@ -37,4 +41,28 @@ describe('N-port network operations', () => {
     expect(result.s[0]?.re[0]).toBeCloseTo((50 - 75) / (50 + 75), 12)
     expect(result.s[0]?.im[0]).toBeCloseTo(0, 12)
   })
+
+  it('reports conditioning and backward residual for an accepted solve', () => {
+    const matrix = [1, 1, 1, 1 + 1e-13].map((re) => ({ re, im: 0 }))
+    const right = [2, 2 + 1e-13].map((re) => ({ re, im: 0 }))
+    const result = solveComplexLinearSystem(matrix, right, 1)
+
+    expect(result.solution[0]?.re).toBeCloseTo(1, 3)
+    expect(result.solution[1]?.re).toBeCloseTo(1, 3)
+    expect(result.diagnostics.reciprocalConditionEstimate).toBeLessThan(1e-12)
+    expect(result.diagnostics.normalizedResidual).toBeLessThan(1e-14)
+  })
+
+  it.each([1e-20, 1e20])(
+    'uses scale-aware pivoting for an equivalent system scaled by %g',
+    (scale) => {
+      const matrix = [2, 1, 1, 3].map((re) => ({ re: re * scale, im: 0 }))
+      const right = [3, 4].map((re) => ({ re: re * scale, im: 0 }))
+      const result = solveComplexLinearSystem(matrix, right, 1)
+
+      expect(result.solution[0]?.re).toBeCloseTo(1, 12)
+      expect(result.solution[1]?.re).toBeCloseTo(1, 12)
+      expect(result.diagnostics.normalizedResidual).toBeLessThan(1e-14)
+    },
+  )
 })

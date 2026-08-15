@@ -20,18 +20,27 @@ export default function RFValidationSummary({
   result,
   resultRevision,
 }: RFValidationSummaryProps) {
+  const linearEvidence = result?.linearSolveEvidence
+  const linearEvidencePassed = Boolean(
+    linearEvidence?.available &&
+      (linearEvidence.worstReciprocalConditionEstimate ?? 0) >= 1e-10 &&
+      (linearEvidence.worstNormalizedResidual ?? Number.POSITIVE_INFINITY) <=
+        1e-10,
+  )
   return <>
     <ScientificValidationSummary
       title="RF model evidence"
       description="Structural validity and solver warnings are reported separately from successful execution."
       status={{
-        state: error ? 'failed' : graphValidation === null ? 'ready' : !graphValidation.valid ? 'failed' : result?.warnings.length ? 'warning' : result ? 'validated' : 'ready',
-        label: error ? 'Simulation stopped' : graphValidation === null ? 'Checking model' : !graphValidation.valid ? 'Model blocked' : result?.warnings.length ? 'Solved with warnings' : result ? 'Numerically validated' : 'Ready to simulate',
+        state: error ? 'failed' : graphValidation === null ? 'ready' : !graphValidation.valid ? 'failed' : result?.warnings.length ? 'warning' : linearEvidencePassed ? 'validated' : result ? 'up-to-date' : 'ready',
+        label: error ? 'Simulation stopped' : graphValidation === null ? 'Checking model' : !graphValidation.valid ? 'Model blocked' : result?.warnings.length ? 'Solved with warnings' : linearEvidencePassed ? 'Linear solve evidence passed' : result ? 'Single-run checks passed' : 'Ready to simulate',
       }}
       checks={[
         { id: 'topology', label: 'Source-to-load topology', state: graphValidation === null ? 'not-run' : graphValidation.valid ? 'passed' : 'failed', value: graphValidation === null ? 'Checking…' : graphValidation.valid ? 'Connected' : `${graphValidation.issues.length} issue(s)`, detail: graphValidation?.issues[0]?.message },
         { id: 'frequency', label: 'Frequency grid', state: analysis.stopHz > analysis.startHz && analysis.points >= 2 ? 'passed' : 'failed', value: `${analysis.points} points` },
         { id: 'result', label: 'Current result', state: result ? 'passed' : 'not-run', detail: result ? `Revision ${resultRevision}` : 'Run the current model before interpreting results.' },
+        { id: 'condition', label: 'Linear-system reciprocal condition', state: !result || !linearEvidence?.available ? 'not-run' : (linearEvidence.worstReciprocalConditionEstimate ?? 0) >= 1e-10 ? 'passed' : 'warning', value: linearEvidence?.worstReciprocalConditionEstimate?.toExponential(3), detail: linearEvidence?.available ? `Worst case at ${linearEvidence.worstFrequencyHz?.toExponential(6)} Hz; required rcond ≥ 1e-10.` : 'No interconnected linear system was required.' },
+        { id: 'residual', label: 'Normalized backward residual', state: !result || !linearEvidence?.available ? 'not-run' : (linearEvidence.worstNormalizedResidual ?? Number.POSITIVE_INFINITY) <= 1e-10 ? 'passed' : 'warning', value: linearEvidence?.worstNormalizedResidual?.toExponential(3), detail: 'Required normalized residual ≤ 1e-10.' },
         { id: 'warnings', label: 'Solver warnings', state: result ? result.warnings.length ? 'warning' : 'passed' : 'not-run', value: result ? result.warnings.length : undefined },
       ]}
     />

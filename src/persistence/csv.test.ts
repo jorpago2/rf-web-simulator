@@ -124,6 +124,12 @@ it('exports interoperable scientific CSV with empty undefined values', () => {
       bestParameterValues: [],
       constraint: null,
     },
+    linearSolveEvidence: {
+      available: false,
+      worstReciprocalConditionEstimate: null,
+      worstNormalizedResidual: null,
+      worstFrequencyHz: null,
+    },
     warnings: [],
   }
 

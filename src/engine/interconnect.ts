@@ -1,4 +1,8 @@
-import { invertComplexMatrix, type ComplexValue } from './nport'
+import {
+  solveComplexLinearSystem,
+  type ComplexLinearSolveDiagnostics,
+  type ComplexValue,
+} from './nport'
 import type { ComplexArray, NPortNetwork, TwoPortNetwork } from './types'
 
 export interface NetworkBlock {
@@ -19,6 +23,18 @@ export interface NetworkConnection {
   second: NetworkPortReference
 }
 
+export interface InterconnectionNumericalEvidence {
+  available: boolean
+  worstReciprocalConditionEstimate: number | null
+  worstNormalizedResidual: number | null
+  worstFrequencyHz: number | null
+}
+
+export interface NPortInterconnectionResult {
+  network: TwoPortNetwork
+  numericalEvidence: InterconnectionNumericalEvidence
+}
+
 export function solveNPortInterconnection(
   blocks: readonly NetworkBlock[],
   connections: readonly NetworkConnection[],
@@ -26,6 +42,22 @@ export function solveNPortInterconnection(
   externalOutput: NetworkPortReference,
   referenceImpedanceOhm: number,
 ): TwoPortNetwork {
+  return solveNPortInterconnectionWithEvidence(
+    blocks,
+    connections,
+    externalInput,
+    externalOutput,
+    referenceImpedanceOhm,
+  ).network
+}
+
+export function solveNPortInterconnectionWithEvidence(
+  blocks: readonly NetworkBlock[],
+  connections: readonly NetworkConnection[],
+  externalInput: NetworkPortReference,
+  externalOutput: NetworkPortReference,
+  referenceImpedanceOhm: number,
+): NPortInterconnectionResult {
   if (blocks.length === 0) {
     throw new RangeError(
       'N-port interconnection requires at least one network block.',
@@ -46,14 +78,32 @@ export function solveNPortInterconnection(
   const s21 = createComplexArray(frequencyHz.length)
   const s22 = createComplexArray(frequencyHz.length)
   const externalIndices = [inputIndex, outputIndex]
+  let worstReciprocalConditionEstimate = Number.POSITIVE_INFINITY
+  let worstNormalizedResidual = 0
+  let worstConditionFrequencyHz: number | null = null
   for (let pointIndex = 0; pointIndex < frequencyHz.length; pointIndex += 1) {
     const composite = compositeScatteringAt(blocks, totalPorts, pointIndex)
-    const effective = eliminateConnectedPorts(
+    const elimination = eliminateConnectedPorts(
       composite,
       totalPorts,
       internalIndices,
       externalIndices,
     )
+    const effective = elimination.effective
+    if (elimination.diagnostics) {
+      if (
+        elimination.diagnostics.reciprocalConditionEstimate <
+        worstReciprocalConditionEstimate
+      ) {
+        worstReciprocalConditionEstimate =
+          elimination.diagnostics.reciprocalConditionEstimate
+        worstConditionFrequencyHz = frequencyHz[pointIndex]!
+      }
+      worstNormalizedResidual = Math.max(
+        worstNormalizedResidual,
+        elimination.diagnostics.normalizedResidual,
+      )
+    }
     writeValue(s11, pointIndex, effective[0]!)
     writeValue(s12, pointIndex, effective[1]!)
     writeValue(s21, pointIndex, effective[2]!)
@@ -61,13 +111,25 @@ export function solveNPortInterconnection(
   }
 
   return {
-    frequencyHz,
-    referenceImpedanceOhm,
-    s11,
-    s12,
-    s21,
-    s22,
-    sourceName: 'Interconnected RF network',
+    network: {
+      frequencyHz,
+      referenceImpedanceOhm,
+      s11,
+      s12,
+      s21,
+      s22,
+      sourceName: 'Interconnected RF network',
+    },
+    numericalEvidence: {
+      available: worstConditionFrequencyHz !== null,
+      worstReciprocalConditionEstimate:
+        worstConditionFrequencyHz === null
+          ? null
+          : worstReciprocalConditionEstimate,
+      worstNormalizedResidual:
+        worstConditionFrequencyHz === null ? null : worstNormalizedResidual,
+      worstFrequencyHz: worstConditionFrequencyHz,
+    },
   }
 }
 
@@ -214,7 +276,6 @@ function solveNPortPortWave(
         re: (index % (internalCount + 1) === 0 ? 1 : 0) - value.re,
         im: -value.im,
       }))
-      const inverse = invertComplexMatrix(system)
       const permutedSie = multiplyRectangular(
         permutation,
         internalCount,
@@ -222,13 +283,11 @@ function solveNPortPortWave(
         sie,
         2,
       )
-      const internalIncident = multiplyRectangular(
-        inverse,
-        internalCount,
-        internalCount,
+      const internalIncident = solveComplexLinearSystem(
+        system,
         permutedSie,
         2,
-      )
+      ).solution
       for (let index = 0; index < internalCount; index += 1) {
         incident[internalIndices[index]!] = internalIncident[index * 2]!
       }
@@ -316,9 +375,20 @@ function eliminateConnectedPorts(
   totalPorts: number,
   internalIndices: number[],
   externalIndices: number[],
-): ComplexValue[] {
+): {
+  effective: ComplexValue[]
+  diagnostics: ComplexLinearSolveDiagnostics | null
+} {
   if (internalIndices.length === 0) {
-    return submatrix(scattering, totalPorts, externalIndices, externalIndices)
+    return {
+      effective: submatrix(
+        scattering,
+        totalPorts,
+        externalIndices,
+        externalIndices,
+      ),
+      diagnostics: null,
+    }
   }
   const internalCount = internalIndices.length
   const see = submatrix(
@@ -357,7 +427,6 @@ function eliminateConnectedPorts(
     re: (index % (internalCount + 1) === 0 ? 1 : 0) - value.re,
     im: -value.im,
   }))
-  const inverse = invertComplexMatrix(system)
   const permutedSie = multiplyRectangular(
     permutation,
     internalCount,
@@ -365,13 +434,8 @@ function eliminateConnectedPorts(
     sie,
     2,
   )
-  const internalIncident = multiplyRectangular(
-    inverse,
-    internalCount,
-    internalCount,
-    permutedSie,
-    2,
-  )
+  const solved = solveComplexLinearSystem(system, permutedSie, 2)
+  const internalIncident = solved.solution
   const correction = multiplyRectangular(
     sei,
     2,
@@ -379,7 +443,10 @@ function eliminateConnectedPorts(
     internalIncident,
     2,
   )
-  return see.map((value, index) => add(value, correction[index]!))
+  return {
+    effective: see.map((value, index) => add(value, correction[index]!)),
+    diagnostics: solved.diagnostics,
+  }
 }
 
 function compositeScatteringAt(
@@ -478,14 +545,11 @@ function externalNoiseTransfer(
     re: (index % (internalCount + 1) === 0 ? 1 : 0) - value.re,
     im: -value.im,
   }))
-  const inverse = invertComplexMatrix(system)
-  const inversePermutation = multiplyRectangular(
-    inverse,
-    internalCount,
-    internalCount,
+  const inversePermutation = solveComplexLinearSystem(
+    system,
     permutation,
     internalCount,
-  )
+  ).solution
   const internalTransfer = multiplyRectangular(
     sei,
     2,

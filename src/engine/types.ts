@@ -171,6 +171,7 @@ export interface SimulationWarning {
     | 'NONLINEAR_MODEL'
     | 'BRANCHED_NETWORK_MODEL'
     | 'PASSIVITY_ENFORCED'
+    | 'LINEAR_SOLVE_ILL_CONDITIONED'
   message: string
   frequencyHz?: number
 }
@@ -287,6 +288,12 @@ export interface SimulationOutput {
   frequencyPlan: FrequencyPlanResult
   monteCarlo: MonteCarloResult
   parametricSweep: ParametricSweepResult
+  linearSolveEvidence: {
+    available: boolean
+    worstReciprocalConditionEstimate: number | null
+    worstNormalizedResidual: number | null
+    worstFrequencyHz: number | null
+  }
   warnings: SimulationWarning[]
 }
 

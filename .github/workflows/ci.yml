@@ -23,3 +23,5 @@ jobs:
       - run: pnpm build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:ui

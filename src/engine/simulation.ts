@@ -26,7 +26,7 @@ import {
   createThroughNetwork,
 } from './idealNetworks'
 import {
-  solveNPortInterconnection,
+  solveNPortInterconnectionWithEvidence,
   solveNPortIncidentWaveAt,
   solveNPortNoiseCorrelationAt,
   solveNPortWaveAt,
@@ -472,6 +472,12 @@ function simulateDeterministic(input: SimulationInput): SimulationOutput {
     frequencyPlan,
     monteCarlo: emptyMonteCarlo(input.analysis),
     parametricSweep: emptyParametricSweep(input.analysis),
+    linearSolveEvidence: {
+      available: false,
+      worstReciprocalConditionEstimate: null,
+      worstNormalizedResidual: null,
+      worstFrequencyHz: null,
+    },
     warnings,
   }
 }
@@ -706,13 +712,29 @@ function simulateBranchedNetwork(
   if (!externalInput || !externalOutput) {
     throw new SimulationError('Branched network external ports are missing.')
   }
-  const total = solveNPortInterconnection(
+  const interconnection = solveNPortInterconnectionWithEvidence(
     blocks,
     connections,
     externalInput,
     externalOutput,
     referenceImpedanceOhm,
   )
+  const total = interconnection.network
+  const linearSolveEvidence = interconnection.numericalEvidence
+  if (
+    linearSolveEvidence.available &&
+    ((linearSolveEvidence.worstReciprocalConditionEstimate ?? 0) < 1e-10 ||
+      (linearSolveEvidence.worstNormalizedResidual ?? Number.POSITIVE_INFINITY) >
+        1e-10)
+  ) {
+    warnings.push({
+      code: 'LINEAR_SOLVE_ILL_CONDITIONED',
+      message: `The interconnected linear system has weak numerical evidence (rcond=${linearSolveEvidence.worstReciprocalConditionEstimate?.toExponential(3)}, normalized residual=${linearSolveEvidence.worstNormalizedResidual?.toExponential(3)}). Interpret results near ${linearSolveEvidence.worstFrequencyHz?.toExponential(6)} Hz with caution.`,
+      ...(linearSolveEvidence.worstFrequencyHz === null
+        ? {}
+        : { frequencyHz: linearSolveEvidence.worstFrequencyHz }),
+    })
+  }
   const probeResults = orderedNodes
     .filter((node) => node.data.type === 'probe')
     .map((node): SimulationProbeResult => ({
@@ -838,6 +860,7 @@ function simulateBranchedNetwork(
     frequencyPlan,
     monteCarlo: emptyMonteCarlo(input.analysis),
     parametricSweep: emptyParametricSweep(input.analysis),
+    linearSolveEvidence,
     warnings,
   }
 }
