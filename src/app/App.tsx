@@ -461,6 +461,7 @@ export default function App() {
     <ReactFlowProvider>
       <ScientificAppShell
         className="app-shell"
+        previewStageWhenPanelOpen
         recovery={recoveryProject && <ScientificRecoveryNotice
           savedAt={new Date(recoveryProject.updatedAt).toISOString()}
           description={`${recoveryProject.project.name} was saved locally. Restore it, or start from the current blank workspace.`}
@@ -482,6 +483,7 @@ export default function App() {
           <ScientificHeader
             aria-label="RF Network Simulator"
             product={strings.appName}
+            compactProduct="RF Network"
             productIcon="rf-circuit"
             descriptor="RF network simulation"
             href="./"
