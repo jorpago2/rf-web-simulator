@@ -40,6 +40,12 @@ export function enforceNPortPassivity(
       output.s[index]!.re[pointIndex] = matrix[index]!.re * scale
       output.s[index]!.im[pointIndex] = matrix[index]!.im * scale
     }
+    if (scale < 1) {
+      const projected = matrix.map((value) => ({ re: value.re * scale, im: value.im * scale }))
+      if (maximumSingularValue(projected, network.portCount) > 1 + 1e-10) {
+        throw new Error('Passivity projection failed its postcondition.')
+      }
+    }
   }
   return {
     network: {
@@ -55,58 +61,80 @@ export function maximumSingularValue(
   matrix: ComplexValue[],
   size: number,
 ): number {
-  let vector = Array.from({ length: size }, (_, index) => ({
-    re: Math.cos((index + 1) * Math.SQRT2) / Math.sqrt(size),
-    im: Math.sin((index + 1) * Math.SQRT2) / Math.sqrt(size),
-  }))
-  let eigenvalue = 0
-  for (let iteration = 0; iteration < 50; iteration += 1) {
-    const forward = Array.from({ length: size }, () => ({ re: 0, im: 0 }))
+  if (!Number.isInteger(size) || size < 1 || matrix.length !== size * size) {
+    throw new RangeError('A square complex matrix is required.')
+  }
+  if (matrix.some((value) => !Number.isFinite(value.re) || !Number.isFinite(value.im))) {
+    throw new RangeError('Matrix entries must be finite.')
+  }
+
+  // A complex Hermitian matrix H = SᴴS has the same eigenvalues as the
+  // real-symmetric representation [[Re(H), -Im(H)], [Im(H), Re(H)]].
+  const dimension = 2 * size
+  const hermitianReal = new Float64Array(dimension * dimension)
+  for (let row = 0; row < size; row += 1) {
+    for (let column = row; column < size; column += 1) {
+      let re = 0
+      let im = 0
+      for (let inner = 0; inner < size; inner += 1) {
+        const left = matrix[inner * size + row]!
+        const right = matrix[inner * size + column]!
+        re += left.re * right.re + left.im * right.im
+        im += left.re * right.im - left.im * right.re
+      }
+      setSymmetric(hermitianReal, dimension, row, column, re)
+      setSymmetric(hermitianReal, dimension, row + size, column + size, re)
+      setSymmetric(hermitianReal, dimension, row, column + size, -im)
+      setSymmetric(hermitianReal, dimension, row + size, column, im)
+    }
+  }
+  return Math.sqrt(Math.max(0, largestSymmetricEigenvalue(hermitianReal, dimension)))
+}
+
+function setSymmetric(matrix: Float64Array, size: number, row: number, column: number, value: number) {
+  matrix[row * size + column] = value
+  matrix[column * size + row] = value
+}
+
+function largestSymmetricEigenvalue(matrix: Float64Array, size: number): number {
+  const tolerance = 1e-14
+  const maximumRotations = 50 * size * size
+  for (let rotation = 0; rotation < maximumRotations; rotation += 1) {
+    let pivotRow = 0
+    let pivotColumn = 1
+    let maximumOffDiagonal = 0
+    let diagonalScale = 0
     for (let row = 0; row < size; row += 1) {
-      for (let column = 0; column < size; column += 1) {
-        forward[row] = add(
-          forward[row]!,
-          multiply(matrix[row * size + column]!, vector[column]!),
-        )
+      diagonalScale = Math.max(diagonalScale, Math.abs(matrix[row * size + row]!))
+      for (let column = row + 1; column < size; column += 1) {
+        const magnitude = Math.abs(matrix[row * size + column]!)
+        if (magnitude > maximumOffDiagonal) {
+          maximumOffDiagonal = magnitude
+          pivotRow = row
+          pivotColumn = column
+        }
       }
     }
-    const product = Array.from({ length: size }, () => ({ re: 0, im: 0 }))
-    for (let row = 0; row < size; row += 1) {
-      for (let column = 0; column < size; column += 1) {
-        product[row] = add(
-          product[row]!,
-          multiply(conjugate(matrix[column * size + row]!), forward[column]!),
-        )
-      }
+    if (maximumOffDiagonal <= tolerance * Math.max(1, diagonalScale)) break
+    const pp = matrix[pivotRow * size + pivotRow]!
+    const qq = matrix[pivotColumn * size + pivotColumn]!
+    const pq = matrix[pivotRow * size + pivotColumn]!
+    const angle = 0.5 * Math.atan2(2 * pq, qq - pp)
+    const cosine = Math.cos(angle)
+    const sine = Math.sin(angle)
+    for (let index = 0; index < size; index += 1) {
+      if (index === pivotRow || index === pivotColumn) continue
+      const ip = matrix[index * size + pivotRow]!
+      const iq = matrix[index * size + pivotColumn]!
+      setSymmetric(matrix, size, index, pivotRow, cosine * ip - sine * iq)
+      setSymmetric(matrix, size, index, pivotColumn, sine * ip + cosine * iq)
     }
-    const norm = Math.sqrt(
-      product.reduce((sum, value) => sum + magnitudeSquared(value), 0),
-    )
-    if (norm === 0) return 0
-    vector = product.map((value) => ({
-      re: value.re / norm,
-      im: value.im / norm,
-    }))
-    eigenvalue = norm
+    matrix[pivotRow * size + pivotRow] = cosine * cosine * pp - 2 * sine * cosine * pq + sine * sine * qq
+    matrix[pivotColumn * size + pivotColumn] = sine * sine * pp + 2 * sine * cosine * pq + cosine * cosine * qq
+    matrix[pivotRow * size + pivotColumn] = 0
+    matrix[pivotColumn * size + pivotRow] = 0
   }
-  return Math.sqrt(Math.max(0, eigenvalue))
-}
-
-function add(left: ComplexValue, right: ComplexValue): ComplexValue {
-  return { re: left.re + right.re, im: left.im + right.im }
-}
-
-function multiply(left: ComplexValue, right: ComplexValue): ComplexValue {
-  return {
-    re: left.re * right.re - left.im * right.im,
-    im: left.re * right.im + left.im * right.re,
-  }
-}
-
-function conjugate(value: ComplexValue): ComplexValue {
-  return { re: value.re, im: -value.im }
-}
-
-function magnitudeSquared(value: ComplexValue): number {
-  return value.re * value.re + value.im * value.im
+  let maximum = Number.NEGATIVE_INFINITY
+  for (let index = 0; index < size; index += 1) maximum = Math.max(maximum, matrix[index * size + index]!)
+  return maximum
 }

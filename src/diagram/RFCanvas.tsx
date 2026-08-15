@@ -1,4 +1,4 @@
-import { useCallback, useEffect, type DragEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react'
 import {
   Background,
   BackgroundVariant,
@@ -51,6 +51,12 @@ export function RFCanvas() {
   const selectedNodeId = useRFEditorStore((state) => state.selectedNodeId)
   const selectNode = useRFEditorStore((state) => state.selectNode)
   const nodesInitialized = useNodesInitialized()
+  const [compactLayout, setCompactLayout] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 29.99rem)').matches)
+  const canvasNodes = useMemo(() => compactLayout ? nodes.map((node, index) => {
+    const row = Math.floor(index / 2)
+    const column = row % 2 === 0 ? index % 2 : 1 - (index % 2)
+    return { ...node, position: { x: 16 + column * 190, y: 20 + row * 124 }, draggable: false }
+  }) : nodes, [compactLayout, nodes])
   const topologyKey = nodes.map((node) => node.id).join('\u0000')
   const {
     fitView,
@@ -68,19 +74,20 @@ export function RFCanvas() {
     const canvasWidth =
       document.querySelector<HTMLElement>('.canvas-wrap')?.clientWidth ??
       window.innerWidth
-    const focusedNodeCount = canvasWidth < 480 ? 2 : canvasWidth < 1056 ? 4 : 0
-    void fitView(
-      focusedNodeCount > 0
-        ? {
-            nodes: currentNodes
-              .slice(0, focusedNodeCount)
-              .map(({ id }) => ({ id })),
-            padding: 0.18,
-            maxZoom: canvasWidth < 480 ? 0.85 : 0.9,
-          }
-        : { padding: 0.12, maxZoom: 1 },
-    )
+    void fitView({
+      nodes: currentNodes.map(({ id }) => ({ id })),
+      padding: canvasWidth < 480 ? 0.1 : 0.12,
+      maxZoom: canvasWidth < 480 ? 0.9 : 1,
+    })
   }, [fitView, nodesInitialized])
+
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 29.99rem)')
+    const update = () => setCompactLayout(query.matches)
+    update()
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
 
   useEffect(() => {
     if (!nodesInitialized || nodes.length === 0) return
@@ -190,7 +197,7 @@ export function RFCanvas() {
 
   return (
     <ReactFlow
-      nodes={nodes}
+      nodes={canvasNodes}
       edges={edges}
       nodeTypes={nodeTypes}
       onNodesChange={onNodesChange}
@@ -211,6 +218,7 @@ export function RFCanvas() {
       aria-label="RF block diagram editor"
       tabIndex={0}
     >
+      <div className="visually-hidden" aria-live="polite">{compactLayout ? `Compact overview shows all ${canvasNodes.length} RF blocks in a two-column path. Node dragging is disabled; select any block to edit it.` : `${canvasNodes.length} RF blocks in the editable diagram.`}</div>
       <Background variant={BackgroundVariant.Dots} gap={18} size={1} />
       <Controls showInteractive={false} />
     </ReactFlow>
