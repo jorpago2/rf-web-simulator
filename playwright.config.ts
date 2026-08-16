@@ -4,6 +4,7 @@ export default defineConfig({
   testDir: './tests/browser',
   timeout: 45_000,
   fullyParallel: true,
+  forbidOnly: Boolean(process.env.CI),
   reporter: 'line',
   use: {
     baseURL: 'http://127.0.0.1:4180',
@@ -12,7 +13,7 @@ export default defineConfig({
   webServer: {
     command: 'pnpm dev --host 127.0.0.1 --port 4180',
     url: 'http://127.0.0.1:4180',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
   },
   projects: [
     {

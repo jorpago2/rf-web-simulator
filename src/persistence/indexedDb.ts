@@ -78,7 +78,8 @@ function openDatabase(): Promise<IDBDatabase> {
       new Error('IndexedDB is unavailable in this browser.'),
     )
   }
-  databasePromise ??= new Promise((resolve, reject) => {
+  if (databasePromise) return databasePromise
+  const pendingDatabase = new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION)
     request.onupgradeneeded = () => {
       if (!request.result.objectStoreNames.contains(PROJECT_STORE)) {
@@ -88,6 +89,10 @@ function openDatabase(): Promise<IDBDatabase> {
     request.onsuccess = () => resolve(request.result)
     request.onerror = () =>
       reject(request.error ?? new Error('IndexedDB open failed.'))
+  })
+  databasePromise = pendingDatabase.catch((error: unknown) => {
+    databasePromise = undefined
+    throw error
   })
   return databasePromise
 }

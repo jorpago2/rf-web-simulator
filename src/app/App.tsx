@@ -51,7 +51,6 @@ import {
   serializeProject,
 } from '../persistence/projectFile'
 import type { PersistenceStatus } from '../persistence/ProjectToolbar'
-import { simulateInWorker } from '../workers/client'
 import { useRFEditorStore } from './store'
 import { strings } from './strings'
 
@@ -112,6 +111,8 @@ export default function App() {
   const [resultRevision, setResultRevision] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const simulationAbortRef = useRef<AbortController | null>(null)
+  const simulationEpochRef = useRef(0)
+  const projectOperationRef = useRef(0)
   const selectNode = useRFEditorStore((state) => state.selectNode)
   const workflowTriggerRefs = useRef<
     Partial<Record<WorkflowTool, HTMLButtonElement>>
@@ -127,7 +128,14 @@ export default function App() {
   const [persistenceMessage, setPersistenceMessage] = useState<string | null>(
     null,
   )
-  const [workspaceNotice, setWorkspaceNotice] = useState<string | null>(null)
+  const [workspaceNotice, setWorkspaceNotice] = useState<{
+    kind: 'info' | 'success'
+    title: string
+    subtitle: string
+  } | null>(null)
+  const [compactWorkbench, setCompactWorkbench] = useState(
+    () => window.matchMedia('(max-width: 65.99rem)').matches,
+  )
   const [recentProjects, setRecentProjects] = useState<LocalProjectSummary[]>(
     [],
   )
@@ -144,6 +152,13 @@ export default function App() {
     const timeout = window.setTimeout(() => setWorkspaceNotice(null), 4000)
     return () => window.clearTimeout(timeout)
   }, [workspaceNotice])
+
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 65.99rem)')
+    const update = () => setCompactWorkbench(query.matches)
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
 
   const closeActiveTool = useCallback(() => {
     if (!activeTool) return
@@ -218,7 +233,9 @@ export default function App() {
       .then(async (record) => {
         if (cancelled) return
         if (record) setRecoveryProject(record)
-        setRecentProjects(await listLocalProjects())
+        const summaries = await listLocalProjects()
+        if (cancelled) return
+        setRecentProjects(summaries)
         setPersistenceStatus('saved')
         if (!record) setPersistenceReady(true)
       })
@@ -242,7 +259,9 @@ export default function App() {
       void saveLocalProject(activeProjectId, project)
         .then(async () => {
           if (cancelled) return
-          setRecentProjects(await listLocalProjects())
+          const summaries = await listLocalProjects()
+          if (cancelled) return
+          setRecentProjects(summaries)
           setPersistenceStatus('saved')
         })
         .catch((storageError: unknown) => {
@@ -257,13 +276,27 @@ export default function App() {
     }
   }, [activeProjectId, persistenceReady, project])
 
+  const invalidateSimulation = useCallback(() => {
+    simulationEpochRef.current += 1
+    const controller = simulationAbortRef.current
+    simulationAbortRef.current = null
+    controller?.abort()
+    setResult(null)
+    setResultRevision(null)
+    setError(null)
+    setStatus('idle')
+  }, [])
+
   const runSimulation = useCallback(async () => {
+    if (simulationAbortRef.current) return
+    const simulationEpoch = simulationEpochRef.current
     const requestedRevision = modelRevision
     const controller = new AbortController()
     simulationAbortRef.current = controller
     setStatus('running')
     setError(null)
     try {
+      const { simulateInWorker } = await import('../workers/client')
       const output = await simulateInWorker(
         {
           analysis,
@@ -272,6 +305,7 @@ export default function App() {
         },
         controller.signal,
       )
+      if (simulationEpochRef.current !== simulationEpoch) return
       if (useRFEditorStore.getState().modelRevision !== requestedRevision) {
         setStatus('idle')
         return
@@ -286,9 +320,19 @@ export default function App() {
         simulationError instanceof DOMException &&
         simulationError.name === 'AbortError'
       ) {
-        setStatus(resultRevision === requestedRevision ? 'success' : 'idle')
+        if (simulationEpochRef.current !== simulationEpoch) return
+        const retainedResult = resultRevision === requestedRevision
+        setStatus(retainedResult ? 'success' : 'idle')
+        setWorkspaceNotice({
+          kind: 'info',
+          title: 'Simulation cancelled',
+          subtitle: retainedResult
+            ? 'The previous result remains current.'
+            : 'No result was produced.',
+        })
         return
       }
+      if (simulationEpochRef.current !== simulationEpoch) return
       setResult(null)
       setResultRevision(null)
       setError(errorText(simulationError))
@@ -332,49 +376,66 @@ export default function App() {
 
   const openSelectedProject = async () => {
     if (!selectedProjectId) return
+    const operation = ++projectOperationRef.current
     setPersistenceStatus('loading')
     setPersistenceMessage(null)
     try {
       const record = await loadLocalProject(selectedProjectId)
+      if (operation !== projectOperationRef.current) return
       if (!record)
         throw new Error('The selected local project no longer exists.')
+      invalidateSimulation()
       loadProject(record.project, record.id)
+      setRecoveryProject(null)
+      setPersistenceReady(true)
       setSelectedProjectId('')
       setPersistenceStatus('saved')
     } catch (storageError) {
+      if (operation !== projectOperationRef.current) return
       setPersistenceStatus('error')
       setPersistenceMessage(errorText(storageError))
     }
   }
 
   const importProject = async (file: File) => {
+    const operation = ++projectOperationRef.current
     try {
       if (file.size > MAX_PROJECT_FILE_CHARACTERS) {
         throw new Error('Project file exceeds the 20 MiB MVP limit.')
       }
       const importedProject = parseProjectJson(await file.text())
+      if (operation !== projectOperationRef.current) return
+      invalidateSimulation()
       loadProject(importedProject)
+      setRecoveryProject(null)
+      setPersistenceReady(true)
       setSelectedProjectId('')
       setPersistenceStatus('saving')
       setPersistenceMessage('Imported; local autosave pending')
     } catch (importError) {
+      if (operation !== projectOperationRef.current) return
       setPersistenceStatus('error')
       setPersistenceMessage(errorText(importError))
     }
   }
 
   const exportProject = () => {
-    const fileName = safeFileName(project.name, 'json')
-    downloadTextFile(
-      fileName,
-      serializeProject(project, {
-        application: strings.appName,
-        version: strings.version,
-        exportedAt: new Date().toISOString(),
-      }),
-      'application/json;charset=utf-8',
-    )
-    setPersistenceMessage(`Exported ${fileName}`)
+    try {
+      const fileName = safeFileName(project.name, 'json')
+      downloadTextFile(
+        fileName,
+        serializeProject(project, {
+          application: strings.appName,
+          version: strings.version,
+          exportedAt: new Date().toISOString(),
+        }),
+        'application/json;charset=utf-8',
+      )
+      setPersistenceMessage(`Exported ${fileName}`)
+    } catch (exportError) {
+      setPersistenceStatus('error')
+      setPersistenceMessage(errorText(exportError))
+    }
   }
 
   const resultIsCurrent = resultRevision === modelRevision
@@ -532,12 +593,15 @@ export default function App() {
               savedAt={new Date(recoveryProject.updatedAt).toISOString()}
               description={`${recoveryProject.project.name} was saved locally. Restore it, or start from the current blank workspace.`}
               onRestore={() => {
+                ++projectOperationRef.current
+                invalidateSimulation()
                 loadProject(recoveryProject.project, recoveryProject.id)
                 setRecoveryProject(null)
                 setPersistenceReady(true)
                 setPersistenceMessage('Previous project restored')
               }}
               onDiscard={() => {
+                ++projectOperationRef.current
                 setRecoveryProject(null)
                 setPersistenceReady(true)
                 setPersistenceMessage(
@@ -547,7 +611,7 @@ export default function App() {
             />
           )
         }
-        panelOpen={Boolean(activeTool)}
+        panelOpen={Boolean(activeTool) && !(compactWorkbench && selectedNodeId)}
         header={
           <>
             <h1 className="scientific-visually-hidden">RF Network Simulator</h1>
@@ -576,17 +640,24 @@ export default function App() {
                     onExport={exportProject}
                     onImport={importProject}
                     onLoadTemplate={async (templateId) => {
+                      const operation = ++projectOperationRef.current
                       const { getRFTemplate } = await import('../templates')
+                      if (operation !== projectOperationRef.current) return
                       const template = getRFTemplate(templateId)
+                      invalidateSimulation()
                       loadProject(template)
+                      setRecoveryProject(null)
+                      setPersistenceReady(true)
                       setActiveWorkspaceTab(0)
                       setActiveTool(null)
                       setSelectedProjectId('')
                       setPersistenceStatus('saving')
                       setPersistenceMessage('Editable template loaded')
-                      setWorkspaceNotice(
-                        `${template.name} loaded. Diagram fitted to the canvas.`,
-                      )
+                      setWorkspaceNotice({
+                        kind: 'success',
+                        title: 'Template ready',
+                        subtitle: `${template.name} loaded. Diagram fitted to the canvas.`,
+                      })
                       window.requestAnimationFrame(() =>
                         window.requestAnimationFrame(() =>
                           rfCanvasRef.current?.focusCanvas(),
@@ -594,7 +665,11 @@ export default function App() {
                       )
                     }}
                     onNew={() => {
+                      ++projectOperationRef.current
+                      invalidateSimulation()
                       newProject()
+                      setRecoveryProject(null)
+                      setPersistenceReady(true)
                       setSelectedProjectId('')
                       setPersistenceMessage(null)
                     }}
@@ -648,7 +723,7 @@ export default function App() {
           </>
         }
         navigation={workflowNavigation}
-        panel={workflowPanel}
+        panel={compactWorkbench && selectedNodeId ? undefined : workflowPanel}
         inspector={
           selectedNodeId ? (
             <Suspense fallback={null}>
@@ -668,10 +743,10 @@ export default function App() {
             <InlineNotification
               className="workspace-notice"
               hideCloseButton
-              kind="success"
+              kind={workspaceNotice.kind}
               lowContrast
-              title="Template ready"
-              subtitle={workspaceNotice}
+              title={workspaceNotice.title}
+              subtitle={workspaceNotice.subtitle}
             />
           )}
           <div className="workbench-deck scientific-stage">

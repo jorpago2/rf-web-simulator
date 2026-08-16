@@ -33,10 +33,13 @@ export function nPortToTwoPort(network: NPortNetwork): TwoPortNetwork {
     throw new RangeError('A two-port network is required.')
   }
   const reference = network.referenceImpedancesOhm[0]
+  const secondReference = network.referenceImpedancesOhm[1]
   if (
     !Number.isFinite(reference) ||
+    !Number.isFinite(secondReference) ||
     reference! <= 0 ||
-    Math.abs(reference! - network.referenceImpedancesOhm[1]!) > 1e-9
+    secondReference! <= 0 ||
+    Math.abs(reference! - secondReference!) > 1e-9
   ) {
     throw new RangeError(
       'Two-port simulation requires equal real reference impedances; renormalize the imported network first.',

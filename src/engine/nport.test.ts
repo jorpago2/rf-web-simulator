@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   createNPortS,
+  nPortToTwoPort,
   renormalizeNPortNetwork,
   solveComplexLinearSystem,
 } from './nport'
@@ -40,6 +41,17 @@ describe('N-port network operations', () => {
 
     expect(result.s[0]?.re[0]).toBeCloseTo((50 - 75) / (50 + 75), 12)
     expect(result.s[0]?.im[0]).toBeCloseTo(0, 12)
+  })
+
+  it('rejects a non-finite reference impedance on either port', () => {
+    expect(() =>
+      nPortToTwoPort({
+        frequencyHz: new Float64Array([1e9]),
+        portCount: 2,
+        referenceImpedancesOhm: new Float64Array([50, Number.NaN]),
+        s: createNPortS(2, 1),
+      }),
+    ).toThrow(/equal real reference impedances/)
   })
 
   it('reports conditioning and backward residual for an accepted solve', () => {

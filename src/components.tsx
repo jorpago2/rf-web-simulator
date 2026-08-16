@@ -1784,9 +1784,14 @@ function OptionalNumberField({
       placeholder="Not set"
       size="sm"
       value={typeof value === 'number' && Number.isFinite(value) ? value : ''}
-      onChange={(_, { value: nextValue }) =>
-        onChange(nextValue === '' ? null : Number(nextValue))
-      }
+      onChange={(_, { value: nextValue }) => {
+        if (nextValue === '') {
+          onChange(null)
+          return
+        }
+        const parsed = Number(nextValue)
+        if (Number.isFinite(parsed)) onChange(parsed)
+      }}
     />
   )
 }
@@ -2166,7 +2171,6 @@ export function SimulationPanel({
               ? {
                   state: 'failed',
                   label: 'Simulation stopped',
-                  detail: error ?? undefined,
                 }
               : result?.warnings.length
                 ? { state: 'warning', label: 'Solved with warnings' }
@@ -2181,7 +2185,7 @@ export function SimulationPanel({
         }
         summary={
           status === 'error'
-            ? (error ?? 'Correct the network and run the simulation again.')
+            ? 'Correct the network issues below, then run the simulation again.'
             : result
               ? result.warnings.length
                 ? `The network solved, but ${result.warnings.length} warning${result.warnings.length === 1 ? ' requires' : 's require'} review before interpretation.`
@@ -2717,7 +2721,7 @@ export function SimulationPanel({
                 hideCloseButton
                 kind="error"
                 lowContrast
-                title="Simulation stopped"
+                title="Correct the RF network"
                 subtitle={error}
               />
             ) : (

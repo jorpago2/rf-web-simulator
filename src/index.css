@@ -99,6 +99,8 @@ h2 {
 }
 
 .project-name-field {
+  min-width: 0;
+  flex: 1 1 auto;
   width: min(32rem, 100%);
 }
 
@@ -111,10 +113,15 @@ h2 {
 
 .save-state {
   align-self: center;
-  min-width: 92px;
+  min-width: 0;
+  max-width: 12rem;
+  flex: 0 1 12rem;
+  overflow: hidden;
   color: var(--rf-text-secondary);
   font-size: var(--rf-type-xs);
   text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .save-state--error {
@@ -223,6 +230,11 @@ h2 {
 
 .workflow-notification {
   max-width: none;
+}
+
+.rf-validation-summary.scientific-evidence-summary
+  .scientific-evidence-summary__checks {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .workbench-deck {
@@ -675,8 +687,17 @@ h2 {
   height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   container-type: inline-size;
+}
+
+.rf-outcome .scientific-outcome-summary__heading > :first-child {
+  flex: 1 1 auto;
+}
+
+.rf-outcome .scientific-status {
+  flex: 0 1 auto;
 }
 
 .workbench-tab-panel--results #analysis-tabpanel {
@@ -811,6 +832,10 @@ h2 {
 }
 
 .simulation-message {
+  min-inline-size: 0;
+  inline-size: calc(100% - 2 * var(--rf-space-lg));
+  max-inline-size: calc(100% - 2 * var(--rf-space-lg));
+  align-self: flex-start;
   margin: var(--rf-space-lg);
 }
 
@@ -1228,7 +1253,12 @@ h2 {
 
   .results-panel {
     height: 100%;
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .rf-outcome.scientific-outcome-summary .scientific-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .results-tabs [role='tab'] {
@@ -1262,6 +1292,36 @@ h2 {
 }
 
 @media (max-width: 29.99rem) {
+  .app-shell .scientific-header__context {
+    gap: 0;
+    padding-inline: 0;
+  }
+
+  .app-shell .scientific-header__compact-product,
+  .app-shell .scientific-header__compact-separator {
+    display: none;
+  }
+
+  .project-toolbar {
+    gap: 0;
+  }
+
+  .project-actions-button {
+    width: var(--scientific-ui-target-size);
+    min-width: var(--scientific-ui-target-size);
+  }
+
+  .simulation-summary,
+  .result-view-picker {
+    padding-inline: var(--rf-space-sm);
+  }
+
+  .simulation-message {
+    inline-size: calc(100% - 2 * var(--rf-space-sm));
+    max-inline-size: calc(100% - 2 * var(--rf-space-sm));
+    margin: var(--rf-space-sm);
+  }
+
   .block-list {
     grid-template-columns: minmax(0, 1fr);
   }

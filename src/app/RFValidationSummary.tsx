@@ -29,6 +29,7 @@ export default function RFValidationSummary({
   )
   return <>
     <ScientificValidationSummary
+      className="rf-validation-summary"
       title="RF model evidence"
       description="Structural validity and solver warnings are reported separately from successful execution."
       status={{

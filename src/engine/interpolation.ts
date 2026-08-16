@@ -206,8 +206,12 @@ function validateNetworkGrid(network: { frequencyHz: Float64Array }): void {
       'A network needs at least two frequency points for interpolation.',
     )
   }
-  for (let index = 1; index < network.frequencyHz.length; index += 1) {
-    if (!(network.frequencyHz[index]! > network.frequencyHz[index - 1]!)) {
+  for (let index = 0; index < network.frequencyHz.length; index += 1) {
+    const value = network.frequencyHz[index]!
+    if (
+      !Number.isFinite(value) ||
+      (index > 0 && value <= network.frequencyHz[index - 1]!)
+    ) {
       throw new RangeError(
         'Network frequencies must be finite and strictly increasing.',
       )

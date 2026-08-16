@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { RFProject } from '../engine/types'
 import {
+  MAX_PROJECT_FILE_CHARACTERS,
   parseProjectJson,
   ProjectFileError,
   serializeProject,
@@ -65,6 +66,23 @@ describe('versioned RF project files', () => {
         }),
       ),
     ).toThrow(/missing/u)
+  })
+
+  it('rejects serialized projects beyond the file size limit', () => {
+    const oversized: RFProject = {
+      ...project,
+      assets: {
+        fixture: {
+          fileName: 'fixture.txt',
+          mediaType: 'text/plain',
+          content: 'x'.repeat(MAX_PROJECT_FILE_CHARACTERS),
+        },
+      },
+    }
+
+    expect(() => serializeProject(oversized)).toThrow(
+      /exceeds the 20 MiB/u,
+    )
   })
 
   it('migrates schema 1 projects to schema 3', () => {

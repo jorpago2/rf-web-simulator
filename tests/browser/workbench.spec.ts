@@ -93,8 +93,16 @@ test('template transition preserves canvas focus, connections, panel and inspect
   await expect(page.locator('#rf-properties')).toBeVisible()
 
   await page.getByRole('button', { name: /^Build/ }).click()
-  await expect(page.locator('#workflow-panel')).toBeVisible()
   await expect(page.locator('#rf-properties')).toBeVisible()
+
+  if ((page.viewportSize()?.width ?? 0) < 1056) {
+    await expect(page.locator('#workflow-panel')).toHaveCount(0)
+    await expect(
+      page.getByRole('textbox', { name: 'Search components' }),
+    ).toHaveCount(0)
+  } else {
+    await expect(page.locator('#workflow-panel')).toBeVisible()
+  }
 
   await page.keyboard.press('Escape')
   await expect(page.locator('#rf-properties')).toHaveCount(0)
@@ -135,6 +143,19 @@ test('invalid networks surface the error in Results without runtime failures', a
     'true',
   )
   await expect(page.getByText('Simulation stopped').first()).toBeVisible()
+  const errorTitle = page.getByRole('heading', {
+    name: 'RF simulation',
+    level: 3,
+  })
+  await expect(errorTitle).toBeVisible()
+  expect((await errorTitle.boundingBox())?.width).toBeGreaterThan(120)
+  const resultsPanel = page.locator('.results-panel')
+  expect(
+    await resultsPanel.evaluate(
+      (panel) => panel.scrollWidth <= panel.clientWidth + 1,
+    ),
+  ).toBe(true)
+  await expect(page.getByText('Correct the RF network')).toBeVisible()
   await page.waitForTimeout(500)
   expect(runtimeErrors).toEqual([])
   expect(resizeObserverErrors).toEqual([])

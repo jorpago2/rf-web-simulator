@@ -54,11 +54,15 @@ export function serializeProject(
   exportMetadata?: ProjectExportMetadata,
 ): string {
   const validated = validateProject(project)
-  return JSON.stringify(
+  const text = JSON.stringify(
     exportMetadata ? { ...validated, exportMetadata } : validated,
     null,
     2,
   )
+  if (text.length > MAX_PROJECT_FILE_CHARACTERS) {
+    throw new ProjectFileError('Project file exceeds the 20 MiB MVP limit.')
+  }
+  return text
 }
 
 export function parseProjectJson(text: string): RFProject {

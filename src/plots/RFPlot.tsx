@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Config, Data, Layout } from 'plotly.js'
 import {
   SCIENTIFIC_PLOT_LINE_WIDTHS,
+  createScientificPlotlyAxis,
   createScientificPlotlyConfig,
   createScientificPlotlyLayout,
   useScientificPlotTheme,
@@ -150,6 +151,7 @@ function PlotlyFigure({
     let cancelled = false
     let plotly: typeof import('plotly.js-basic-dist-min').default | undefined
 
+    setPlotReady(false)
     void import('plotly.js-basic-dist-min').then((module) => {
       if (cancelled) return
       plotly = module.default
@@ -159,9 +161,21 @@ function PlotlyFigure({
         theme: plotTheme,
         overrides: layout as Record<string, unknown>,
       }) as Partial<Layout>
+      if (normalizedLayout.yaxis2) {
+        normalizedLayout.yaxis2 = createScientificPlotlyAxis(
+          plotTheme,
+          undefined,
+          normalizedLayout.yaxis2 as Record<string, unknown>,
+        ) as Layout['yaxis2']
+      }
       return plotly.react(element, data, normalizedLayout, config).then(() => {
         if (!cancelled) setPlotReady(true)
       })
+    }).catch(() => {
+      if (!cancelled) {
+        plotlyRef.current = null
+        setPlotReady(false)
+      }
     })
 
     return () => {

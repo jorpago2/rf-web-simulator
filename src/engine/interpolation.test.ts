@@ -67,4 +67,13 @@ describe('Cartesian network interpolation', () => {
       interpolateNetwork(network(1, 3), new Float64Array([0, 1, 2])),
     ).toThrow(/exceeds/u)
   })
+
+  it('rejects a non-finite first source frequency', () => {
+    expect(() =>
+      interpolateNetwork(
+        network(Number.NEGATIVE_INFINITY, 3),
+        new Float64Array([1, 2]),
+      ),
+    ).toThrow(/finite/u)
+  })
 })
