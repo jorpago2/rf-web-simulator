@@ -1,6 +1,7 @@
 /* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V4 · genre: modern-minimal · macrostructure: Workbench · design-system: design.md · theme: studied-DNA (source: https://jorpago2.github.io/setupsketch/) · system: Carbon g10 · tone: technical-austere · fingerprint: Carbon header / task rail / contextual sheet / peer Schematic-Results tabs / status strip · designed-as-app · contrast: pass (40-41) · nav: app-rail · footer: status-strip · honest: pass (46) · chrome: pass (47) · tokens: pass (48) · responsive: pass (49) · icons: pass (30) · mobile: pass (34, 49, 50-57) */
 :root {
   --rf-header-height: var(--scientific-ui-header-block-size);
+  --rf-inspector-inline-size: 18rem;
   --mobile-header-height: var(--rf-header-height);
   color: var(--rf-text-primary);
   background: var(--rf-background);
@@ -37,7 +38,9 @@
 .results-panel {
   min-width: 0;
   overflow: hidden;
+  border: var(--rf-rule-hairline);
   border-radius: 0;
+  box-shadow: none;
   background: var(--cds-layer);
 }
 html,
@@ -127,20 +130,6 @@ h2 {
   white-space: nowrap;
 }
 
-.brand-mark {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  border-radius: 0;
-  color: var(--rf-background);
-  background: var(--rf-text-primary);
-  font-family: var(--rf-font-display);
-  font-size: var(--rf-type-xs);
-  font-weight: 800;
-  letter-spacing: 0.08em;
-}
-
 .suite-link {
   width: var(--scientific-ui-header-block-size);
   min-width: var(--scientific-ui-header-block-size);
@@ -156,8 +145,7 @@ h2 {
   display: none;
 }
 
-.suite-link__icon,
-.project-actions-button__icon {
+.suite-link__icon {
   flex: 0 0 auto;
 }
 
@@ -169,16 +157,12 @@ h2 {
   width: min(30rem, calc(100vw - 32px));
 }
 
-.tool-rail { padding: 0; }
+.tool-rail {
+  padding: 0;
+}
 
 .suite-link__icon {
   margin-left: var(--rf-space-2xs);
-}
-
-.properties--closed {
-  padding: 0;
-  border: 0;
-  visibility: hidden;
 }
 
 .workflow-panel {
@@ -274,23 +258,17 @@ h2 {
   padding: 0;
 }
 
-.properties { position: fixed; z-index: var(--rf-z-sticky); inset-block: var(--rf-header-height) var(--scientific-ui-status-block-size); inset-inline-end: 0; inline-size: 288px; }
+.properties {
+  position: fixed;
+  z-index: var(--rf-z-sticky);
+  inset-block: var(--rf-header-height) var(--scientific-ui-status-block-size);
+  inset-inline-end: 0;
+  inline-size: var(--rf-inspector-inline-size);
+}
 
 .status-strip {
   min-width: 0;
   white-space: nowrap;
-}
-
-.status-strip__state {
-  margin-left: auto;
-  color: var(--rf-text-primary);
-}
-
-.panel,
-.canvas-panel,
-.results-panel {
-  border: var(--rf-rule-hairline);
-  box-shadow: none;
 }
 
 .workbench-deck .canvas-panel,
@@ -298,17 +276,9 @@ h2 {
   border: 0;
 }
 
-.panel__heading h2,
 .canvas-toolbar h2 {
   color: var(--rf-text-primary);
   font-size: var(--rf-type-base);
-}
-
-.panel__heading > p:last-child {
-  margin-top: var(--rf-space-xs);
-  color: var(--rf-text-secondary);
-  font-size: var(--rf-type-sm);
-  line-height: 1.45;
 }
 
 .block-list {
@@ -443,6 +413,15 @@ h2 {
 
 .react-flow__renderer {
   background: var(--rf-layer-01);
+}
+
+.react-flow {
+  --xy-background-pattern-color: var(--cds-border-subtle);
+  --xy-controls-button-background-color: var(--cds-layer);
+  --xy-controls-button-background-color-hover: var(--cds-layer-hover);
+  --xy-controls-button-color: var(--cds-icon-primary);
+  --xy-controls-button-color-hover: var(--cds-icon-primary);
+  --xy-controls-button-border-color: var(--cds-border-subtle);
 }
 
 .react-flow__edge-path {
@@ -694,7 +673,6 @@ h2 {
 
 .results-panel {
   height: 100%;
-  min-width: 0;
   display: flex;
   flex-direction: column;
   overflow: auto;
@@ -808,13 +786,6 @@ h2 {
   width: 100%;
 }
 
-.run-button,
-.export-button {
-  grid-column: 1 / -1;
-  width: 100%;
-  max-width: none;
-}
-
 .results-empty {
   min-height: 150px;
   display: flex;
@@ -857,6 +828,23 @@ h2 {
   overflow: hidden;
   border: 1px solid var(--cds-border-subtle);
   border-radius: 0;
+  background: var(--cds-layer);
+}
+
+.rf-plot-frame {
+  position: relative;
+  min-width: 0;
+  padding-top: var(--rf-space-lg);
+}
+
+.rf-plot-actions {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 0;
+  display: flex;
+  gap: var(--rf-space-2xs);
+  padding: var(--rf-space-2xs);
   background: var(--cds-layer);
 }
 
@@ -1046,12 +1034,6 @@ h2 {
 }
 
 @media (max-width: 1320px) {
-  .results-header {
-    align-items: stretch;
-    flex-direction: column;
-    padding: 0 var(--rf-space-sm) var(--rf-space-sm);
-  }
-
   .results-tabs {
     min-height: 45px;
     padding: 0;
@@ -1128,52 +1110,11 @@ h2 {
   }
 }
 
-@media (max-width: 1100px) {
-  .properties {
-    width: min(320px, calc(100% - var(--scientific-ui-rail-inline-size)));
-    overflow-y: auto;
-  }
-}
-
-@media (max-width: 980px) {
-  .save-state {
-    display: none;
-  }
-
-  .project-toolbar {
-    position: static;
-    grid-column: 2;
-    justify-content: stretch;
-  }
-
-  .project-name-field {
-    width: 0;
-    min-width: 0;
-    max-width: 100%;
-    flex: 1 1 0;
-  }
-
-  .suite-link {
-    width: 40px;
-    min-width: 40px;
-    padding: 0;
-    justify-content: center;
-  }
-
-  .suite-link__label {
-    display: none;
-  }
-
-  .suite-link__icon {
-    margin: 0;
-  }
-
-  .properties {
-    top: var(--rf-header-height);
-  }
-
-  .metric-grid {
-    grid-template-columns: repeat(3, minmax(105px, 1fr));
+@media (min-width: 66rem) {
+  .workspace[data-inspector-open='true'] {
+    padding-inline-end: calc(
+      var(--rf-space-md) + var(--rf-inspector-inline-size)
+    );
   }
 }
 
@@ -1219,11 +1160,6 @@ h2 {
     justify-content: center;
   }
 
-  .project-actions-button__icon {
-    margin: 0;
-  }
-
-  .project-actions-button__label,
   .suite-link__label {
     display: none;
   }
@@ -1283,7 +1219,8 @@ h2 {
   }
 
   .properties {
-    inset-block: var(--rf-header-height) var(--scientific-ui-mobile-nav-total-block-size);
+    inset-block: var(--rf-header-height)
+      var(--scientific-ui-mobile-nav-total-block-size);
     inset-inline: 0;
     width: 100%;
     max-height: none;
@@ -1310,12 +1247,6 @@ h2 {
     display: none;
   }
 
-  .status-strip__state {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
   .simulation-summary {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1328,7 +1259,6 @@ h2 {
     width: 100%;
     max-height: 160px;
   }
-
 }
 
 @media (max-width: 29.99rem) {

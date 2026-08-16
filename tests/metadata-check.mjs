@@ -69,7 +69,29 @@ test('uses the Carbon UI contract', async () => {
     new globalThis.URL('../index.html', import.meta.url),
     'utf8',
   )
+  const plot = await readFile(
+    new globalThis.URL('../src/plots/RFPlot.tsx', import.meta.url),
+    'utf8',
+  )
   assert.match(carbon, /@use ["']@carbon\/react["']/)
+  for (const [rfToken, carbonToken] of [
+    ['background', 'background'],
+    ['focus', 'focus'],
+    ['interactive', 'interactive'],
+    ['layer-01', 'layer-01'],
+    ['layer-accent-01', 'layer-accent-01'],
+    ['layer-selected-01', 'layer-selected-01'],
+    ['link-primary', 'link-primary'],
+    ['support-error', 'support-error'],
+    ['text-primary', 'text-primary'],
+    ['text-secondary', 'text-secondary'],
+  ]) {
+    assert.match(
+      carbon,
+      new RegExp(`--rf-${rfToken}:\\s*var\\(--cds-${carbonToken}\\);`),
+    )
+  }
+  assert.doesNotMatch(plot, /prepareScientificPlotlyToolbar/)
   assert.doesNotMatch(styles, /tailwindcss|@theme inline/)
   assert.doesNotMatch(
     styles,
@@ -93,11 +115,7 @@ test('uses the Carbon UI contract', async () => {
   assert.match(app, /<ScientificAppShell\b/)
   assert.match(app, /<ScientificHeader\b/)
   assert.match(app, /<ScientificStatusBar\b/)
-  for (const component of [
-    'SkipToContent',
-    'Link',
-    'IconIndicator',
-  ]) {
+  for (const component of ['SkipToContent', 'Link', 'IconIndicator']) {
     assert.match(app, new RegExp(`<${component}`))
   }
   assert.match(app, /help=\{\{/)
@@ -114,6 +132,44 @@ test('uses the Carbon UI contract', async () => {
     'Tile',
   ]) {
     assert.match(components, new RegExp(`<${component}`))
+  }
+})
+
+test('keeps React as the sole owner of the application surface', async () => {
+  const html = await readFile(
+    new globalThis.URL('../index.html', import.meta.url),
+    'utf8',
+  )
+  const main = await readFile(
+    new globalThis.URL('../src/main.tsx', import.meta.url),
+    'utf8',
+  )
+  const surfaces = await Promise.all(
+    [
+      '../src/app/App.tsx',
+      '../src/components.tsx',
+      '../src/diagram/RFCanvas.tsx',
+    ].map((path) =>
+      readFile(new globalThis.URL(path, import.meta.url), 'utf8'),
+    ),
+  )
+
+  assert.equal(
+    (html.match(/<div\s+id=["']root["']\s*><\/div>/g) ?? []).length,
+    1,
+  )
+  assert.equal((main.match(/\bcreateRoot\s*\(/g) ?? []).length, 1)
+  assert.doesNotMatch(main, /ReactDOM\.render|hydrateRoot/)
+
+  for (const surface of surfaces) {
+    assert.doesNotMatch(surface, /document\s*\.\s*querySelector(?:All)?\s*\(/)
+    assert.doesNotMatch(surface, /document\s*\.\s*addEventListener\s*\(/)
+    assert.doesNotMatch(surface, /\b(?:innerHTML|outerHTML)\b/)
+    assert.doesNotMatch(surface, /dangerouslySetInnerHTML/)
+    assert.doesNotMatch(
+      surface,
+      /<(?:a|button|details|dialog|input|select|summary|textarea)\b/,
+    )
   }
 })
 
@@ -140,8 +196,11 @@ test('implements the result-first scientific workbench contract', async () => {
   assert.match(app, /controlsId: ["']workflow-panel["']/)
   assert.match(app, /if \(activeTool === tool\)/)
   assert.match(app, /workflowTriggerRefs\.current\[activeTool\]/)
-  assert.match(app, /<RFCanvas \/>/)
+  assert.match(app, /<RFCanvas\b[\s\S]*ref=\{rfCanvasRef\}/)
   assert.match(app, /<Tab>Schematic<\/Tab>[\s\S]*<Tab>Results<\/Tab>/)
-  assert.match(app, /selectedNodeId[\s\S]*<PropertiesPanel \/>/)
+  assert.match(
+    app,
+    /selectedNodeId[\s\S]*<PropertiesPanel onClose=\{closeSelectedNode\} \/>/,
+  )
   assert.match(components, /createPortal\([\s\S]*analysisControlsHost/)
 })

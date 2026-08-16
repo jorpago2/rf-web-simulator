@@ -1,18 +1,22 @@
 @use '@carbon/react' with (
   $font-path: '@ibm/plex'
 );
-@use '@carbon/react/scss/theme' as theme;
 @use '@carbon/react/scss/spacing' as spacing;
 
 /*
- * Carbon's React styles resolve color tokens at build time. Expose the subset
- * needed by the custom scientific surfaces under an application namespace so
- * SVG and canvas styles never depend on invalid or inherited CSS values.
+ * Keep the application aliases on Carbon's runtime custom properties. The
+ * scientific canvas and SVG surfaces then follow the active g10/g100 theme.
  */
 :root {
   --rf-font-display: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
   --rf-font-body: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
-  --rf-font-mono: var(--scientific-ui-font-sans, 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif);
+  --rf-font-mono: var(
+    --scientific-ui-font-sans,
+    'IBM Plex Sans',
+    'Helvetica Neue',
+    Arial,
+    sans-serif
+  );
   --rf-space-2xs: #{spacing.$spacing-02};
   --rf-space-xs: #{spacing.$spacing-03};
   --rf-space-sm: #{spacing.$spacing-04};
@@ -26,14 +30,14 @@
   --rf-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --rf-duration-micro: 120ms;
   --rf-z-sticky: 200;
-  --rf-background: #{theme.$background};
-  --rf-focus: #{theme.$focus};
-  --rf-interactive: #{theme.$interactive};
-  --rf-layer-01: #{theme.$layer-01};
-  --rf-layer-accent-01: #{theme.$layer-accent-01};
-  --rf-layer-selected-01: #{theme.$layer-selected-01};
-  --rf-link-primary: #{theme.$link-primary};
-  --rf-support-error: #{theme.$support-error};
-  --rf-text-primary: #{theme.$text-primary};
-  --rf-text-secondary: #{theme.$text-secondary};
+  --rf-background: var(--cds-background);
+  --rf-focus: var(--cds-focus);
+  --rf-interactive: var(--cds-interactive);
+  --rf-layer-01: var(--cds-layer-01);
+  --rf-layer-accent-01: var(--cds-layer-accent-01);
+  --rf-layer-selected-01: var(--cds-layer-selected-01);
+  --rf-link-primary: var(--cds-link-primary);
+  --rf-support-error: var(--cds-support-error);
+  --rf-text-primary: var(--cds-text-primary);
+  --rf-text-secondary: var(--cds-text-secondary);
 }

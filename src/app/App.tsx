@@ -11,13 +11,7 @@ import {
   Tabs,
   preview__IconIndicator as IconIndicator,
 } from '@carbon/react'
-import {
-  Apps,
-  Chemistry,
-  Launch,
-  Layers,
-  Meter,
-} from '@carbon/icons-react'
+import { Apps, Chemistry, Launch, Layers, Meter } from '@carbon/icons-react'
 import {
   lazy,
   Suspense,
@@ -28,9 +22,18 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { ScientificAppShell, ScientificHeader, ScientificRecoveryNotice, ScientificRunControl, ScientificStatusBar, ScientificTaskPanel, ScientificToolRail, useScientificShortcut } from '@jorpago2/scientific-ui'
+import {
+  ScientificAppShell,
+  ScientificHeader,
+  ScientificRecoveryNotice,
+  ScientificRunControl,
+  ScientificStatusBar,
+  ScientificTaskPanel,
+  ScientificToolRail,
+  useScientificShortcut,
+} from '@jorpago2/scientific-ui'
 import type { SimulationStatus } from '../components'
-import { RFCanvas } from '../diagram/RFCanvas'
+import { RFCanvas, type RFCanvasHandle } from '../diagram/RFCanvas'
 import type { RFProject, SimulationOutput } from '../engine/types'
 import type { GraphValidationResult } from '../engine/validation'
 import { downloadTextFile, safeFileName } from '../persistence/download'
@@ -113,6 +116,7 @@ export default function App() {
   const workflowTriggerRefs = useRef<
     Partial<Record<WorkflowTool, HTMLButtonElement>>
   >({})
+  const rfCanvasRef = useRef<RFCanvasHandle | null>(null)
   const [activeTool, setActiveTool] = useState<WorkflowTool | null>(null)
   const [activeWorkspaceTab, setActiveWorkspaceTab] = useState(0)
   const [analysisControlsHost, setAnalysisControlsHost] =
@@ -130,8 +134,10 @@ export default function App() {
   const [recoveryProject, setRecoveryProject] =
     useState<LocalProjectRecord | null>(null)
   const [selectedProjectId, setSelectedProjectId] = useState('')
-  const [graphValidation, setGraphValidation] =
-    useState<{ modelRevision: number; result: GraphValidationResult } | null>(null)
+  const [graphValidation, setGraphValidation] = useState<{
+    modelRevision: number
+    result: GraphValidationResult
+  } | null>(null)
 
   useEffect(() => {
     if (!workspaceNotice) return
@@ -145,6 +151,19 @@ export default function App() {
     setActiveTool(null)
     window.requestAnimationFrame(() => trigger?.focus())
   }, [activeTool])
+
+  const closeSelectedNode = useCallback(() => {
+    if (!selectedNodeId) return
+    const nodeId = selectedNodeId
+    selectNode(null)
+    window.requestAnimationFrame(() => {
+      if (activeTool && window.matchMedia('(max-width: 65.99rem)').matches) {
+        workflowTriggerRefs.current[activeTool]?.focus()
+        return
+      }
+      rfCanvasRef.current?.focusNode(nodeId)
+    })
+  }, [activeTool, selectNode, selectedNodeId])
 
   const toggleTool = (tool: WorkflowTool) => {
     if (activeTool === tool) {
@@ -182,12 +201,15 @@ export default function App() {
     if (activeTool !== 'review') return
     let cancelled = false
     void import('../engine/validation').then(({ validateLinearGraph }) => {
-      if (!cancelled) setGraphValidation({
-        modelRevision,
-        result: validateLinearGraph(project.nodes, project.edges),
-      })
+      if (!cancelled)
+        setGraphValidation({
+          modelRevision,
+          result: validateLinearGraph(project.nodes, project.edges),
+        })
     })
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [activeTool, modelRevision, project])
 
   useEffect(() => {
@@ -282,18 +304,30 @@ export default function App() {
 
   const cancelSimulation = () => simulationAbortRef.current?.abort()
 
-  const escapeShortcut = useMemo(() => ({
-    id: 'rf:close-or-cancel',
-    shortcut: 'Escape',
-    displayKeys: ['Esc'],
-    description: 'Close the active tool or cancel simulation',
-    enabled: Boolean(activeTool) || status === 'running',
-    priority: 20,
-    handler: () => {
-      if (activeTool) closeActiveTool()
-      if (status === 'running') simulationAbortRef.current?.abort()
-    },
-  }), [activeTool, closeActiveTool, status])
+  const escapeShortcut = useMemo(
+    () => ({
+      id: 'rf:close-or-cancel',
+      shortcut: 'Escape',
+      displayKeys: ['Esc'],
+      description: 'Close the inspector or active tool, or cancel simulation',
+      enabled:
+        Boolean(selectedNodeId) || Boolean(activeTool) || status === 'running',
+      priority: 20,
+      handler: (event: KeyboardEvent) => {
+        event.stopPropagation()
+        if (selectedNodeId) {
+          closeSelectedNode()
+          return
+        }
+        if (activeTool) {
+          closeActiveTool()
+          return
+        }
+        if (status === 'running') simulationAbortRef.current?.abort()
+      },
+    }),
+    [activeTool, closeActiveTool, closeSelectedNode, selectedNodeId, status],
+  )
   useScientificShortcut(escapeShortcut)
 
   const openSelectedProject = async () => {
@@ -344,9 +378,10 @@ export default function App() {
   }
 
   const resultIsCurrent = resultRevision === modelRevision
-  const currentGraphValidation = graphValidation?.modelRevision === modelRevision
-    ? graphValidation.result
-    : null
+  const currentGraphValidation =
+    graphValidation?.modelRevision === modelRevision
+      ? graphValidation.result
+      : null
   const visibleResult = resultIsCurrent ? result : null
   const visibleStatus =
     status === 'running' || status === 'error'
@@ -360,15 +395,16 @@ export default function App() {
     success: 'Solved · review validation',
     error: 'Diagram needs attention',
   }[visibleStatus]
-  const scientificState = visibleStatus === 'running'
-    ? 'running'
-    : visibleStatus === 'error'
-      ? 'failed'
-      : visibleStatus === 'success'
-        ? 'up-to-date'
-        : nodes.length
-          ? 'modified'
-          : 'needs-input'
+  const scientificState =
+    visibleStatus === 'running'
+      ? 'running'
+      : visibleStatus === 'error'
+        ? 'failed'
+        : visibleStatus === 'success'
+          ? 'up-to-date'
+          : nodes.length
+            ? 'modified'
+            : 'needs-input'
 
   const workflowNavigation = (
     <ScientificToolRail
@@ -376,13 +412,17 @@ export default function App() {
       label="RF workbench tools"
       activeId={activeTool ?? 'components'}
       expandedId={activeTool}
-      onChange={(id) => id === null ? closeActiveTool() : toggleTool(id as WorkflowTool)}
-      registerItemRef={(id, node) => { workflowTriggerRefs.current[id as WorkflowTool] = node ?? undefined }}
+      onChange={(id) =>
+        id === null ? closeActiveTool() : toggleTool(id as WorkflowTool)
+      }
+      registerItemRef={(id, node) => {
+        workflowTriggerRefs.current[id as WorkflowTool] = node ?? undefined
+      }}
       items={WORKFLOW_TOOLS.map(({ id, label, icon: ToolIcon }) => ({
         id,
         label,
         icon: <ToolIcon size={20} />,
-        controlsId: "workflow-panel",
+        controlsId: 'workflow-panel',
       }))}
     />
   )
@@ -401,9 +441,18 @@ export default function App() {
           onClose={closeActiveTool}
         >
           <dl className="workflow-summary">
-            <div><dt>Blocks</dt><dd>{nodes.length}</dd></div>
-            <div><dt>Connections</dt><dd>{edges.length}</dd></div>
-            <div><dt>Selection</dt><dd>{selectedNodeId ? '1 block' : 'None'}</dd></div>
+            <div>
+              <dt>Blocks</dt>
+              <dd>{nodes.length}</dd>
+            </div>
+            <div>
+              <dt>Connections</dt>
+              <dd>{edges.length}</dd>
+            </div>
+            <div>
+              <dt>Selection</dt>
+              <dd>{selectedNodeId ? '1 block' : 'None'}</dd>
+            </div>
           </dl>
           <Button
             disabled={!selectedNodeId}
@@ -436,7 +485,14 @@ export default function App() {
           onClose={closeActiveTool}
         >
           <Suspense fallback={<p>Checking model…</p>}>
-            <RFValidationSummary analysis={analysis} error={error} graphValidation={currentGraphValidation} modelRevision={modelRevision} result={visibleResult} resultRevision={resultRevision} />
+            <RFValidationSummary
+              analysis={analysis}
+              error={error}
+              graphValidation={currentGraphValidation}
+              modelRevision={modelRevision}
+              result={visibleResult}
+              resultRevision={resultRevision}
+            />
           </Suspense>
         </WorkflowPanel>
       )}
@@ -448,12 +504,20 @@ export default function App() {
       className="status-strip"
       aria-label="Scientific status"
       status={{ state: scientificState, label: statusText }}
-      metadata={<>
-        <span>{nodes.length} blocks</span>
-        <span className="status-strip__connection">{edges.length} connections</span>
-        <span className="status-strip__detail">{analysis.points} frequency points</span>
-        <span className="status-strip__detail">Z₀ {analysis.referenceImpedanceOhm} Ω</span>
-      </>}
+      metadata={
+        <>
+          <span>{nodes.length} blocks</span>
+          <span className="status-strip__connection">
+            {edges.length} connections
+          </span>
+          <span className="status-strip__detail">
+            {analysis.points} frequency points
+          </span>
+          <span className="status-strip__detail">
+            Z₀ {analysis.referenceImpedanceOhm} Ω
+          </span>
+        </>
+      }
     />
   )
 
@@ -462,195 +526,224 @@ export default function App() {
       <ScientificAppShell
         className="app-shell"
         previewStageWhenPanelOpen
-        recovery={recoveryProject && <ScientificRecoveryNotice
-          savedAt={new Date(recoveryProject.updatedAt).toISOString()}
-          description={`${recoveryProject.project.name} was saved locally. Restore it, or start from the current blank workspace.`}
-          onRestore={() => {
-            loadProject(recoveryProject.project, recoveryProject.id)
-            setRecoveryProject(null)
-            setPersistenceReady(true)
-            setPersistenceMessage('Previous project restored')
-          }}
-          onDiscard={() => {
-            setRecoveryProject(null)
-            setPersistenceReady(true)
-            setPersistenceMessage('Previous project kept in Recent projects')
-          }}
-        />}
+        recovery={
+          recoveryProject && (
+            <ScientificRecoveryNotice
+              savedAt={new Date(recoveryProject.updatedAt).toISOString()}
+              description={`${recoveryProject.project.name} was saved locally. Restore it, or start from the current blank workspace.`}
+              onRestore={() => {
+                loadProject(recoveryProject.project, recoveryProject.id)
+                setRecoveryProject(null)
+                setPersistenceReady(true)
+                setPersistenceMessage('Previous project restored')
+              }}
+              onDiscard={() => {
+                setRecoveryProject(null)
+                setPersistenceReady(true)
+                setPersistenceMessage(
+                  'Previous project kept in Recent projects',
+                )
+              }}
+            />
+          )
+        }
         panelOpen={Boolean(activeTool)}
-        header={<>
-          <h1 className="scientific-visually-hidden">RF Network Simulator</h1>
-          <ScientificHeader
-            aria-label="RF Network Simulator"
-            product={strings.appName}
-            compactProduct="RF Network"
-            productIcon="rf-circuit"
-            descriptor="RF network simulation"
-            href="./"
-            skipLink={<SkipToContent href="#rf-workspace">Skip to RF workspace</SkipToContent>}
-            context={<Suspense fallback={<span aria-label="Loading project controls" />}>
-              <ProjectToolbar
-                message={persistenceMessage}
-                onExport={exportProject}
-                onImport={importProject}
-                onLoadTemplate={async (templateId) => {
-                  const { getRFTemplate } = await import('../templates')
-                  const template = getRFTemplate(templateId)
-                  loadProject(template)
-                  setActiveWorkspaceTab(0)
-                  setActiveTool(null)
-                  setSelectedProjectId('')
-                  setPersistenceStatus('saving')
-                  setPersistenceMessage('Editable template loaded')
-                  setWorkspaceNotice(
-                    `${template.name} loaded. Diagram fitted to the canvas.`,
-                  )
-                  window.requestAnimationFrame(() =>
-                    window.requestAnimationFrame(() =>
-                      document
-                        .querySelector<HTMLElement>(
-                          '[aria-label="RF block diagram editor"]',
-                        )
-                        ?.focus(),
-                    ),
-                  )
-                }}
-                onNew={() => {
-                  newProject()
-                  setSelectedProjectId('')
-                  setPersistenceMessage(null)
-                }}
-                onOpen={openSelectedProject}
-                onProjectNameChange={setProjectName}
-                onSelectedProjectChange={setSelectedProjectId}
-                projectName={projectName}
-                recentProjects={recentProjects}
-                selectedProjectId={selectedProjectId}
-                status={persistenceStatus}
-              />
-            </Suspense>}
-            status={{
-              state: scientificState,
-              label: statusText,
-            }}
-            help={{
-              summary: 'Build a connected source-to-load chain, set the analysis, simulate, then inspect and export current results.',
-            }}
-            primaryAction={<ScientificRunControl
-              size="lg"
-              execution={{
+        header={
+          <>
+            <h1 className="scientific-visually-hidden">RF Network Simulator</h1>
+            <ScientificHeader
+              aria-label="RF Network Simulator"
+              product={strings.appName}
+              compactProduct="RF Network"
+              productIcon="rf-circuit"
+              descriptor="RF network simulation"
+              href="./"
+              skipLink={
+                <SkipToContent href="#rf-workspace">
+                  Skip to RF workspace
+                </SkipToContent>
+              }
+              context={
+                <Suspense
+                  fallback={
+                    <span className="scientific-visually-hidden">
+                      Loading project controls
+                    </span>
+                  }
+                >
+                  <ProjectToolbar
+                    message={persistenceMessage}
+                    onExport={exportProject}
+                    onImport={importProject}
+                    onLoadTemplate={async (templateId) => {
+                      const { getRFTemplate } = await import('../templates')
+                      const template = getRFTemplate(templateId)
+                      loadProject(template)
+                      setActiveWorkspaceTab(0)
+                      setActiveTool(null)
+                      setSelectedProjectId('')
+                      setPersistenceStatus('saving')
+                      setPersistenceMessage('Editable template loaded')
+                      setWorkspaceNotice(
+                        `${template.name} loaded. Diagram fitted to the canvas.`,
+                      )
+                      window.requestAnimationFrame(() =>
+                        window.requestAnimationFrame(() =>
+                          rfCanvasRef.current?.focusCanvas(),
+                        ),
+                      )
+                    }}
+                    onNew={() => {
+                      newProject()
+                      setSelectedProjectId('')
+                      setPersistenceMessage(null)
+                    }}
+                    onOpen={openSelectedProject}
+                    onProjectNameChange={setProjectName}
+                    onSelectedProjectChange={setSelectedProjectId}
+                    projectName={projectName}
+                    recentProjects={recentProjects}
+                    selectedProjectId={selectedProjectId}
+                    status={persistenceStatus}
+                  />
+                </Suspense>
+              }
+              status={{
                 state: scientificState,
                 label: statusText,
-                onRun: () => { void runSimulation() },
-                onStop: cancelSimulation,
-                runLabel: 'Simulate',
-                stopLabel: 'Cancel',
-                disabled: nodes.length === 0,
-                disabledReason: 'Add RF blocks before simulating',
               }}
-            />}
-            secondaryActions={<Link
-              className="suite-link"
-              href="https://jorpago2.github.io/"
-              aria-label="Online Simulators & Tools"
-              size="sm"
-            >
-              <span className="suite-link__label">All tools</span>
-              <Launch className="suite-link__icon" aria-hidden="true" />
-            </Link>}
-          />
-        </>}
-        navigation={workflowNavigation}
-        panel={workflowPanel}
-        inspector={<Suspense fallback={null}><PropertiesPanel /></Suspense>}
-        statusBar={workbenchStatus}
-      >
-          <div
-            id="rf-workspace"
-            className="workspace"
-            tabIndex={-1}
-          >
-            {workspaceNotice && (
-              <InlineNotification
-                className="workspace-notice"
-                hideCloseButton
-                kind="success"
-                lowContrast
-                title="Template ready"
-                subtitle={workspaceNotice}
-              />
-            )}
-            <div className="workbench-deck scientific-stage">
-              <Tabs
-                selectedIndex={activeWorkspaceTab}
-                onChange={({ selectedIndex }) =>
-                  setActiveWorkspaceTab(selectedIndex)
-                }
-              >
-                <TabList
-                  activation="automatic"
-                  aria-label="Workbench view"
-                  className="workbench-view-tabs"
-                  contained
-                  fullWidth
+              help={{
+                summary:
+                  'Build a connected source-to-load chain, set the analysis, simulate, then inspect and export current results.',
+              }}
+              primaryAction={
+                <ScientificRunControl
+                  size="lg"
+                  execution={{
+                    state: scientificState,
+                    label: statusText,
+                    onRun: () => {
+                      void runSimulation()
+                    },
+                    onStop: cancelSimulation,
+                    runLabel: 'Simulate',
+                    stopLabel: 'Cancel',
+                    disabled: nodes.length === 0,
+                    disabledReason: 'Add RF blocks before simulating',
+                  }}
+                />
+              }
+              secondaryActions={
+                <Link
+                  className="suite-link"
+                  href="https://jorpago2.github.io/"
+                  aria-label="Online Simulators & Tools"
                   size="sm"
                 >
-                  <Tab>Schematic</Tab>
-                  <Tab>Results</Tab>
-                </TabList>
-                <TabPanels>
-                  <TabPanel className="workbench-tab-panel">
-                    <section
-                      id="rf-canvas"
-                      className="canvas-panel scientific-stage"
-                      aria-labelledby="canvas-title"
-                    >
-                      <div className="canvas-toolbar scientific-stage__header">
-                        <div>
-                          <h2 id="canvas-title">{strings.canvasTitle}</h2>
-                        </div>
-                        <IconIndicator
-                          className="status-chip"
-                          kind={STATUS_INDICATOR_KIND[visibleStatus]}
-                          label={statusText}
-                        />
+                  <span className="suite-link__label">All tools</span>
+                  <Launch className="suite-link__icon" aria-hidden="true" />
+                </Link>
+              }
+            />
+          </>
+        }
+        navigation={workflowNavigation}
+        panel={workflowPanel}
+        inspector={
+          selectedNodeId ? (
+            <Suspense fallback={null}>
+              <PropertiesPanel onClose={closeSelectedNode} />
+            </Suspense>
+          ) : undefined
+        }
+        statusBar={workbenchStatus}
+      >
+        <div
+          id="rf-workspace"
+          className="workspace"
+          data-inspector-open={selectedNodeId ? 'true' : undefined}
+          tabIndex={-1}
+        >
+          {workspaceNotice && (
+            <InlineNotification
+              className="workspace-notice"
+              hideCloseButton
+              kind="success"
+              lowContrast
+              title="Template ready"
+              subtitle={workspaceNotice}
+            />
+          )}
+          <div className="workbench-deck scientific-stage">
+            <Tabs
+              selectedIndex={activeWorkspaceTab}
+              onChange={({ selectedIndex }) =>
+                setActiveWorkspaceTab(selectedIndex)
+              }
+            >
+              <TabList
+                activation="automatic"
+                aria-label="Workbench view"
+                className="workbench-view-tabs"
+                contained
+                fullWidth
+                size="sm"
+              >
+                <Tab>Schematic</Tab>
+                <Tab>Results</Tab>
+              </TabList>
+              <TabPanels>
+                <TabPanel className="workbench-tab-panel">
+                  <section
+                    id="rf-canvas"
+                    className="canvas-panel scientific-stage"
+                    aria-labelledby="canvas-title"
+                  >
+                    <div className="canvas-toolbar scientific-stage__header">
+                      <div>
+                        <h2 id="canvas-title">{strings.canvasTitle}</h2>
                       </div>
-                      <div className="canvas-wrap">
-                        <RFCanvas />
-                        {nodes.length === 0 && (
-                          <div className="canvas-empty">
-                            <strong>Start with a block</strong>
-                            <p>
-                              Add components from the library or load a
-                              template.
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </section>
-                  </TabPanel>
-                  <TabPanel className="workbench-tab-panel workbench-tab-panel--results">
-                    <Suspense fallback={null}>
-                      <SimulationPanel
-                        analysis={analysis}
-                        analysisControlsHost={analysisControlsHost}
-                        nodes={nodes}
-                        error={status === 'error' ? error : null}
-                        onAnalysisChange={updateAnalysis}
-                        onRun={runSimulation}
-                        onExport={(fileName) =>
-                          setPersistenceMessage(`Exported ${fileName}`)
-                        }
-                        projectName={project.name}
-                        result={visibleResult}
-                        status={visibleStatus}
+                      <IconIndicator
+                        className="status-chip"
+                        kind={STATUS_INDICATOR_KIND[visibleStatus]}
+                        label={statusText}
                       />
-                    </Suspense>
-                  </TabPanel>
-                </TabPanels>
-              </Tabs>
-            </div>
+                    </div>
+                    <div className="canvas-wrap">
+                      <RFCanvas ref={rfCanvasRef} />
+                      {nodes.length === 0 && (
+                        <div className="canvas-empty">
+                          <strong>Start with a block</strong>
+                          <p>
+                            Add components from the library or load a template.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                </TabPanel>
+                <TabPanel className="workbench-tab-panel workbench-tab-panel--results">
+                  <Suspense fallback={null}>
+                    <SimulationPanel
+                      analysis={analysis}
+                      analysisControlsHost={analysisControlsHost}
+                      nodes={nodes}
+                      error={status === 'error' ? error : null}
+                      onAnalysisChange={updateAnalysis}
+                      onRun={runSimulation}
+                      onExport={(fileName) =>
+                        setPersistenceMessage(`Exported ${fileName}`)
+                      }
+                      projectName={project.name}
+                      result={visibleResult}
+                      status={visibleStatus}
+                    />
+                  </Suspense>
+                </TabPanel>
+              </TabPanels>
+            </Tabs>
           </div>
+        </div>
       </ScientificAppShell>
     </ReactFlowProvider>
   )

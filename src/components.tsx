@@ -1,5 +1,4 @@
 import {
-  useCallback,
   useEffect,
   useId,
   useMemo,
@@ -15,6 +14,7 @@ import {
   Button,
   Checkbox,
   FileUploaderButton,
+  FormGroup,
   InlineNotification,
   Link,
   NumberInput,
@@ -27,7 +27,11 @@ import {
   TextInput,
   Tile,
 } from '@carbon/react'
-import { ScientificOutcomeSummary, ScientificTaskPanel, useScientificResultTransition } from '@jorpago2/scientific-ui'
+import {
+  ScientificOutcomeSummary,
+  ScientificTaskPanel,
+  useScientificResultTransition,
+} from '@jorpago2/scientific-ui'
 import { blockDescriptors } from './diagram/nodeRegistry'
 import { RFBlockSymbol } from './diagram/RFBlockSymbol'
 import { parseTouchstone } from './engine/touchstone'
@@ -151,67 +155,65 @@ export function BlockLibrary({
       onClose={onClose}
     >
       <p className="workflow-panel__description">{strings.libraryHint}</p>
-          <div className="block-library__filters">
-            <TextInput
-              id="component-search"
-              labelText="Search components"
-              placeholder="Name or function"
-              size="sm"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-            <Select
-              id="component-category"
-              labelText="Category"
-              size="sm"
-              value={category}
-              onChange={(event) => setCategory(event.target.value)}
+      <div className="block-library__filters">
+        <TextInput
+          id="component-search"
+          labelText="Search components"
+          placeholder="Name or function"
+          size="sm"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        <Select
+          id="component-category"
+          labelText="Category"
+          size="sm"
+          value={category}
+          onChange={(event) => setCategory(event.target.value)}
+        >
+          <option value="all">All categories</option>
+          {blockCategories.map((candidate) => (
+            <option key={candidate.id} value={candidate.id}>
+              {candidate.label}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <p className="block-library__count" aria-live="polite">
+        {visibleBlocks.length}{' '}
+        {visibleBlocks.length === 1 ? 'component' : 'components'}
+      </p>
+      <div className="block-list">
+        {visibleBlocks.map((block) => (
+          <Button
+            className="block-card"
+            draggable
+            kind="ghost"
+            size="sm"
+            key={block.type}
+            onDragStart={(event) => startDrag(event, block.type)}
+            onClick={() => addNode(block.type)}
+            type="button"
+          >
+            <span
+              className="block-card__symbol"
+              style={{ '--block-accent': block.accent } as React.CSSProperties}
+              aria-hidden="true"
             >
-              <option value="all">All categories</option>
-              {blockCategories.map((candidate) => (
-                <option key={candidate.id} value={candidate.id}>
-                  {candidate.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <p className="block-library__count" aria-live="polite">
-            {visibleBlocks.length}{' '}
-            {visibleBlocks.length === 1 ? 'component' : 'components'}
+              <RFBlockSymbol type={block.type} />
+            </span>
+            <span>
+              <strong>{block.label}</strong>
+              <small>{block.description}</small>
+            </span>
+          </Button>
+        ))}
+        {visibleBlocks.length === 0 && (
+          <p className="block-library__empty">
+            No components match this search.
           </p>
-          <div className="block-list">
-            {visibleBlocks.map((block) => (
-              <Button
-                className="block-card"
-                draggable
-                kind="ghost"
-                size="sm"
-                key={block.type}
-                onDragStart={(event) => startDrag(event, block.type)}
-                onClick={() => addNode(block.type)}
-                type="button"
-              >
-                <span
-                  className="block-card__symbol"
-                  style={
-                    { '--block-accent': block.accent } as React.CSSProperties
-                  }
-                  aria-hidden="true"
-                >
-                  <RFBlockSymbol type={block.type} />
-                </span>
-                <span>
-                  <strong>{block.label}</strong>
-                  <small>{block.description}</small>
-                </span>
-              </Button>
-            ))}
-            {visibleBlocks.length === 0 && (
-              <p className="block-library__empty">
-                No components match this search.
-              </p>
-            )}
-          </div>
+        )}
+      </div>
     </ScientificTaskPanel>
   )
 }
@@ -222,7 +224,7 @@ interface FileStatus {
   message: string
 }
 
-export function PropertiesPanel() {
+export function PropertiesPanel({ onClose }: { onClose: () => void }) {
   const selectedNodeId = useRFEditorStore((state) => state.selectedNodeId)
   const node = useRFEditorStore((state) =>
     state.nodes.find((candidate) => candidate.id === state.selectedNodeId),
@@ -234,7 +236,6 @@ export function PropertiesPanel() {
   const removeSelectedNode = useRFEditorStore(
     (state) => state.removeSelectedNode,
   )
-  const selectNode = useRFEditorStore((state) => state.selectNode)
   const [fileStatus, setFileStatus] = useState<FileStatus | null>(null)
   const nodeType = node?.data.type
   const nodeLabel = node?.data.label
@@ -259,37 +260,8 @@ export function PropertiesPanel() {
     }
   }, [deviceTableContent, deviceTableFileName, nodeLabel, nodeType])
 
-  const closeProperties = useCallback(() => {
-    if (!selectedNodeId) return
-    const triggerId = selectedNodeId
-    selectNode(null)
-    window.requestAnimationFrame(() => {
-      const trigger = Array.from(
-        document.querySelectorAll<HTMLElement>('.react-flow__node'),
-      ).find((candidate) => candidate.dataset.id === triggerId)
-      trigger?.focus()
-    })
-  }, [selectNode, selectedNodeId])
-
-  useEffect(() => {
-    if (!selectedNodeId) return
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      event.preventDefault()
-      closeProperties()
-    }
-    document.addEventListener('keydown', closeOnEscape, true)
-    return () => document.removeEventListener('keydown', closeOnEscape, true)
-  }, [closeProperties, selectedNodeId])
-
   if (!node || !selectedNodeId) {
-    return (
-      <aside
-        id="rf-properties"
-        className="properties properties--closed"
-        aria-hidden="true"
-      />
-    )
+    return null
   }
 
   const setNumber = (key: string, value: number) => {
@@ -463,7 +435,7 @@ export function PropertiesPanel() {
       title={strings.propertiesTitle}
       eyebrow="Inspector"
       closeLabel="Close"
-      onClose={closeProperties}
+      onClose={onClose}
     >
       <p className="workflow-panel__description">{node.data.label}</p>
       <TextInput
@@ -781,11 +753,12 @@ export function PropertiesPanel() {
               updateParameters(node.id, { enforcePassivity: checked })
             }
           />
-          <div className="field file-field">
-            <label htmlFor={`device-table-${node.id}`}>
-              Datasheet / measured table (optional)
-            </label>
+          <FormGroup
+            className="field file-field"
+            legendText="Datasheet / measured table (optional)"
+          >
             <FileUploaderButton
+              aria-describedby={`device-table-help-${node.id}`}
               buttonKind="secondary"
               id={`device-table-${node.id}`}
               labelText="Choose performance CSV"
@@ -803,7 +776,7 @@ export function PropertiesPanel() {
             >
               Download CSV template
             </Link>
-          </div>
+          </FormGroup>
           {typeof node.data.parameters.deviceTableFileName === 'string' && (
             <>
               <dl className="file-summary">
@@ -1388,11 +1361,12 @@ export function PropertiesPanel() {
             }
           />
           <BudgetMetadataFields nodeId={node.id} />
-          <div className="field file-field">
-            <label htmlFor={`mixer-products-${node.id}`}>
-              Measured conversion products (optional CSV)
-            </label>
+          <FormGroup
+            className="field file-field"
+            legendText="Measured conversion products (optional CSV)"
+          >
             <FileUploaderButton
+              aria-describedby={`mixer-products-help-${node.id}`}
               buttonKind="secondary"
               id={`mixer-products-${node.id}`}
               labelText="Choose mixer-products CSV"
@@ -1401,7 +1375,9 @@ export function PropertiesPanel() {
               size="sm"
               onChange={loadMixerProductTable}
             />
-            <small>Columns: m, n, relative_level_db, phase_deg, label.</small>
+            <small id={`mixer-products-help-${node.id}`}>
+              Columns: m, n, relative_level_db, phase_deg, label.
+            </small>
             {typeof node.data.parameters.productTableFileName === 'string' && (
               <Button
                 className="file-reset-button"
@@ -1419,7 +1395,7 @@ export function PropertiesPanel() {
                 Remove measured products
               </Button>
             )}
-          </div>
+          </FormGroup>
         </>
       )}
 
@@ -1514,10 +1490,11 @@ export function PropertiesPanel() {
             <Accordion className="file-field" size="sm">
               <AccordionItem title="Optional fixture de-embedding">
                 {(['left', 'right'] as const).map((side) => (
-                  <div className="field file-field" key={side}>
-                    <label htmlFor={`${side}-fixture-${node.id}`}>
-                      {side === 'left' ? 'Input' : 'Output'} fixture (.s2p)
-                    </label>
+                  <FormGroup
+                    className="field file-field"
+                    key={side}
+                    legendText={`${side === 'left' ? 'Input' : 'Output'} fixture (.s2p)`}
+                  >
                     <FileUploaderButton
                       buttonKind="secondary"
                       id={`${side}-fixture-${node.id}`}
@@ -1544,7 +1521,7 @@ export function PropertiesPanel() {
                         Remove {side} fixture
                       </Button>
                     )}
-                  </div>
+                  </FormGroup>
                 ))}
               </AccordionItem>
             </Accordion>
@@ -2080,11 +2057,15 @@ export function SimulationPanel({
     )
     onExport(fileName)
   }
-  const outcomeCenterIndex = result ? Math.floor(result.total.frequencyHz.length / 2) : 0
-  const outcomeCenterS21 = result ? magnitudeDb({
-    re: result.total.s21.re[outcomeCenterIndex]!,
-    im: result.total.s21.im[outcomeCenterIndex]!,
-  }) : null
+  const outcomeCenterIndex = result
+    ? Math.floor(result.total.frequencyHz.length / 2)
+    : 0
+  const outcomeCenterS21 = result
+    ? magnitudeDb({
+        re: result.total.s21.re[outcomeCenterIndex]!,
+        im: result.total.s21.im[outcomeCenterIndex]!,
+      })
+    : null
   const sweepNode = nodes.find((node) => node.id === analysis.sweepNodeId)
   const sweepParameters = useMemo(
     () => (sweepNode ? sweepableParameters(sweepNode) : []),
@@ -2099,7 +2080,16 @@ export function SimulationPanel({
   )
 
   useScientificResultTransition({
-    state: status === 'running' ? 'running' : status === 'error' ? 'failed' : result ? result.warnings.length ? 'warning' : 'up-to-date' : 'ready',
+    state:
+      status === 'running'
+        ? 'running'
+        : status === 'error'
+          ? 'failed'
+          : result
+            ? result.warnings.length
+              ? 'warning'
+              : 'up-to-date'
+            : 'ready',
     resultRef: outcomeHeading,
   })
 
@@ -2158,35 +2148,114 @@ export function SimulationPanel({
         className="rf-outcome"
         headingLevel={3}
         headingRef={outcomeHeading}
-        title={result ? 'RF simulation outcome' : status === 'running' ? 'RF simulation running' : 'RF simulation'}
-        status={status === 'running'
-          ? { state: 'running', label: 'Solving network', detail: 'The worker is evaluating the current model.' }
-          : status === 'error'
-            ? { state: 'failed', label: 'Simulation stopped', detail: error ?? undefined }
-            : result?.warnings.length
-              ? { state: 'warning', label: 'Solved with warnings' }
-              : result
-                ? { state: 'up-to-date', label: 'Result current' }
-                : { state: 'needs-input', label: nodes.length ? 'Ready to simulate' : 'Add RF blocks' }}
-        summary={status === 'error'
-          ? error ?? 'Correct the network and run the simulation again.'
-          : result
-            ? result.warnings.length
-              ? `The network solved, but ${result.warnings.length} warning${result.warnings.length === 1 ? ' requires' : 's require'} review before interpretation.`
-              : 'The current network and analysis settings produced a usable result. Review validation before export.'
-            : 'Build a connected source-to-load network, then simulate it to reveal the first interpretable result.'}
-        metrics={result ? [
-          { id: 'center-s21', label: 'Center S21', value: outcomeCenterS21!, unit: 'dB', format: { significantDigits: 4 }, status: result.warnings.length ? 'warning' : 'success' },
-          { id: 'center-frequency', label: 'Center frequency', value: formatFrequency(result.total.frequencyHz[outcomeCenterIndex]!) },
-          { id: 'frequency-points', label: 'Frequency points', value: result.total.frequencyHz.length, format: { notation: 'standard', significantDigits: 8 } },
-          { id: 'solver-warnings', label: 'Solver warnings', value: result.warnings.length },
-        ] : []}
-        actions={result ? [
-          { id: 'export-result', label: visibleResultView === 'nonlinear' ? 'Export power CSV' : 'Export result CSV', emphasis: 'primary', disabled: !categoryResultView, disabledReason: 'Choose an available result view first.', onClick: exportResults },
-          { id: 'rerun', label: 'Run again', emphasis: 'secondary', collapseAt: 'sm', onClick: onRun },
-        ] : [
-          { id: 'run', label: status === 'error' ? 'Try again' : 'Run simulation', emphasis: 'primary', disabled: nodes.length === 0 || status === 'running', disabledReason: nodes.length === 0 ? 'Add RF blocks before simulating.' : undefined, onClick: onRun },
-        ]}
+        title={
+          result
+            ? 'RF simulation outcome'
+            : status === 'running'
+              ? 'RF simulation running'
+              : 'RF simulation'
+        }
+        status={
+          status === 'running'
+            ? {
+                state: 'running',
+                label: 'Solving network',
+                detail: 'The worker is evaluating the current model.',
+              }
+            : status === 'error'
+              ? {
+                  state: 'failed',
+                  label: 'Simulation stopped',
+                  detail: error ?? undefined,
+                }
+              : result?.warnings.length
+                ? { state: 'warning', label: 'Solved with warnings' }
+                : result
+                  ? { state: 'up-to-date', label: 'Result current' }
+                  : {
+                      state: 'needs-input',
+                      label: nodes.length
+                        ? 'Ready to simulate'
+                        : 'Add RF blocks',
+                    }
+        }
+        summary={
+          status === 'error'
+            ? (error ?? 'Correct the network and run the simulation again.')
+            : result
+              ? result.warnings.length
+                ? `The network solved, but ${result.warnings.length} warning${result.warnings.length === 1 ? ' requires' : 's require'} review before interpretation.`
+                : 'The current network and analysis settings produced a usable result. Review validation before export.'
+              : 'Build a connected source-to-load network, then simulate it to reveal the first interpretable result.'
+        }
+        metrics={
+          result
+            ? [
+                {
+                  id: 'center-s21',
+                  label: 'Center S21',
+                  value: outcomeCenterS21!,
+                  unit: 'dB',
+                  format: { significantDigits: 4 },
+                  status: result.warnings.length ? 'warning' : 'success',
+                },
+                {
+                  id: 'center-frequency',
+                  label: 'Center frequency',
+                  value: formatFrequency(
+                    result.total.frequencyHz[outcomeCenterIndex]!,
+                  ),
+                },
+                {
+                  id: 'frequency-points',
+                  label: 'Frequency points',
+                  value: result.total.frequencyHz.length,
+                  format: { notation: 'standard', significantDigits: 8 },
+                },
+                {
+                  id: 'solver-warnings',
+                  label: 'Solver warnings',
+                  value: result.warnings.length,
+                },
+              ]
+            : []
+        }
+        actions={
+          result
+            ? [
+                {
+                  id: 'export-result',
+                  label:
+                    visibleResultView === 'nonlinear'
+                      ? 'Export power CSV'
+                      : 'Export result CSV',
+                  emphasis: 'primary',
+                  disabled: !categoryResultView,
+                  disabledReason: 'Choose an available result view first.',
+                  onClick: exportResults,
+                },
+                {
+                  id: 'rerun',
+                  label: 'Run again',
+                  emphasis: 'secondary',
+                  collapseAt: 'sm',
+                  onClick: onRun,
+                },
+              ]
+            : [
+                {
+                  id: 'run',
+                  label: status === 'error' ? 'Try again' : 'Run simulation',
+                  emphasis: 'primary',
+                  disabled: nodes.length === 0 || status === 'running',
+                  disabledReason:
+                    nodes.length === 0
+                      ? 'Add RF blocks before simulating.'
+                      : undefined,
+                  onClick: onRun,
+                },
+              ]
+        }
       />
       <Tabs
         selectedIndex={selectedResultCategory}

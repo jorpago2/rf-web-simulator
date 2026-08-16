@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { IconButton } from '@carbon/react'
+import { Download, Reset } from '@carbon/icons-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Config, Data, Layout } from 'plotly.js'
 import {
   SCIENTIFIC_PLOT_LINE_WIDTHS,
   createScientificPlotlyConfig,
   createScientificPlotlyLayout,
-  prepareScientificPlotlyToolbar,
   useScientificPlotTheme,
 } from '@jorpago2/scientific-ui'
 import type { SimulationOutput } from '../engine/types'
@@ -35,7 +36,7 @@ const PROBE_COLORS = [
   '#cc79a7',
   '#e69f00',
   '#56b4e9',
-  '#000000',
+  '#8a3ffc',
   '#7b61a8',
 ] as const
 const PROBE_DASHES = ['solid', 'dash', 'dot', 'dashdot'] as const
@@ -65,6 +66,17 @@ export function RFPlot({
   const frequencyConverting =
     result.frequencyPlan.stages.length > 0 ||
     result.frequencyPlan.output.centerHz !== result.frequencyPlan.input.centerHz
+  const exportFileName = `rf-${view}`
+  const config = useMemo(
+    () =>
+      createScientificPlotlyConfig({
+        filename: exportFileName,
+        scrollZoom: true,
+        displayModeBar: false,
+        addFullscreen: false,
+      }) as Partial<Config>,
+    [exportFileName],
+  )
 
   return (
     <PlotlyFigure
@@ -77,11 +89,9 @@ export function RFPlot({
               ? 'Normalized antenna radiation pattern versus angle'
               : `${plotTitle(view, frequencyConverting)} versus frequency`
       }
-      config={createScientificPlotlyConfig({
-        filename: `rf-${view}`,
-        scrollZoom: true,
-      }) as Partial<Config>}
+      config={config}
       data={figure.data}
+      exportFileName={exportFileName}
       layout={figure.layout}
     />
   )
@@ -92,14 +102,47 @@ function PlotlyFigure({
   layout,
   config,
   ariaLabel,
+  exportFileName,
 }: {
   data: Data[]
   layout: Partial<Layout>
   config: Partial<Config>
   ariaLabel: string
+  exportFileName: string
 }) {
   const plotRef = useRef<HTMLDivElement>(null)
+  const plotlyRef = useRef<
+    typeof import('plotly.js-basic-dist-min').default | null
+  >(null)
+  const [plotReady, setPlotReady] = useState(false)
   const plotTheme = useScientificPlotTheme()
+
+  const resetView = useCallback(() => {
+    const element = plotRef.current
+    const plotly = plotlyRef.current
+    if (!element || !plotly) return
+    const resetLayout: Record<string, unknown> = {}
+    for (const axisName of ['xaxis', 'yaxis', 'yaxis2'] as const) {
+      const configuredAxis = layout[axisName]
+      if (!configuredAxis && axisName === 'yaxis2') continue
+      const range = configuredAxis?.range
+      if (Array.isArray(range)) resetLayout[`${axisName}.range`] = range
+      else resetLayout[`${axisName}.autorange`] = true
+    }
+    void plotly.relayout(element, resetLayout)
+  }, [layout])
+
+  const downloadPlot = useCallback(() => {
+    const element = plotRef.current
+    const plotly = plotlyRef.current
+    if (!element || !plotly) return
+    void plotly.downloadImage(element, {
+      format: 'svg',
+      filename: exportFileName,
+      width: 1400,
+      height: 800,
+    })
+  }, [exportFileName])
 
   useEffect(() => {
     const element = plotRef.current
@@ -110,24 +153,61 @@ function PlotlyFigure({
     void import('plotly.js-basic-dist-min').then((module) => {
       if (cancelled) return
       plotly = module.default
+      plotlyRef.current = plotly
       const normalizedLayout = createScientificPlotlyLayout({
         height: typeof layout.height === 'number' ? layout.height : 330,
         theme: plotTheme,
         overrides: layout as Record<string, unknown>,
       }) as Partial<Layout>
-      return plotly.react(element, data, normalizedLayout, config).then((plot) => {
-        prepareScientificPlotlyToolbar(plot)
+      return plotly.react(element, data, normalizedLayout, config).then(() => {
+        if (!cancelled) setPlotReady(true)
       })
     })
 
     return () => {
       cancelled = true
+      plotlyRef.current = null
       if (plotly) plotly.purge(element)
     }
   }, [config, data, layout, plotTheme])
 
   return (
-    <div className="rf-plot scientific-plot-surface" ref={plotRef} role="img" aria-label={ariaLabel} />
+    <div className="rf-plot-frame">
+      <div
+        className="rf-plot scientific-plot-surface"
+        ref={plotRef}
+        role="img"
+        aria-label={ariaLabel}
+      />
+      <div
+        className="rf-plot-actions"
+        role="toolbar"
+        aria-label="Plot controls"
+      >
+        <IconButton
+          align="top-right"
+          disabled={!plotReady}
+          kind="ghost"
+          label="Reset plot view"
+          size="sm"
+          type="button"
+          onClick={resetView}
+        >
+          <Reset />
+        </IconButton>
+        <IconButton
+          align="top-right"
+          disabled={!plotReady}
+          kind="ghost"
+          label="Download plot as SVG"
+          size="sm"
+          type="button"
+          onClick={downloadPlot}
+        >
+          <Download />
+        </IconButton>
+      </div>
+    </div>
   )
 }
 
@@ -146,21 +226,15 @@ function createFigure(
     autosize: true,
     height: 330,
     margin: { l: 68, r: 22, t: 32, b: 56 },
-    paper_bgcolor: 'rgba(0,0,0,0)',
-    plot_bgcolor: '#ffffff',
     font: {
       family: 'IBM Plex Sans, sans-serif',
       size: 11,
-      color: '#40555c',
     },
     hovermode: 'x unified',
     uirevision: `${view}-${unit}`,
     xaxis: {
       title: { text: `Frequency (${unit})` },
-      gridcolor: '#e7edef',
       zeroline: false,
-      showline: true,
-      linecolor: '#9fb0b5',
     },
     legend: {
       orientation: 'h',
@@ -174,7 +248,10 @@ function createFigure(
       ['K', result.networkChecks.stabilityK],
       ['μ<sub>source</sub>', result.networkChecks.stabilityMuSource],
       ['μ<sub>load</sub>', result.networkChecks.stabilityMuLoad],
-      ['σ<sub>max</sub>(S)', result.networkChecks.passivityMaximumSingularValue],
+      [
+        'σ<sub>max</sub>(S)',
+        result.networkChecks.passivityMaximumSingularValue,
+      ],
     ] as const
     return {
       data: traces.map(([name, values], index) => ({
@@ -203,7 +280,11 @@ function createFigure(
             x1: 1,
             y0: 1,
             y1: 1,
-            line: { color: '#64748b', dash: 'dot', width: SCIENTIFIC_PLOT_LINE_WIDTHS.reference },
+            line: {
+              color: '#64748b',
+              dash: 'dot',
+              width: SCIENTIFIC_PLOT_LINE_WIDTHS.reference,
+            },
           },
         ],
       },
@@ -224,7 +305,10 @@ function createFigure(
             name: 'Conversion gain',
             x: frequency,
             y: Array.from(result.curves.s21Db),
-            line: { color: TRACE_STYLES[1].color, width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary },
+            line: {
+              color: TRACE_STYLES[1].color,
+              width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary,
+            },
             hovertemplate: 'Conversion gain: %{y:.3f} dB<extra></extra>',
           },
         ],
@@ -274,7 +358,10 @@ function createFigure(
         name: `${probe.label} (probe ${index + 1})`,
         x: frequency,
         y: Array.from(probe.s21Db),
-        line: { ...probeTraceStyle(index), width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary },
+        line: {
+          ...probeTraceStyle(index),
+          width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary,
+        },
         hovertemplate: `${conversion ? 'Accumulated conversion gain' : 'Accumulated S<sub>21</sub>'}: %{y:.3f} dB<extra>%{fullData.name}</extra>`,
       })),
       layout: {
@@ -298,7 +385,10 @@ function createFigure(
           x: frequency,
           y: Array.from(result.curves.s21PhaseDeg),
           connectgaps: false,
-          line: { color: TRACE_STYLES[0].color, width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary },
+          line: {
+            color: TRACE_STYLES[0].color,
+            width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary,
+          },
           hovertemplate: 'Phase: %{y:.3f}°<extra></extra>',
         },
       ],
@@ -319,7 +409,10 @@ function createFigure(
         x: frequency,
         y: [...result.curves.s21GroupDelayS].map((value) => value * 1e9),
         connectgaps: false,
-        line: { color: TRACE_STYLES[2].color, width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary },
+        line: {
+          color: TRACE_STYLES[2].color,
+          width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary,
+        },
         hovertemplate: 'Group delay: %{y:.4f} ns<extra></extra>',
       },
     ],
@@ -343,7 +436,11 @@ function createOscillatorFigure(result: SimulationOutput): {
       name: 'Free-running VCO',
       x: Array.from(noise.offsetFrequencyHz),
       y: Array.from(noise.freeRunningDbcHz),
-      line: { color: TRACE_STYLES[1].color, dash: 'dash', width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary },
+      line: {
+        color: TRACE_STYLES[1].color,
+        dash: 'dash',
+        width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary,
+      },
       hovertemplate: '%{x:.4g} Hz: %{y:.2f} dBc/Hz<extra>VCO</extra>',
     },
   ]
@@ -354,7 +451,10 @@ function createOscillatorFigure(result: SimulationOutput): {
       name: 'PLL output',
       x: Array.from(noise.offsetFrequencyHz),
       y: Array.from(noise.outputDbcHz),
-      line: { color: TRACE_STYLES[0].color, width: SCIENTIFIC_PLOT_LINE_WIDTHS.emphasis },
+      line: {
+        color: TRACE_STYLES[0].color,
+        width: SCIENTIFIC_PLOT_LINE_WIDTHS.emphasis,
+      },
       hovertemplate: '%{x:.4g} Hz: %{y:.2f} dBc/Hz<extra>PLL output</extra>',
     })
   }
@@ -364,14 +464,11 @@ function createOscillatorFigure(result: SimulationOutput): {
       autosize: true,
       height: 330,
       margin: { l: 78, r: 22, t: 32, b: 56 },
-      paper_bgcolor: 'rgba(0,0,0,0)',
-      plot_bgcolor: '#ffffff',
-      font: { family: 'IBM Plex Sans, sans-serif', size: 11, color: '#40555c' },
+      font: { family: 'IBM Plex Sans, sans-serif', size: 11 },
       hovermode: 'x unified',
       xaxis: {
         type: 'log',
         title: { text: 'Offset frequency (Hz)' },
-        gridcolor: '#e7edef',
       },
       yaxis: axis('SSB phase noise L(f) (dBc/Hz)'),
       legend: { orientation: 'h', x: 0, y: 1.14 },
@@ -391,7 +488,10 @@ function createAntennaFigure(result: SimulationOutput): {
         name: 'Normalized power cut',
         x: Array.from(result.antenna.angleDeg),
         y: Array.from(result.antenna.normalizedPatternDb),
-        line: { color: TRACE_STYLES[2].color, width: SCIENTIFIC_PLOT_LINE_WIDTHS.emphasis },
+        line: {
+          color: TRACE_STYLES[2].color,
+          width: SCIENTIFIC_PLOT_LINE_WIDTHS.emphasis,
+        },
         hovertemplate: '%{x:.0f}°: %{y:.2f} dB<extra></extra>',
       },
     ],
@@ -399,15 +499,12 @@ function createAntennaFigure(result: SimulationOutput): {
       autosize: true,
       height: 330,
       margin: { l: 68, r: 22, t: 32, b: 56 },
-      paper_bgcolor: 'rgba(0,0,0,0)',
-      plot_bgcolor: '#ffffff',
-      font: { family: 'IBM Plex Sans, sans-serif', size: 11, color: '#40555c' },
+      font: { family: 'IBM Plex Sans, sans-serif', size: 11 },
       showlegend: false,
       xaxis: {
         title: { text: 'Angle from boresight (°)' },
         range: [-180, 180],
         dtick: 45,
-        gridcolor: '#e7edef',
       },
       yaxis: { ...axis('Normalized power (dB)'), range: [-60, 0] },
     },
@@ -427,7 +524,11 @@ function createNonlinearFigure(result: SimulationOutput): {
       name: 'Linear fundamental',
       x: inputPowerDbm,
       y: Array.from(nonlinear.linearOutputPowerDbm),
-      line: { color: '#6b7280', dash: 'dash', width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary },
+      line: {
+        color: '#6b7280',
+        dash: 'dash',
+        width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary,
+      },
       hovertemplate: 'Linear output: %{y:.3f} dBm<extra></extra>',
     },
   ]
@@ -438,7 +539,10 @@ function createNonlinearFigure(result: SimulationOutput): {
       name: 'Compressed fundamental',
       x: inputPowerDbm,
       y: Array.from(nonlinear.compressedOutputPowerDbm),
-      line: { color: TRACE_STYLES[1].color, width: SCIENTIFIC_PLOT_LINE_WIDTHS.emphasis },
+      line: {
+        color: TRACE_STYLES[1].color,
+        width: SCIENTIFIC_PLOT_LINE_WIDTHS.emphasis,
+      },
       hovertemplate: 'Compressed output: %{y:.3f} dBm<extra></extra>',
     })
   }
@@ -449,7 +553,11 @@ function createNonlinearFigure(result: SimulationOutput): {
       name: 'IM<sub>3</sub> extrapolation',
       x: inputPowerDbm,
       y: Array.from(nonlinear.im3OutputPowerDbm),
-      line: { color: TRACE_STYLES[3].color, dash: 'dot', width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary },
+      line: {
+        color: TRACE_STYLES[3].color,
+        dash: 'dot',
+        width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary,
+      },
       hovertemplate: 'IM<sub>3</sub> output: %{y:.3f} dBm<extra></extra>',
     })
   }
@@ -465,7 +573,11 @@ function createNonlinearFigure(result: SimulationOutput): {
       x: inputPowerDbm,
       y: Array.from(nonlinear.outputPhaseDeg),
       yaxis: 'y2',
-      line: { color: TRACE_STYLES[2].color, dash: 'dashdot', width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary },
+      line: {
+        color: TRACE_STYLES[2].color,
+        dash: 'dashdot',
+        width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary,
+      },
       hovertemplate: 'Output phase: %{y:.3f}°<extra></extra>',
     })
   }
@@ -479,7 +591,7 @@ function createNonlinearFigure(result: SimulationOutput): {
       name: 'Configured source',
       x: [nonlinear.operatingInputPowerDbm],
       y: [nonlinear.operatingOutputPowerDbm],
-      marker: { color: '#000000', size: 9, symbol: 'diamond' },
+      marker: { color: TRACE_STYLES[0].color, size: 9, symbol: 'diamond' },
       hovertemplate:
         'Configured source: %{x:.3f} dBm<br>Output: %{y:.3f} dBm<extra></extra>',
     })
@@ -491,21 +603,15 @@ function createNonlinearFigure(result: SimulationOutput): {
       autosize: true,
       height: 330,
       margin: { l: 68, r: 68, t: 32, b: 56 },
-      paper_bgcolor: 'rgba(0,0,0,0)',
-      plot_bgcolor: '#ffffff',
       font: {
         family: 'IBM Plex Sans, sans-serif',
         size: 11,
-        color: '#40555c',
       },
       hovermode: 'x unified',
       uirevision: 'nonlinear-power',
       xaxis: {
         title: { text: 'Per-tone input power (dBm)' },
-        gridcolor: '#e7edef',
         zeroline: false,
-        showline: true,
-        linecolor: '#9fb0b5',
       },
       yaxis: axis('Output power (dBm)'),
       yaxis2: {
@@ -513,7 +619,6 @@ function createNonlinearFigure(result: SimulationOutput): {
         overlaying: 'y',
         side: 'right',
         showgrid: false,
-        zerolinecolor: '#b7c6ca',
       },
       legend: { orientation: 'h', x: 0, y: 1.14 },
     },
@@ -523,10 +628,6 @@ function createNonlinearFigure(result: SimulationOutput): {
 function axis(title: string): Partial<Layout['yaxis']> {
   return {
     title: { text: title },
-    gridcolor: '#e7edef',
-    zerolinecolor: '#b7c6ca',
-    showline: true,
-    linecolor: '#9fb0b5',
   }
 }
 
@@ -556,7 +657,11 @@ function createSmithFigure(result: SimulationOutput): {
         x: circle.map(Math.cos),
         y: circle.map(Math.sin),
         hoverinfo: 'skip',
-        line: { color: '#94a3b8', dash: 'dot', width: SCIENTIFIC_PLOT_LINE_WIDTHS.reference },
+        line: {
+          color: '#94a3b8',
+          dash: 'dot',
+          width: SCIENTIFIC_PLOT_LINE_WIDTHS.reference,
+        },
       },
       {
         type: 'scatter',
@@ -565,7 +670,10 @@ function createSmithFigure(result: SimulationOutput): {
         x: Array.from(result.total.s11.re),
         y: Array.from(result.total.s11.im),
         customdata: Array.from(result.total.frequencyHz),
-        line: { color: TRACE_STYLES[0].color, width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary },
+        line: {
+          color: TRACE_STYLES[0].color,
+          width: SCIENTIFIC_PLOT_LINE_WIDTHS.primary,
+        },
         hovertemplate:
           'S<sub>11</sub> = %{x:.4f} %{y:+.4f}j<br>f = %{customdata:.6g} Hz<extra></extra>',
       },
@@ -574,12 +682,9 @@ function createSmithFigure(result: SimulationOutput): {
       autosize: true,
       height: 330,
       margin: { l: 58, r: 22, t: 32, b: 48 },
-      paper_bgcolor: 'rgba(0,0,0,0)',
-      plot_bgcolor: '#ffffff',
       font: {
         family: 'IBM Plex Sans, sans-serif',
         size: 11,
-        color: '#40555c',
       },
       hovermode: 'closest',
       xaxis: {
@@ -587,14 +692,10 @@ function createSmithFigure(result: SimulationOutput): {
         range: [-1.05, 1.05],
         scaleanchor: 'y',
         scaleratio: 1,
-        gridcolor: '#e7edef',
-        zerolinecolor: '#b7c6ca',
       },
       yaxis: {
         title: { text: 'Im(Γ)' },
         range: [-1.05, 1.05],
-        gridcolor: '#e7edef',
-        zerolinecolor: '#b7c6ca',
       },
       legend: { orientation: 'h', x: 0, y: 1.12 },
       uirevision: 'smith',
