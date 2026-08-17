@@ -1,9 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
-  ScientificNotificationProvider,
-  ScientificShortcutProvider,
-  ScientificThemeProvider,
+  ScientificUiProvider,
 } from '@jorpago2/scientific-ui'
 import '@xyflow/react/dist/style.css'
 import './carbon.scss'
@@ -17,12 +15,8 @@ if (!root) throw new Error('Application root element was not found.')
 
 createRoot(root).render(
   <StrictMode>
-    <ScientificThemeProvider defaultPreference="system">
-      <ScientificShortcutProvider>
-        <ScientificNotificationProvider>
-          <App />
-        </ScientificNotificationProvider>
-      </ScientificShortcutProvider>
-    </ScientificThemeProvider>
+    <ScientificUiProvider themeStorageKey="scientific-ui-theme">
+      <App />
+    </ScientificUiProvider>
   </StrictMode>,
 )

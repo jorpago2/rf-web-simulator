@@ -92,6 +92,9 @@ test('uses the Carbon UI contract', async () => {
     )
   }
   assert.doesNotMatch(plot, /prepareScientificPlotlyToolbar/)
+  assert.match(plot, /aria-describedby=\{descriptionId\}/)
+  assert.match(plot, /scientific-visually-hidden/)
+  assert.match(plot, /function plotSummary\(/)
   assert.doesNotMatch(styles, /tailwindcss|@theme inline/)
   assert.doesNotMatch(
     styles,
@@ -108,12 +111,19 @@ test('uses the Carbon UI contract', async () => {
     carbon,
     /oklch\(|Space Grotesk|--color-|--radius-|--shadow-/,
   )
+  assert.match(
+    styles,
+    /\.rf-header-product-short\s*\{[\s\S]*display:\s*inline;/,
+  )
   assert.doesNotMatch(
     styles,
     /(?:button|input|select|a):focus-visible|results-empty__trace|\.(?:warning-list|budget-warnings)\b/,
   )
   assert.match(app, /<ScientificAppShell\b/)
   assert.match(app, /<ScientificHeader\b/)
+  assert.match(app, /product=\{strings\.appName\}/)
+  assert.match(app, /rf-header-product-full/)
+  assert.match(app, /rf-header-product-short/)
   assert.match(app, /<ScientificStatusBar\b/)
   for (const component of ['SkipToContent', 'Link', 'IconIndicator']) {
     assert.match(app, new RegExp(`<${component}`))

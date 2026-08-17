@@ -1,6 +1,6 @@
 import { IconButton } from '@carbon/react'
 import { Download, Reset } from '@carbon/icons-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { Config, Data, Layout } from 'plotly.js'
 import {
   SCIENTIFIC_PLOT_LINE_WIDTHS,
@@ -92,6 +92,7 @@ export function RFPlot({
       }
       config={config}
       data={figure.data}
+      description={plotSummary(result, view, frequencyConverting)}
       exportFileName={exportFileName}
       layout={figure.layout}
     />
@@ -103,15 +104,18 @@ function PlotlyFigure({
   layout,
   config,
   ariaLabel,
+  description,
   exportFileName,
 }: {
   data: Data[]
   layout: Partial<Layout>
   config: Partial<Config>
   ariaLabel: string
+  description: string
   exportFileName: string
 }) {
   const plotRef = useRef<HTMLDivElement>(null)
+  const descriptionId = `rf-plot-description-${useId().replace(/:/g, '')}`
   const plotlyRef = useRef<
     typeof import('plotly.js-basic-dist-min').default | null
   >(null)
@@ -152,31 +156,35 @@ function PlotlyFigure({
     let plotly: typeof import('plotly.js-basic-dist-min').default | undefined
 
     setPlotReady(false)
-    void import('plotly.js-basic-dist-min').then((module) => {
-      if (cancelled) return
-      plotly = module.default
-      plotlyRef.current = plotly
-      const normalizedLayout = createScientificPlotlyLayout({
-        height: typeof layout.height === 'number' ? layout.height : 330,
-        theme: plotTheme,
-        overrides: layout as Record<string, unknown>,
-      }) as Partial<Layout>
-      if (normalizedLayout.yaxis2) {
-        normalizedLayout.yaxis2 = createScientificPlotlyAxis(
-          plotTheme,
-          undefined,
-          normalizedLayout.yaxis2 as Record<string, unknown>,
-        ) as Layout['yaxis2']
-      }
-      return plotly.react(element, data, normalizedLayout, config).then(() => {
-        if (!cancelled) setPlotReady(true)
+    void import('plotly.js-basic-dist-min')
+      .then((module) => {
+        if (cancelled) return
+        plotly = module.default
+        plotlyRef.current = plotly
+        const normalizedLayout = createScientificPlotlyLayout({
+          height: typeof layout.height === 'number' ? layout.height : 330,
+          theme: plotTheme,
+          overrides: layout as Record<string, unknown>,
+        }) as Partial<Layout>
+        if (normalizedLayout.yaxis2) {
+          normalizedLayout.yaxis2 = createScientificPlotlyAxis(
+            plotTheme,
+            undefined,
+            normalizedLayout.yaxis2 as Record<string, unknown>,
+          ) as Layout['yaxis2']
+        }
+        return plotly
+          .react(element, data, normalizedLayout, config)
+          .then(() => {
+            if (!cancelled) setPlotReady(true)
+          })
       })
-    }).catch(() => {
-      if (!cancelled) {
-        plotlyRef.current = null
-        setPlotReady(false)
-      }
-    })
+      .catch(() => {
+        if (!cancelled) {
+          plotlyRef.current = null
+          setPlotReady(false)
+        }
+      })
 
     return () => {
       cancelled = true
@@ -187,11 +195,15 @@ function PlotlyFigure({
 
   return (
     <div className="rf-plot-frame">
+      <p id={descriptionId} className="scientific-visually-hidden">
+        {description}
+      </p>
       <div
         className="rf-plot scientific-plot-surface"
         ref={plotRef}
         role="img"
         aria-label={ariaLabel}
+        aria-describedby={descriptionId}
       />
       <div
         className="rf-plot-actions"
@@ -223,6 +235,118 @@ function PlotlyFigure({
       </div>
     </div>
   )
+}
+
+function plotSummary(
+  result: SimulationOutput,
+  view: PlotView,
+  frequencyConverting: boolean,
+): string {
+  const frequencySamples = result.total.frequencyHz.length
+  const firstFrequency = result.total.frequencyHz[0]
+  const lastFrequency = result.total.frequencyHz.at(-1)
+  const frequencyRange = `${formatPlotValue(firstFrequency)} to ${formatPlotValue(lastFrequency)} Hz`
+
+  if (view === 'nonlinear') {
+    const nonlinear = result.nonlinear
+    return [
+      `Nonlinear sweep with ${nonlinear.inputPowerDbm.length} input-power points.`,
+      `Input range ${formatPlotValue(nonlinear.inputPowerDbm[0])} to ${formatPlotValue(nonlinear.inputPowerDbm.at(-1))} dBm.`,
+      nonlinear.outputP1Dbm === null
+        ? 'The compressed P1dB result is unavailable.'
+        : `Output P1dB is ${formatPlotValue(nonlinear.outputP1Dbm)} dBm.`,
+      nonlinear.outputIp3Dbm === null
+        ? 'The output IP3 result is unavailable.'
+        : `Output IP3 is ${formatPlotValue(nonlinear.outputIp3Dbm)} dBm.`,
+    ].join(' ')
+  }
+
+  if (view === 'oscillator') {
+    const noise = result.oscillatorNoise
+    if (!noise.available || noise.offsetFrequencyHz.length === 0) {
+      return 'Oscillator phase-noise data are unavailable for this result.'
+    }
+    return [
+      `Oscillator phase-noise sweep with ${noise.offsetFrequencyHz.length} offset-frequency points.`,
+      `Offset range ${formatPlotValue(noise.offsetFrequencyHz[0])} to ${formatPlotValue(noise.offsetFrequencyHz.at(-1))} Hz.`,
+      `Free-running phase noise changes from ${formatPlotValue(noise.freeRunningDbcHz[0])} to ${formatPlotValue(noise.freeRunningDbcHz.at(-1))} dBc/Hz.`,
+      noise.pllEnabled
+        ? `PLL output phase noise changes from ${formatPlotValue(noise.outputDbcHz[0])} to ${formatPlotValue(noise.outputDbcHz.at(-1))} dBc/Hz.`
+        : 'No PLL output trace is present.',
+    ].join(' ')
+  }
+
+  if (view === 'antenna') {
+    const antenna = result.antenna
+    if (!antenna.available || antenna.angleDeg.length === 0) {
+      return 'Antenna radiation-pattern data are unavailable for this result.'
+    }
+    return [
+      `Normalized antenna radiation cut with ${antenna.angleDeg.length} angle samples.`,
+      `Angle range ${formatPlotValue(antenna.angleDeg[0])} to ${formatPlotValue(antenna.angleDeg.at(-1))} degrees.`,
+      `Efficiency is ${formatPlotValue(antenna.efficiencyPercent)} percent and realized gain is ${formatPlotValue(antenna.realizedGainDbi)} dBi.`,
+    ].join(' ')
+  }
+
+  if (view === 'smith') {
+    return [
+      `S11 Smith chart with ${frequencySamples} frequency samples over ${frequencyRange}.`,
+      `The reflection coefficient moves from ${formatComplex(result.total.s11.re[0], result.total.s11.im[0])} to ${formatComplex(result.total.s11.re.at(-1), result.total.s11.im.at(-1))}.`,
+    ].join(' ')
+  }
+
+  if (view === 'stability') {
+    return [
+      `Stability and passivity checks over ${frequencySamples} frequency samples from ${frequencyRange}.`,
+      `At the first sample, K is ${formatPlotValue(result.networkChecks.stabilityK[0])} and the maximum singular value is ${formatPlotValue(result.networkChecks.passivityMaximumSingularValue[0])}.`,
+      `At the last sample, K is ${formatPlotValue(result.networkChecks.stabilityK.at(-1))} and the maximum singular value is ${formatPlotValue(result.networkChecks.passivityMaximumSingularValue.at(-1))}.`,
+    ].join(' ')
+  }
+
+  if (view === 'phase') {
+    return [
+      `Unwrapped S21 phase over ${frequencySamples} frequency samples from ${frequencyRange}.`,
+      `Phase changes from ${formatPlotValue(result.curves.s21PhaseDeg[0])} to ${formatPlotValue(result.curves.s21PhaseDeg.at(-1))} degrees.`,
+    ].join(' ')
+  }
+
+  if (view === 'groupDelay') {
+    return [
+      `S21 group delay over ${frequencySamples} frequency samples from ${frequencyRange}.`,
+      `Group delay changes from ${formatPlotValue((result.curves.s21GroupDelayS[0] ?? Number.NaN) * 1e9)} to ${formatPlotValue((result.curves.s21GroupDelayS.at(-1) ?? Number.NaN) * 1e9)} nanoseconds.`,
+    ].join(' ')
+  }
+
+  if (view === 'probes') {
+    const firstProbe = result.probeResults[0]
+    if (!firstProbe)
+      return `No probe traces are available across ${frequencySamples} frequency samples.`
+    return [
+      `${result.probeResults.length} probe traces over ${frequencySamples} frequency samples from ${frequencyRange}.`,
+      `${firstProbe.label} changes from ${formatPlotValue(firstProbe.s21Db[0])} to ${formatPlotValue(firstProbe.s21Db.at(-1))} dB.`,
+    ].join(' ')
+  }
+
+  const traceLabel = frequencyConverting
+    ? 'Conversion gain'
+    : 'S-parameter magnitude'
+  return [
+    `${traceLabel} over ${frequencySamples} frequency samples from ${frequencyRange}.`,
+    `S21 changes from ${formatPlotValue(result.curves.s21Db[0])} to ${formatPlotValue(result.curves.s21Db.at(-1))} dB.`,
+  ].join(' ')
+}
+
+function formatPlotValue(value: number | null | undefined): string {
+  return value !== null && value !== undefined && Number.isFinite(value)
+    ? value.toPrecision(6)
+    : 'unavailable'
+}
+
+function formatComplex(
+  real: number | undefined,
+  imaginary: number | undefined,
+): string {
+  return `${formatPlotValue(real)} ${imaginary !== undefined && imaginary >= 0 ? '+' : ''}${formatPlotValue(imaginary)}j`
 }
 
 function createFigure(

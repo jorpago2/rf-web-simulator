@@ -618,7 +618,7 @@ export default function App() {
             <ScientificHeader
               aria-label="RF Network Simulator"
               product={strings.appName}
-              compactProduct="RF Network"
+              compactProduct={<><span className="rf-header-product-full">RF Network</span><span className="rf-header-product-short">RF</span></>}
               productIcon="rf-circuit"
               descriptor="RF network simulation"
               href="./"
