@@ -93,27 +93,31 @@ test('template transition preserves canvas focus, connections, panel and inspect
   await expect(page.locator('#rf-properties')).toBeVisible()
 
   await page.getByRole('button', { name: /^Build/ }).click()
-  await expect(page.locator('#rf-properties')).toBeVisible()
 
   if ((page.viewportSize()?.width ?? 0) < 1056) {
-    await expect(page.locator('#workflow-panel')).toHaveCount(0)
+    await expect(page.locator('#rf-properties')).toHaveCount(0)
+    await expect(page.locator('#workflow-panel')).toBeVisible()
     await expect(
       page.getByRole('textbox', { name: 'Search components' }),
-    ).toHaveCount(0)
+    ).toBeVisible()
+    await expect(page.locator('.scientific-workbench__stage')).toBeHidden()
+    await expect(page.locator('.scientific-status-bar')).toBeHidden()
   } else {
+    await expect(page.locator('#rf-properties')).toBeVisible()
     await expect(page.locator('#workflow-panel')).toBeVisible()
   }
 
   await page.keyboard.press('Escape')
   await expect(page.locator('#rf-properties')).toHaveCount(0)
-  await expect(page.locator('#workflow-panel')).toBeVisible()
   if ((page.viewportSize()?.width ?? 0) < 1056) {
+    await expect(page.locator('#workflow-panel')).toHaveCount(0)
     await expect
       .poll(async () =>
         page.evaluate(() => document.activeElement?.textContent),
       )
       .toContain('Build')
   } else {
+    await expect(page.locator('#workflow-panel')).toBeVisible()
     await expect
       .poll(async () =>
         page.evaluate(() => document.activeElement?.getAttribute('aria-label')),

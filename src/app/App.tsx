@@ -181,6 +181,10 @@ export default function App() {
   }, [activeTool, selectNode, selectedNodeId])
 
   const toggleTool = (tool: WorkflowTool) => {
+    if (compactWorkbench && selectedNodeId) {
+      selectNode(null)
+      if (activeTool === tool) return
+    }
     if (activeTool === tool) {
       closeActiveTool()
       return
@@ -586,7 +590,6 @@ export default function App() {
     <ReactFlowProvider>
       <ScientificAppShell
         className="app-shell"
-        previewStageWhenPanelOpen
         recovery={
           recoveryProject && (
             <ScientificRecoveryNotice
