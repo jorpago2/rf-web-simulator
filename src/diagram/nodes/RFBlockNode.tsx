@@ -4,7 +4,12 @@ import { RFBlockSymbol } from '../RFBlockSymbol'
 import type { RFCanvasNode } from '../../app/store'
 import { portsForData } from '../../engine/ports'
 
-export function RFBlockNode({ data, selected }: NodeProps<RFCanvasNode>) {
+export function RFBlockNode({
+  data,
+  selected,
+  sourcePosition = Position.Right,
+  targetPosition = Position.Left,
+}: NodeProps<RFCanvasNode>) {
   const descriptor = getBlockDescriptor(data.type)
   const ports = portsForData(data)
   const inputs = ports.filter((port) => port.role === 'input')
@@ -20,7 +25,7 @@ export function RFBlockNode({ data, selected }: NodeProps<RFCanvasNode>) {
         <Handle
           key={port.id}
           type="target"
-          position={Position.Left}
+          position={targetPosition}
           id={port.id}
           title={port.label}
           style={{ top: `${((index + 1) * 100) / (inputs.length + 1)}%` }}
@@ -35,7 +40,7 @@ export function RFBlockNode({ data, selected }: NodeProps<RFCanvasNode>) {
         <Handle
           key={port.id}
           type="source"
-          position={Position.Right}
+          position={sourcePosition}
           id={port.id}
           title={port.label}
           style={{ top: `${((index + 1) * 100) / (outputs.length + 1)}%` }}

@@ -12,6 +12,7 @@ import {
   Background,
   BackgroundVariant,
   Controls,
+  Position,
   ReactFlow,
   useNodesInitialized,
   useReactFlow,
@@ -65,13 +66,15 @@ export const RFCanvas = forwardRef<RFCanvasHandle>(function RFCanvas(_, ref) {
   const selectedNodeId = useRFEditorStore((state) => state.selectedNodeId)
   const selectNode = useRFEditorStore((state) => state.selectNode)
   const nodesInitialized = useNodesInitialized()
-  const [compactLayout, setCompactLayout] = useState(
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 })
+  const [compactViewport, setCompactViewport] = useState(
     () =>
       typeof window !== 'undefined' &&
       window.matchMedia('(max-width: 29.99rem)').matches,
   )
+  const compactLayout =
+    compactViewport || (canvasSize.width > 0 && canvasSize.width < 672)
   const flowElementRef = useRef<HTMLDivElement | null>(null)
-  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 })
   const canvasNodes = useMemo(() => {
     const accessibleNodes = nodes.map((node) => ({
       ...node,
@@ -81,10 +84,13 @@ export const RFCanvas = forwardRef<RFCanvasHandle>(function RFCanvas(_, ref) {
       ? accessibleNodes.map((node, index) => {
           const row = Math.floor(index / 2)
           const column = row % 2 === 0 ? index % 2 : 1 - (index % 2)
+          const leftToRight = row % 2 === 0
           return {
             ...node,
             position: { x: 16 + column * 190, y: 20 + row * 124 },
             draggable: false,
+            sourcePosition: leftToRight ? Position.Right : Position.Left,
+            targetPosition: leftToRight ? Position.Left : Position.Right,
           }
         })
       : accessibleNodes
@@ -128,7 +134,7 @@ export const RFCanvas = forwardRef<RFCanvasHandle>(function RFCanvas(_, ref) {
 
   useEffect(() => {
     const query = window.matchMedia('(max-width: 29.99rem)')
-    const update = () => setCompactLayout(query.matches)
+    const update = () => setCompactViewport(query.matches)
     update()
     query.addEventListener('change', update)
     return () => query.removeEventListener('change', update)
@@ -169,13 +175,14 @@ export const RFCanvas = forwardRef<RFCanvasHandle>(function RFCanvas(_, ref) {
       return
     }
     const frame = window.requestAnimationFrame(() => {
-      if (selectedNodeId) ensureSelectedNodeVisible()
+      if (selectedNodeId && !compactLayout) ensureSelectedNodeVisible()
       else fitResponsiveView()
     })
     return () => window.cancelAnimationFrame(frame)
   }, [
     activeProjectId,
     canvasSize,
+    compactLayout,
     ensureSelectedNodeVisible,
     fitResponsiveView,
     nodes.length,

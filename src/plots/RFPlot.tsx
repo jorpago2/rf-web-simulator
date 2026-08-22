@@ -199,13 +199,6 @@ function PlotlyFigure({
         {description}
       </p>
       <div
-        className="rf-plot scientific-plot-surface"
-        ref={plotRef}
-        role="img"
-        aria-label={ariaLabel}
-        aria-describedby={descriptionId}
-      />
-      <div
         className="rf-plot-actions"
         role="toolbar"
         aria-label="Plot controls"
@@ -233,6 +226,13 @@ function PlotlyFigure({
           <Download />
         </IconButton>
       </div>
+      <div
+        className="rf-plot scientific-plot-surface"
+        ref={plotRef}
+        role="img"
+        aria-label={ariaLabel}
+        aria-describedby={descriptionId}
+      />
     </div>
   )
 }

@@ -38,7 +38,7 @@ test('template, simulation and evidence complete without runtime errors', async 
   await expect(page.getByRole('button', { name: 'Simulate' })).toBeEnabled({
     timeout: 20_000,
   })
-  await page.getByRole('button', { name: /Review/i }).click()
+  await page.getByRole('button', { name: 'Review', exact: true }).click()
   await expect(
     page
       .getByText(
@@ -185,34 +185,49 @@ test('all transmitter blocks remain reachable at the configured viewport', async
 }) => {
   await page.goto('/')
   await loadTransmitterTemplate(page)
-  const geometry = await page.evaluate(() => {
-    const viewport = document
-      .querySelector('.react-flow')
-      ?.getBoundingClientRect()
-    const nodes = [...document.querySelectorAll<HTMLElement>('.rf-node')].map(
-      (node) => {
-        const rect = node.getBoundingClientRect()
-        return {
-          left: rect.left,
-          right: rect.right,
-          top: rect.top,
-          bottom: rect.bottom,
-        }
-      },
-    )
-    return {
-      viewport: viewport && {
-        left: viewport.left,
-        right: viewport.right,
-        top: viewport.top,
-        bottom: viewport.bottom,
-      },
-      nodes,
-      overflowX:
-        document.documentElement.scrollWidth >
-        document.documentElement.clientWidth,
-    }
-  })
+  const readGeometry = () =>
+    page.evaluate(() => {
+      const viewport = document
+        .querySelector('.react-flow')
+        ?.getBoundingClientRect()
+      const nodes = [...document.querySelectorAll<HTMLElement>('.rf-node')].map(
+        (node) => {
+          const rect = node.getBoundingClientRect()
+          return {
+            left: rect.left,
+            right: rect.right,
+            top: rect.top,
+            bottom: rect.bottom,
+          }
+        },
+      )
+      return {
+        viewport: viewport && {
+          left: viewport.left,
+          right: viewport.right,
+          top: viewport.top,
+          bottom: viewport.bottom,
+        },
+        nodes,
+        overflowX:
+          document.documentElement.scrollWidth >
+          document.documentElement.clientWidth,
+      }
+    })
+  await expect
+    .poll(async () => {
+      const geometry = await readGeometry()
+      if (!geometry.viewport) return false
+      return geometry.nodes.every(
+        (node) =>
+          node.left >= geometry.viewport!.left - 1 &&
+          node.right <= geometry.viewport!.right + 1 &&
+          node.top >= geometry.viewport!.top - 1 &&
+          node.bottom <= geometry.viewport!.bottom + 1,
+      )
+    })
+    .toBe(true)
+  const geometry = await readGeometry()
   expect(geometry.viewport).not.toBeNull()
   expect(geometry.overflowX).toBe(false)
   for (const node of geometry.nodes) {
@@ -221,6 +236,30 @@ test('all transmitter blocks remain reachable at the configured viewport', async
     expect(node.top).toBeGreaterThanOrEqual(geometry.viewport!.top - 1)
     expect(node.bottom).toBeLessThanOrEqual(geometry.viewport!.bottom + 1)
   }
+})
+
+test('editable panels dismiss with Escape and project modal restores focus', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await loadTransmitterTemplate(page)
+
+  await page.getByRole('button', { name: 'Run', exact: true }).click()
+  const start = page.getByRole('spinbutton', { name: /Start/ })
+  await start.focus()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('#workflow-panel')).toHaveCount(0)
+
+  const launcher = page.getByRole('button', { name: 'Project actions' })
+  await launcher.click()
+  await expect(
+    page.getByRole('dialog', { name: 'RF Network Simulator' }),
+  ).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(
+    page.getByRole('dialog', { name: 'RF Network Simulator' }),
+  ).toBeHidden()
+  await expect(launcher).toBeFocused()
 })
 
 test('initial and loaded workbench have no serious accessibility violations', async ({

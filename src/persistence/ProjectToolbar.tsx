@@ -12,7 +12,7 @@ import {
   preview__IconIndicator as IconIndicator,
 } from '@carbon/react'
 import { FolderOpen } from '@carbon/icons-react'
-import { useState, type ChangeEvent } from 'react'
+import { useRef, useState, type ChangeEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { rfTemplates } from '../templates'
 import type { LocalProjectSummary } from './indexedDb'
@@ -48,6 +48,8 @@ export function ProjectToolbar({
 }) {
   const [templateId, setTemplateId] = useState('')
   const [actionsOpen, setActionsOpen] = useState(false)
+  const [restoreFocusOnClose, setRestoreFocusOnClose] = useState(true)
+  const actionsButtonRef = useRef<HTMLButtonElement>(null)
   const importProject = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) onImport(file)
@@ -78,103 +80,114 @@ export function ProjectToolbar({
         />
       </span>
       <IconButton
+        ref={actionsButtonRef}
         aria-label="Project actions"
         className="project-actions-button"
         kind="ghost"
         size="lg"
         label="Project actions"
         align="bottom-end"
-        onClick={() => setActionsOpen(true)}
+        onClick={() => {
+          setRestoreFocusOnClose(true)
+          setActionsOpen(true)
+        }}
       >
         <FolderOpen aria-hidden="true" />
       </IconButton>
-      {createPortal(<ComposedModal
-        open={actionsOpen}
-        onClose={() => setActionsOpen(false)}
-        selectorPrimaryFocus="#recent-project"
-        size="sm"
-      >
-        <ModalHeader
-          label="RF Network Simulator"
-          title="Project actions"
-          closeModal={() => setActionsOpen(false)}
-        />
-        <ModalBody hasForm>
-          <div className="project-actions__panel">
-            <Select
-              id="recent-project"
-              labelText="Recent project"
-              size="sm"
-              value={selectedProjectId}
-              onChange={(event) => onSelectedProjectChange(event.target.value)}
-            >
-              <SelectItem value="" text="Choose a saved project" />
-              {recentProjects.map((project) => (
-                <SelectItem
-                  key={project.id}
-                  value={project.id}
-                  text={`${project.name} · ${new Date(project.updatedAt).toLocaleString()}`}
-                />
-              ))}
-            </Select>
-            <Button
-              kind="secondary"
-              size="sm"
-              disabled={!selectedProjectId}
-              onClick={onOpen}
-            >
-              Open
-            </Button>
-            <Select
-              id="project-template"
-              labelText="Template"
-              size="sm"
-              value={templateId}
-              onChange={(event) => setTemplateId(event.target.value)}
-              title={
-                rfTemplates.find((template) => template.id === templateId)
-                  ?.description
-              }
-            >
-              <SelectItem value="" text="Choose a template" />
-              {rfTemplates.map((template) => (
-                <SelectItem
-                  key={template.id}
-                  value={template.id}
-                  text={template.label}
-                />
-              ))}
-            </Select>
-            <Button
-              kind="secondary"
-              size="sm"
-              disabled={!templateId}
-              onClick={() => {
-                onLoadTemplate(templateId)
-                setTemplateId('')
-                setActionsOpen(false)
-              }}
-            >
-              Load template
-            </Button>
-          </div>
-        </ModalBody>
-        <ModalFooter>
-          <Button kind="ghost" onClick={onNew}>
-            New project
-          </Button>
-          <Button kind="secondary" onClick={onExport}>
-            Export JSON
-          </Button>
-          <FileUploaderButton
-            accept={['application/json', '.json']}
-            buttonKind="primary"
-            labelText="Import JSON"
-            multiple={false}
-            onChange={importProject}
+      {createPortal(
+        <ComposedModal
+          launcherButtonRef={restoreFocusOnClose ? actionsButtonRef : undefined}
+          open={actionsOpen}
+          onClose={() => setActionsOpen(false)}
+          selectorPrimaryFocus="#recent-project"
+          size="sm"
+        >
+          <ModalHeader
+            label="RF Network Simulator"
+            title="Project actions"
+            closeModal={() => setActionsOpen(false)}
           />
-        </ModalFooter>
-      </ComposedModal>, document.body)}
+          <ModalBody hasForm>
+            <div className="project-actions__panel">
+              <Select
+                id="recent-project"
+                labelText="Recent project"
+                size="sm"
+                value={selectedProjectId}
+                onChange={(event) =>
+                  onSelectedProjectChange(event.target.value)
+                }
+              >
+                <SelectItem value="" text="Choose a saved project" />
+                {recentProjects.map((project) => (
+                  <SelectItem
+                    key={project.id}
+                    value={project.id}
+                    text={`${project.name} · ${new Date(project.updatedAt).toLocaleString()}`}
+                  />
+                ))}
+              </Select>
+              <Button
+                kind="secondary"
+                size="sm"
+                disabled={!selectedProjectId}
+                onClick={onOpen}
+              >
+                Open
+              </Button>
+              <Select
+                id="project-template"
+                labelText="Template"
+                size="sm"
+                value={templateId}
+                onChange={(event) => setTemplateId(event.target.value)}
+                title={
+                  rfTemplates.find((template) => template.id === templateId)
+                    ?.description
+                }
+              >
+                <SelectItem value="" text="Choose a template" />
+                {rfTemplates.map((template) => (
+                  <SelectItem
+                    key={template.id}
+                    value={template.id}
+                    text={template.label}
+                  />
+                ))}
+              </Select>
+              <Button
+                kind="secondary"
+                size="sm"
+                disabled={!templateId}
+                onClick={() => {
+                  setRestoreFocusOnClose(false)
+                  onLoadTemplate(templateId)
+                  setTemplateId('')
+                  setActionsOpen(false)
+                }}
+              >
+                Load template
+              </Button>
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button kind="ghost" onClick={onNew}>
+              New project
+            </Button>
+            <Button kind="secondary" onClick={onExport}>
+              Export JSON
+            </Button>
+            <FileUploaderButton
+              accept={['application/json', '.json']}
+              buttonKind="primary"
+              labelText="Import JSON"
+              multiple={false}
+              onChange={importProject}
+            />
+          </ModalFooter>
+        </ComposedModal>,
+        document.body,
+      )}
     </div>
   )
 }

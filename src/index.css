@@ -844,19 +844,17 @@ h2 {
 }
 
 .rf-plot-frame {
-  position: relative;
   min-width: 0;
-  padding-top: var(--rf-space-lg);
 }
 
 .rf-plot-actions {
-  position: absolute;
-  z-index: 2;
-  top: 0;
-  right: 0;
   display: flex;
+  min-height: var(--scientific-ui-target-size);
+  align-items: center;
+  justify-content: flex-end;
   gap: var(--rf-space-2xs);
   padding: var(--rf-space-2xs);
+  border-bottom: 1px solid var(--cds-border-subtle);
   background: var(--cds-layer);
 }
 

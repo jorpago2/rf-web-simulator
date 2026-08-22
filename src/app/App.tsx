@@ -136,9 +136,51 @@ export default function App() {
   const [compactWorkbench, setCompactWorkbench] = useState(
     () => window.matchMedia('(max-width: 65.99rem)').matches,
   )
+  const canvasShouldRender =
+    activeWorkspaceTab === 0 && !(compactWorkbench && activeTool)
+  const canvasHostRef = useRef<HTMLDivElement | null>(null)
+  const [canvasHostHasSize, setCanvasHostHasSize] = useState(false)
+  const [canvasFocusRequest, setCanvasFocusRequest] = useState(0)
   const [recentProjects, setRecentProjects] = useState<LocalProjectSummary[]>(
     [],
   )
+
+  useEffect(() => {
+    if (!canvasShouldRender) {
+      const frame = window.requestAnimationFrame(() =>
+        setCanvasHostHasSize(false),
+      )
+      return () => window.cancelAnimationFrame(frame)
+    }
+    const host = canvasHostRef.current
+    if (!host) return
+    const update = () => {
+      const { width, height } = host.getBoundingClientRect()
+      setCanvasHostHasSize(width > 0 && height > 0)
+    }
+    const observer = new ResizeObserver(update)
+    observer.observe(host)
+    const frame = window.requestAnimationFrame(update)
+    return () => {
+      observer.disconnect()
+      window.cancelAnimationFrame(frame)
+    }
+  }, [canvasShouldRender])
+
+  useEffect(() => {
+    if (!canvasHostHasSize || canvasFocusRequest === 0) return
+    let innerFrame = 0
+    const outerFrame = window.requestAnimationFrame(() => {
+      innerFrame = window.requestAnimationFrame(() => {
+        rfCanvasRef.current?.focusCanvas()
+        setCanvasFocusRequest(0)
+      })
+    })
+    return () => {
+      window.cancelAnimationFrame(outerFrame)
+      window.cancelAnimationFrame(innerFrame)
+    }
+  }, [canvasFocusRequest, canvasHostHasSize])
   const [recoveryProject, setRecoveryProject] =
     useState<LocalProjectRecord | null>(null)
   const [selectedProjectId, setSelectedProjectId] = useState('')
@@ -358,6 +400,7 @@ export default function App() {
       shortcut: 'Escape',
       displayKeys: ['Esc'],
       description: 'Close the inspector or active tool, or cancel simulation',
+      allowInEditable: true,
       enabled:
         Boolean(selectedNodeId) || Boolean(activeTool) || status === 'running',
       priority: 20,
@@ -474,6 +517,7 @@ export default function App() {
   const workflowNavigation = (
     <ScientificToolRail
       className="tool-rail"
+      compact
       label="RF workbench tools"
       activeId={activeTool ?? 'components'}
       expandedId={activeTool}
@@ -621,7 +665,12 @@ export default function App() {
             <ScientificHeader
               aria-label="RF Network Simulator"
               product={strings.appName}
-              compactProduct={<><span className="rf-header-product-full">RF Network</span><span className="rf-header-product-short">RF</span></>}
+              compactProduct={
+                <>
+                  <span className="rf-header-product-full">RF Network</span>
+                  <span className="rf-header-product-short">RF</span>
+                </>
+              }
               productIcon="rf-circuit"
               descriptor="RF network simulation"
               href="./"
@@ -661,11 +710,7 @@ export default function App() {
                         title: 'Template ready',
                         subtitle: `${template.name} loaded. Diagram fitted to the canvas.`,
                       })
-                      window.requestAnimationFrame(() =>
-                        window.requestAnimationFrame(() =>
-                          rfCanvasRef.current?.focusCanvas(),
-                        ),
-                      )
+                      setCanvasFocusRequest((request) => request + 1)
                     }}
                     onNew={() => {
                       ++projectOperationRef.current
@@ -787,9 +832,11 @@ export default function App() {
                         label={statusText}
                       />
                     </div>
-                    <div className="canvas-wrap">
-                      <RFCanvas ref={rfCanvasRef} />
-                      {nodes.length === 0 && (
+                    <div className="canvas-wrap" ref={canvasHostRef}>
+                      {canvasShouldRender && canvasHostHasSize && (
+                        <RFCanvas ref={rfCanvasRef} />
+                      )}
+                      {canvasShouldRender && nodes.length === 0 && (
                         <div className="canvas-empty">
                           <strong>Start with a block</strong>
                           <p>
