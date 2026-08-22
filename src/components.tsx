@@ -1931,6 +1931,8 @@ export function SimulationPanel({
   analysis,
   analysisControlsHost,
   nodes,
+  canRun = nodes.length > 0,
+  runDisabledReason,
   status,
   result,
   error,
@@ -1942,6 +1944,8 @@ export function SimulationPanel({
   analysis: RFAnalysisSettings
   analysisControlsHost: HTMLElement | null
   nodes: RFProjectNode[]
+  canRun?: boolean
+  runDisabledReason?: string
   status: SimulationStatus
   result: SimulationOutput | null
   error: string | null
@@ -2220,15 +2224,19 @@ export function SimulationPanel({
                 : result
                   ? { state: 'up-to-date', label: 'Result current' }
                   : {
-                      state: 'needs-input',
+                      state: canRun ? 'ready' : 'needs-input',
                       label: nodes.length
-                        ? 'Ready to simulate'
+                        ? canRun
+                          ? 'Ready to simulate'
+                          : 'Fix network before simulating'
                         : 'Add RF blocks',
                     }
         }
         summary={
           status === 'error'
             ? 'Correct the network issues below, then run the simulation again.'
+            : !canRun && nodes.length
+              ? `Simulation is blocked: ${runDisabledReason ?? 'complete the source-to-load path and resolve port checks.'}`
             : result
               ? result.warnings.length
                 ? `The network solved, but ${result.warnings.length} warning${result.warnings.length === 1 ? ' requires' : 's require'} review before interpretation.`
@@ -2295,10 +2303,7 @@ export function SimulationPanel({
                   label: status === 'error' ? 'Try again' : 'Run simulation',
                   emphasis: 'primary',
                   disabled: nodes.length === 0 || status === 'running',
-                  disabledReason:
-                    nodes.length === 0
-                      ? 'Add RF blocks before simulating.'
-                      : undefined,
+                  disabledReason: nodes.length === 0 ? 'Add RF blocks before simulating.' : undefined,
                   onClick: onRun,
                 },
               ]

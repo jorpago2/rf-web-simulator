@@ -35,7 +35,7 @@ import {
 import type { SimulationStatus } from '../components'
 import { RFCanvas, type RFCanvasHandle } from '../diagram/RFCanvas'
 import type { RFProject, SimulationOutput } from '../engine/types'
-import type { GraphValidationResult } from '../engine/validation'
+import { validateLinearGraph } from '../engine/validation'
 import { downloadTextFile, safeFileName } from '../persistence/download'
 import {
   listLocalProjects,
@@ -184,11 +184,6 @@ export default function App() {
   const [recoveryProject, setRecoveryProject] =
     useState<LocalProjectRecord | null>(null)
   const [selectedProjectId, setSelectedProjectId] = useState('')
-  const [graphValidation, setGraphValidation] = useState<{
-    modelRevision: number
-    result: GraphValidationResult
-  } | null>(null)
-
   useEffect(() => {
     if (!workspaceNotice) return
     const timeout = window.setTimeout(() => setWorkspaceNotice(null), 4000)
@@ -258,20 +253,25 @@ export default function App() {
     [analysis, edges, nodes, projectName],
   )
 
-  useEffect(() => {
-    if (activeTool !== 'review') return
-    let cancelled = false
-    void import('../engine/validation').then(({ validateLinearGraph }) => {
-      if (!cancelled)
-        setGraphValidation({
-          modelRevision,
-          result: validateLinearGraph(project.nodes, project.edges),
-        })
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [activeTool, modelRevision, project])
+  const graphValidation = useMemo(
+    () => validateLinearGraph(project.nodes, project.edges),
+    [project.edges, project.nodes],
+  )
+  const graphBlockReason = graphValidation.issues[0]?.message ??
+    'Add one source, one load and a valid connected path before simulating.'
+  const analysisBlockReason = analysis.startHz >= analysis.stopHz
+    ? 'Stop frequency must be greater than start frequency.'
+    : analysis.points < 2
+      ? 'Use at least 2 frequency points.'
+      : analysis.referenceImpedanceOhm <= 0
+        ? 'Reference impedance Z₀ must be greater than 0 Ω.'
+        : null
+  const canRunSimulation = nodes.length > 0 && graphValidation.valid && !analysisBlockReason
+  const runDisabledReason = nodes.length === 0
+    ? 'Add RF blocks before simulating.'
+    : !graphValidation.valid
+      ? graphBlockReason
+      : analysisBlockReason ?? undefined
 
   useEffect(() => {
     let cancelled = false
@@ -334,6 +334,14 @@ export default function App() {
   }, [])
 
   const runSimulation = useCallback(async () => {
+    if (!canRunSimulation) {
+      setError(
+        runDisabledReason ?? 'Complete the RF configuration before simulating.',
+      )
+      setStatus('error')
+      setActiveWorkspaceTab(1)
+      return
+    }
     if (simulationAbortRef.current) return
     const simulationEpoch = simulationEpochRef.current
     const requestedRevision = modelRevision
@@ -390,7 +398,7 @@ export default function App() {
         simulationAbortRef.current = null
       }
     }
-  }, [analysis, modelRevision, project.edges, project.nodes, resultRevision])
+  }, [analysis, canRunSimulation, modelRevision, project.edges, project.nodes, resultRevision, runDisabledReason])
 
   const cancelSimulation = () => simulationAbortRef.current?.abort()
 
@@ -486,10 +494,7 @@ export default function App() {
   }
 
   const resultIsCurrent = resultRevision === modelRevision
-  const currentGraphValidation =
-    graphValidation?.modelRevision === modelRevision
-      ? graphValidation.result
-      : null
+  const currentGraphValidation = graphValidation
   const visibleResult = resultIsCurrent ? result : null
   const visibleStatus =
     status === 'running' || status === 'error'
@@ -498,10 +503,10 @@ export default function App() {
         ? status
         : 'idle'
   const statusText = {
-    idle: nodes.length ? 'Linear chain · draft' : 'Empty chain · add blocks',
+    idle: nodes.length && !canRunSimulation ? `Blocked · ${runDisabledReason}` : nodes.length ? 'Linear chain · draft' : 'Empty chain · add blocks',
     running: 'Simulating in worker…',
     success: 'Solved · review validation',
-    error: 'Diagram needs attention',
+    error: error ?? runDisabledReason ?? 'Diagram needs attention',
   }[visibleStatus]
   const scientificState =
     visibleStatus === 'running'
@@ -510,9 +515,11 @@ export default function App() {
         ? 'failed'
         : visibleStatus === 'success'
           ? 'up-to-date'
-          : nodes.length
-            ? 'modified'
-            : 'needs-input'
+          : nodes.length && !canRunSimulation
+            ? 'failed'
+            : nodes.length
+              ? 'modified'
+              : 'needs-input'
 
   const workflowNavigation = (
     <ScientificToolRail
@@ -771,7 +778,7 @@ export default function App() {
                     runLabel: 'Simulate',
                     stopLabel: 'Cancel',
                     disabled: nodes.length === 0,
-                    disabledReason: 'Add RF blocks before simulating',
+                    disabledReason: nodes.length === 0 ? 'Add RF blocks before simulating' : undefined,
                   }}
                 />
               }
@@ -875,6 +882,8 @@ export default function App() {
                       error={status === 'error' ? error : null}
                       onAnalysisChange={updateAnalysis}
                       onRun={runSimulation}
+                      canRun={canRunSimulation}
+                      runDisabledReason={runDisabledReason ?? 'Complete the RF configuration before simulating.'}
                       onExport={(fileName) =>
                         setPersistenceMessage(`Exported ${fileName}`)
                       }
