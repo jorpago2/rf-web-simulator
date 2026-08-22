@@ -224,6 +224,16 @@ h2 {
   line-height: 1.5;
 }
 
+.workflow-actions {
+  display: grid;
+  gap: 1px;
+}
+
+.workflow-action {
+  width: 100%;
+  max-width: none;
+}
+
 .workflow-notification {
   max-width: none;
 }
@@ -684,6 +694,7 @@ h2 {
   flex-direction: column;
   overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-gutter: stable both-edges;
   container-type: inline-size;
 }
 
@@ -1293,6 +1304,10 @@ h2 {
   .simulation-summary,
   .result-view-picker {
     padding-inline: var(--rf-space-sm);
+  }
+
+  .analysis-controls {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .simulation-message {

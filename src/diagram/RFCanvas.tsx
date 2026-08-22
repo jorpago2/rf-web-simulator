@@ -51,6 +51,7 @@ function isRFNodeType(value: string): value is RFNodeType {
 }
 
 export interface RFCanvasHandle {
+  fitNetwork: () => void
   focusCanvas: () => void
   focusNode: (nodeId: string) => void
 }
@@ -98,9 +99,22 @@ export const RFCanvas = forwardRef<RFCanvasHandle>(function RFCanvas(_, ref) {
   const topologyKey = nodes.map((node) => node.id).join('\u0000')
   const { fitView, getZoom, screenToFlowPosition } = useReactFlow()
 
+  const fitResponsiveView = useCallback(() => {
+    if (!nodesInitialized) return
+    const currentNodes = useRFEditorStore.getState().nodes
+    if (currentNodes.length === 0) return
+    const canvasWidth = flowElementRef.current?.clientWidth ?? window.innerWidth
+    void fitView({
+      nodes: currentNodes.map(({ id }) => ({ id })),
+      padding: canvasWidth < 480 ? 0.1 : 0.12,
+      maxZoom: canvasWidth < 480 ? 0.9 : 1,
+    })
+  }, [fitView, nodesInitialized])
+
   useImperativeHandle(
     ref,
     () => ({
+      fitNetwork: fitResponsiveView,
       focusCanvas: () => {
         flowElementRef.current?.focus({ preventScroll: true })
       },
@@ -117,20 +131,8 @@ export const RFCanvas = forwardRef<RFCanvasHandle>(function RFCanvas(_, ref) {
         }
       },
     }),
-    [],
+    [fitResponsiveView],
   )
-
-  const fitResponsiveView = useCallback(() => {
-    if (!nodesInitialized) return
-    const currentNodes = useRFEditorStore.getState().nodes
-    if (currentNodes.length === 0) return
-    const canvasWidth = flowElementRef.current?.clientWidth ?? window.innerWidth
-    void fitView({
-      nodes: currentNodes.map(({ id }) => ({ id })),
-      padding: canvasWidth < 480 ? 0.1 : 0.12,
-      maxZoom: canvasWidth < 480 ? 0.9 : 1,
-    })
-  }, [fitView, nodesInitialized])
 
   useEffect(() => {
     const query = window.matchMedia('(max-width: 29.99rem)')

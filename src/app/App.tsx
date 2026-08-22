@@ -563,15 +563,34 @@ export default function App() {
               <dd>{selectedNodeId ? '1 block' : 'None'}</dd>
             </div>
           </dl>
-          <Button
-            disabled={!selectedNodeId}
-            kind="secondary"
-            size="sm"
-            type="button"
-            onClick={() => selectNode(null)}
-          >
-            Clear selection
-          </Button>
+          <div className="workflow-actions">
+            <Button
+              className="workflow-action"
+              disabled={nodes.length === 0}
+              kind="secondary"
+              size="sm"
+              type="button"
+              onClick={() => {
+                if (compactWorkbench) {
+                  closeActiveTool()
+                  return
+                }
+                rfCanvasRef.current?.fitNetwork()
+              }}
+            >
+              Fit network
+            </Button>
+            <Button
+              className="workflow-action"
+              disabled={!selectedNodeId}
+              kind="ghost"
+              size="sm"
+              type="button"
+              onClick={() => selectNode(null)}
+            >
+              Clear selection
+            </Button>
+          </div>
           <p className="workflow-note">
             Use the viewport controls to zoom or fit the network. Drag blocks to
             position them; Delete removes the selected block.
