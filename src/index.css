@@ -659,11 +659,10 @@ h2 {
 }
 
 .file-summary dd {
-  overflow: hidden;
   margin: 0;
   font-weight: 650;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .message {

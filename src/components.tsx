@@ -717,7 +717,7 @@ export function PropertiesPanel({ onClose }: { onClose: () => void }) {
               <dl className="file-summary">
                 <div>
                   <dt>S-parameters</dt>
-                  <dd>{node.data.parameters.sParameterFileName}</dd>
+                  <dd title={node.data.parameters.sParameterFileName}>{node.data.parameters.sParameterFileName}</dd>
                 </div>
                 <div>
                   <dt>Points</dt>
@@ -782,7 +782,7 @@ export function PropertiesPanel({ onClose }: { onClose: () => void }) {
               <dl className="file-summary">
                 <div>
                   <dt>Performance</dt>
-                  <dd>{node.data.parameters.deviceTableFileName}</dd>
+                  <dd title={node.data.parameters.deviceTableFileName}>{node.data.parameters.deviceTableFileName}</dd>
                 </div>
                 <div>
                   <dt>Content</dt>
@@ -1427,7 +1427,7 @@ export function PropertiesPanel({ onClose }: { onClose: () => void }) {
             <dl className="file-summary">
               <div>
                 <dt>File</dt>
-                <dd>{node.data.parameters.fileName}</dd>
+                <dd title={node.data.parameters.fileName}>{node.data.parameters.fileName}</dd>
               </div>
               <div>
                 <dt>Points</dt>
@@ -1580,11 +1580,11 @@ function AmplifierModelSources({
       <dl>
         <div>
           <dt>Small signal</dt>
-          <dd>{smallSignalSource}</dd>
+          <dd title={smallSignalSource}>{smallSignalSource}</dd>
         </div>
         <div>
           <dt>Noise figure</dt>
-          <dd>
+          <dd title={tableHasMetric(table, 'noiseFigureDb') ? `Measured CSV · ${table!.sourceName}` : 'Analytic fallback'}>
             {tableHasMetric(table, 'noiseFigureDb')
               ? `Measured CSV · ${table!.sourceName}`
               : 'Analytic fallback'}
@@ -1592,11 +1592,11 @@ function AmplifierModelSources({
         </div>
         <div>
           <dt>Compression</dt>
-          <dd>{compressionSource}</dd>
+          <dd title={compressionSource}>{compressionSource}</dd>
         </div>
         <div>
           <dt>IP3 / IM3</dt>
-          <dd>
+          <dd title={tableHasMetric(table, 'outputIp3Dbm') ? `Measured OIP3 · ${table!.sourceName}` : 'Analytic OIP3 fallback'}>
             {tableHasMetric(table, 'outputIp3Dbm')
               ? `Measured OIP3 · ${table!.sourceName}`
               : 'Analytic OIP3 fallback'}
@@ -1712,6 +1712,93 @@ function BudgetMetadataFields({
   )
 }
 
+function DraftNumberInput({
+  label,
+  unit,
+  value,
+  min,
+  max,
+  step,
+  disabled = false,
+  optional = false,
+  placeholder,
+  className,
+  onChange,
+}: {
+  label: string
+  unit?: string
+  value: unknown
+  min?: number
+  max?: number
+  step?: number
+  disabled?: boolean
+  optional?: boolean
+  placeholder?: string
+  className?: string
+  onChange: (value: number | null) => void
+}) {
+  const id = useId()
+  const normalizedValue = typeof value === 'number' && Number.isFinite(value) ? value : null
+  const [draft, setDraft] = useState(normalizedValue === null ? '' : String(normalizedValue))
+  const [focused, setFocused] = useState(false)
+  const [invalid, setInvalid] = useState(false)
+  const committedValue = useRef<number | null>(normalizedValue)
+
+  useEffect(() => {
+    if (focused || normalizedValue === committedValue.current) return
+    committedValue.current = normalizedValue
+    setDraft(normalizedValue === null ? '' : String(normalizedValue))
+    setInvalid(false)
+  }, [focused, normalizedValue])
+
+  const commitDraft = (next: string) => {
+    setDraft(next)
+    if (next.trim() === '') {
+      setInvalid(false)
+      if (optional) {
+        committedValue.current = null
+        onChange(null)
+      }
+      return
+    }
+    const parsed = Number(next)
+    if (!Number.isFinite(parsed)) return
+    committedValue.current = parsed
+    setInvalid(false)
+    onChange(parsed)
+  }
+
+  return (
+    <NumberInput
+      allowEmpty
+      aria-label={unit ? `${label} (${unit})` : label}
+      className={className ?? 'field'}
+      decorator={unit ? <span className="field-unit" aria-hidden="true">{unit}</span> : undefined}
+      disabled={disabled}
+      hideSteppers
+      iconDescription={`Adjust ${label}${unit ? ` (${unit})` : ''}`}
+      id={id}
+      invalid={invalid}
+      invalidText={optional && draft.trim() === '' ? undefined : 'Enter a valid number.'}
+      label={label}
+      max={max}
+      min={min}
+      placeholder={placeholder}
+      size="sm"
+      step={step}
+      value={draft}
+      onFocus={() => setFocused(true)}
+      onBlur={() => {
+        const trimmed = draft.trim()
+        const parsed = Number(trimmed)
+        setInvalid((trimmed === '' && !optional) || (trimmed !== '' && !Number.isFinite(parsed)))
+        setFocused(false)
+      }}
+      onChange={(_, { value: nextValue }) => commitDraft(String(nextValue ?? ''))}
+    />
+  )
+}
+
 function NumberField({
   label,
   unit,
@@ -1731,27 +1818,7 @@ function NumberField({
   disabled?: boolean
   onChange: (value: number) => void
 }) {
-  const id = useId()
-  return (
-    <NumberInput
-      className="field"
-      decorator={unit ? <span className="field-unit">{unit}</span> : undefined}
-      disabled={disabled}
-      hideSteppers
-      iconDescription={`Adjust ${label}`}
-      id={id}
-      label={label}
-      max={max}
-      min={min}
-      size="sm"
-      step={step}
-      value={value}
-      onChange={(_, { value: nextValue }) => {
-        const parsed = Number(nextValue)
-        if (Number.isFinite(parsed)) onChange(parsed)
-      }}
-    />
-  )
+  return <DraftNumberInput label={label} unit={unit} value={value} min={min} max={max} step={step} disabled={disabled} onChange={(value) => { if (value !== null) onChange(value) }} />
 }
 
 function OptionalNumberField({
@@ -1769,31 +1836,7 @@ function OptionalNumberField({
   disabled?: boolean
   onChange: (value: number | null) => void
 }) {
-  const id = useId()
-  return (
-    <NumberInput
-      allowEmpty
-      className="field"
-      decorator={unit ? <span className="field-unit">{unit}</span> : undefined}
-      disabled={disabled}
-      hideSteppers
-      iconDescription={`Adjust ${label}`}
-      id={id}
-      label={label}
-      min={min}
-      placeholder="Not set"
-      size="sm"
-      value={typeof value === 'number' && Number.isFinite(value) ? value : ''}
-      onChange={(_, { value: nextValue }) => {
-        if (nextValue === '') {
-          onChange(null)
-          return
-        }
-        const parsed = Number(nextValue)
-        if (Number.isFinite(parsed)) onChange(parsed)
-      }}
-    />
-  )
+  return <DraftNumberInput label={label} unit={unit} value={value} min={min} disabled={disabled} optional placeholder="Not set" onChange={onChange} />
 }
 
 function numberValue(value: unknown, fallback: number): number {
@@ -3512,23 +3555,16 @@ function CompactNumberField({
   step: number
   onChange: (value: number) => void
 }) {
-  const id = useId()
   return (
-    <NumberInput
-      className="compact-field"
-      hideSteppers
-      iconDescription={`Adjust ${label}`}
-      id={id}
-      label={`${label}${unit ? ` (${unit})` : ''}`}
-      max={max}
-      min={min}
-      size="sm"
-      step={step}
+    <DraftNumberInput
+      label={label}
+      unit={unit}
       value={value}
-      onChange={(_, { value: nextValue }) => {
-        const parsed = Number(nextValue)
-        if (Number.isFinite(parsed)) onChange(parsed)
-      }}
+      min={min}
+      max={max}
+      step={step}
+      className="compact-field"
+      onChange={(nextValue) => { if (nextValue !== null) onChange(nextValue) }}
     />
   )
 }

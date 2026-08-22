@@ -165,6 +165,21 @@ test('invalid networks surface the error in Results without runtime failures', a
   expect(resizeObserverErrors).toEqual([])
 })
 
+test('numeric drafts remain visible while temporarily empty and units stay accessible', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await loadTransmitterTemplate(page)
+  await page.locator('.rf-node').first().click()
+  const field = page.getByRole('spinbutton').first()
+  const accessibleName = await field.getAttribute('aria-label')
+  expect(accessibleName).toMatch(/\([^)]+\)/)
+  await field.fill('')
+  await field.press('Tab')
+  await expect(field).toHaveValue('')
+  await expect(field).toHaveAttribute('aria-invalid', 'true')
+})
+
 test('all transmitter blocks remain reachable at the configured viewport', async ({
   page,
 }) => {
